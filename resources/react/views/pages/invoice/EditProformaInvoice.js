@@ -513,7 +513,7 @@ const EditProformaInvoice = () => {
                     <option value="cancelled">Cancelled</option>
                   </CFormSelect>
                 </CCol>
-              </CRow>    
+              </CRow>       
 
 
 
