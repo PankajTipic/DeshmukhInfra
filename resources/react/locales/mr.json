@@ -1,0 +1,922 @@
+{
+    "LABELS": {
+      "products_added":"प्रॉडक्टस ॲडेड",
+        "customer": "ग्राहक",
+        "delivery_record": "डिलिवरी रेकॉर्ड",
+        "customer_name": "ग्राहकाचे नाव",
+        "add_selected_products":"ॲड सिलेक्टेड प्रॉडक्टस",
+        "new_customer": "नवीन ग्राहक",
+        "new": "नवीन ग्राहक",
+        "income_grand_total":"Total Income",
+"incomeReport":"Income Report",
+        "name": "नाव",
+    "total_expenses" : "एकूण खर्च",
+    "expense_entries": "खर्च नोंदी",
+"passwords_do_not_match": "पासवर्ड जुळत नाहीत",
+"edit_plan" : "एडिट प्लॅन",
+
+"optional" : "पर्यायी",
+ "workReport": "कामाचा रिपोर्ट",
+  "select_project": "प्रोजेक्ट निवडा",
+
+  "acc_number": "खाते क्रमांक",
+"ifsc": "IFSC कोड",
+"transaction_id": "व्यवहार आयडी",
+"enter_bank_name": "बँकेचे नाव टाका",
+"enter_acc_number": "खाते क्रमांक टाका",
+"enter_ifsc": "IFSC कोड टाका",
+"enter_transaction_id": "व्यवहार आयडी टाका",
+
+    
+    "work_grand_total": "कामाची एकूण रक्कम",
+    "total_work_amount": "एकूण कामाची रक्कम",
+    "total_expense": "एकूण खर्च",
+   
+    "unit_price": "युनिट किंमत",
+    
+    "search_work_logs": "कामाची नोंद शोधा",
+  
+        "credit": "येणे",
+        "transaction_details": "व्यवहार तपशील",
+    "mobile": "मोबाईल",
+    "grand_total": "एकूण",
+    "please_select_expense_category": "कृपया खर्च प्रकार निवडा.",
+      "search_product": "नावानुसार प्रॉडक्ट शोधा",
+
+    
+    "only_cash_collected": "फक्त रक्कम जमा केली",
+        "rs": "रु",
+        "plan_name": "प्लॅन नाव",
+        "plan_description": "प्लॅन बद्दल",
+        "price": "किंमत",
+        "user_limit": "युझर लिमिट",
+        "new_plan": "नवीन प्लॅन",
+        "plans": "प्लॅन्स",
+        "edit_company": "कंपनी संपादित करा",
+        "update":"अपडेट",
+
+
+    "expense_report": "खर्च रिपोर्ट",
+
+    "all_expenses": "सर्व खर्च",
+    "images": "फोटो",
+"all_quotation":"सर्व कोटेशन",
+"confirm_action": "ॲक्शन निश्चित करा",
+"confirm_dead_stock_message": "डेड स्टॉक ॲक्शन निश्चित करा",
+"confirm": "निश्चित करा",
+"quotation_nav":"कोटेशन यादी",
+
+    "send_all_to_whatsapp": "सर्व WhatsApp वर पाठवा",
+    "add_images": "फोटो जोडा",
+    "delete_image": "फोटो काढा",
+    "scroll_to_view_more_images": "अधिक फोटो पाहण्यासाठी आडवे स्क्रॉल करा (एकूण {{count}})",
+    "product_image_alt": "उत्पादन फोटो {{number}}",
+ 
+
+   
+    "loading": "लोड होत आहे...",
+    "filter": "यादी दाखवा",
+    "add_expense": "खर्च नोंदवा",
+     "dead_stock": "डेड स्टॉक",
+    "dead_stock_qty": "डेड स्टॉक प्रमाण",
+    
+    "total_value": "एकूण रक्कम",
+    
+    "confirm_dead_stock": "डेड स्टॉक निश्चित करा",
+
+
+    
+    "available_stock": "उपलब्ध साठा",
+       "logs": "नोंदी",
+    "log": "नोंद",
+    "no_logs_found": "कोणतीही नोंद सापडली नाही.",
+    "failed_to_load_logs": "नोंदी लोड करण्यात अयशस्वी.",
+    "type": "प्रकार",
+    
+        
+        "new_shop": "नवीन शॉप रजिस्ट्रेशन",
+        "company_name": "शॉपचे नाव", 
+        "email": "ई-मेल",
+        "bank_name": "बँकेचे नाव",
+        "account_number": "बँक अकाउंट नंबर",
+        "IFSC": "आय एफ एस सी",
+        "logo": "लोगो",
+        "sign": "सही",
+        "qr_img": "क्यू आर कोड",
+        "app_mode": "ऍप मोड",
+        "plan": "प्लॅन (+जी.एस.टि)",
+        "partner": "पार्टनर",
+        "validity": "व्हॅलिडिटी",
+        "submit_pay": "सबमिट & पे",
+        "plan_duration": "ड्युरेशन",
+        "address": "पत्ता",
+        "balance": "शिल्लक",
+        "advance": "आगाऊ",
+        "collect": "घ्या",
+        "empty": "रिकामे",
+        "deliver": "द्या",
+        "cancel": "रद्द करा",
+        "order_type": "ऑर्डर प्रकार",
+        "date": "तारीख",
+        "filled": "भरलेले",
+        "rate": "रेट",
+        "total": "एकूण",
+        "total_amount": "एकूण रक्कम",
+        "cash_collected": "जमा रक्कम",
+        "submit": "सबमिट",
+        "clear": "क्लिअर",
+        "view_QR": "QR दाखवा",
+        "search": "ग्राहक शोधा",
+        "update_return" : "पैसे परत घ्या",
+        "BulkProduct" : "बल्क प्रॉडक्ट",
+        "sendWhatsapp":"व्हॉट्सॲपवर पाठवा",
+        "Contact":"संपर्क",   
+        "dashboard": "डॅशबोर्ड",
+        "delivery": "डिलिव्हरी",
+        "invoice": "बिल तयार करा",
+        "booking": "बुकिंग",
+        "customers": "ग्राहक",
+        "visible": "दिसणारे",
+        "expense_category": "खर्च प्रकार",
+        "all_customers": "सर्व प्रोजेक्ट",
+        "products": "प्रॉडक्ट",
+        "Inventory_Management": "साठा व्यवस्थापन",
+        "new_product": "प्रॉडक्ट ॲड करा",
+        "all_products": "सर्व प्रॉडक्ट",
+        "orders": "ऑर्डर व्यवस्थापन",
+              
+      "edit_expense": "खर्च संपादित करा",
+      "editing_mode": "संपादन मोड",
+     
+      "update_in_list": "यादीत अपडेट करा",
+      "cancel_edit": "संपादन रद्द करा",
+   
+      "editing": "संपादित करत आहे...",
+
+      "search_sales" : "सेल्स डेटने शोधा",
+    "search_expenses" : "खर्च डेटने शोधा",
+    "search_pnl" : "नफा आणि तोटा डेटने शोधा",
+
+    
+     
+
+
+
+         "change_password": "संकेतशब्द बदला",
+    "current_password_required": "नवीन संकेतशब्द बदलण्यासाठी आपला सध्याचा संकेतशब्द आवश्यक आहे",
+    "enter_current_password": "सध्याचा संकेतशब्द ॲड करा",
+    "please_provide_current_password": "कृपया आपला सध्याचा संकेतशब्द द्या.",
+    "enter_new_password": "नवीन संकेतशब्द ॲड करा",
+    "reenter_new_password": "नवीन संकेतशब्द पुन्हा ॲड करा",
+    "please_reenter_new_password": "कृपया नवीन संकेतशब्द पुन्हा ॲड करा.",
+    "update_password": "संकेतशब्द अद्यतनित करा",
+    "error_occurred": "त्रुटी आली",
+       
+    "add_to_list": "यादीत जोडा",
+    "expenses_list": "खर्चाची यादी",
+    
+    "description": "वर्णन",
+    "confirm_close": "बंद करण्याची खात्री करा",
+    "confirm_close_message": "बिनसेव्ह करता बंद करायचं आहे का?",
+    "yes_close": "हो, बंद करा",
+    "closed_without_saving": "सेव्ह न करता बंद करण्यात आले",
+   
+    
+    "quantity": "क्वांटिटी",
+    "top_products": "टॉप उत्पादने",
+    "top_products_chart": "टॉप उत्पादने चार्ट",
+ 
+    "action": "कृती",
+    "remove": "काढा",
+    "submit_all_expenses": "सर्व खर्च सबमिट करा",
+    "confirm_submission": "सबमिशनची पुष्टी करा",
+    
+    "confirm_submit": "सबमिट करण्याची पुष्टी करा",
+    "enter_expense_description": "खर्चाच्या माहितीची नोंद करा",
+        "advance_booking": "बुकिंगची यादी",
+        "regular_orders": "नियमित ऑर्डर",
+        "all_orders": "सर्व ऑर्डर",
+        "expense": "खर्च",
+        "new_expense": "खर्च नोंदवा",
+        "new_expense_type": "नवीन खर्चाचा प्रकार",
+        "all_expense_types": "सर्व खर्चाचे प्रकार",
+        "report": "रिपोर्ट",
+        "reports": "आर्थिक रिपोर्ट",
+        "customer_report": "ग्राहकाची एकत्रित माहिती",
+        "credit_report": "उधारी रिपोर्ट",
+        "user_management": "वापरकर्ता व्यवस्थापन",
+        "all_Users": "सर्व वापरकर्ते",
+        "create_user": "वापरकर्ता तयार करा",
+        "upgrade":"अपग्रेड",
+        "available_plans": "उपलब्ध योजना",
+    "confirm_upgrade": "अपग्रेडची पुष्टी करा",
+    "current_plan": "सध्याची योजना",
+    
+    "remaining_days": "उरलेले दिवस",
+    "unused_value": "न वापरलेले मूल्य",
+    "payable_amount": "देय रक्कम",
+    
+
+        "company": "कंपनी",
+        "new_company": "नवीन कंपनी",
+        "all_companies": "सर्व कंपन्या",
+        "map": "नकाशा",
+        "customer_history_report": "ग्राहक रिपोर्ट",
+
+        "mobile_number": "मोबाईल नंबर",
+        "special_discount": "विशेष सवलत",
+        "close": "बंद करा",
+
+        "start_date": "प्रारंभ तारीख",
+        "end_date": "समाप्ती तारीख",
+        "download": "डाउनलोड करा",
+
+        "delivery_date": "वितरण तारीख",
+        "delivery_time": "वितरण वेळ",
+        "time": "वेळ",
+        "collected": "घेतले",
+
+        "overview": "स्टॉकची माहिती",
+        "product": "नाव",
+        "stock": "स्टॉक शिल्लक",
+        "given": "दिले",
+        "booked": "बुक झालेले",
+        "id": "क्र",
+        "actions": "कृती",
+        "return_items": "रिटर्न घेणे",
+        "paid": "दिले",
+        "delivered_by": "डिलिव्हरी",
+        "share": "शेअर करा",
+        "qr":"QR कोड",
+        "cancel_order": "ऑर्डर रद्द करा",
+        "deliver_order": "ऑर्डर डिलिव्हर करा",
+ "conformation_msg": "तुम्हाला हा व्यवहार खरंच <strong>डिलीट</strong> करायचा आहे का?",
+        "yes": "होय",
+        "unpaid_orders": "थकबाकी आदेश",
+    
+    "order_id": "ऑर्डर आयडी",
+   
+    "unpaid_amount": "थकबाकी रक्कम",
+    "payment": "देयक",
+    "pay": "देय द्या",
+    "no_unpaid_orders": "थकबाकी आदेश नाहीत",
+
+        "expense_type": "खर्चाचा प्रकार",
+        "periodic_view" : "इतर माहिती",
+        "about_expense": "खर्चाबद्दल",
+        "expense_date": "खर्चाची तारीख",
+        "price_per_unit": "किंमत",
+        "total_units": "क्वांटिटी",
+        "total_price": "एकूण किंमत",
+        "create_new_expense_type": "नवीन खर्चाचा प्रकार तयार करा",
+        "expense_type_name": "खर्चाचे प्रकार नाव",
+        "expense_name": "खर्चाचे नाव",
+        "expense_type_local_name": "खर्चाचे प्रकार स्थानिक नाव",
+        "short_description": "लहान वर्णन",
+        "show_for_expense_records": "खर्चाच्या नोंदी दाखवा",
+        "local_name": "स्थानिक नाव",
+        "short_desc": "लघु वर्णन",
+        "edit": "एडिट",
+        "delete": "डिलीट",
+        "status": "स्थिती",
+        "customer_id" : "ग्राहक ID",
+
+         
+    "year": "वार्षिक",
+    "quarter": "तिमाही",
+    "month": "मासिक",
+    "week": "साप्ताहिक",
+    "custom": "कस्टम",
+    
+  "expenses": "खर्च",
+  
+  "in": "in",
+    
+    "sales": "विक्री",
+
+     "salesReport" : "विक्रीचा हिशोब",
+    "expenseReport":"खर्चाचा हिशोब",
+    "payment_mode":"पेमेंट प्रकार",
+   
+    "profit_loss": "नफा आणि तोटा",
+    "earning_per_product": "प्रति प्रॉडक्ट कमाई",
+    "total_sales": "एकूण विक्री",
+    "paid_amount": "जमा रक्कम",
+    "remaining_amount": "थकबाकी रक्कम",
+    
+    "net_profit": "निव्वळ नफा",
+    "net_loss": "निव्वळ तोटा",
+    "for_selected_period": "निवडलेल्या कालावधीसाठी",
+    "of_total_sales": "% एकूण विक्रीचा",
+    "initial_stock": "सुरवातीचा स्टॉक",
+"initial_stock_required": "कृपया सुरवातीचा स्टॉक ॲड करा",
+    "profit_margin": "% नफा मार्जिन",
+    "search_or_select_product":"प्रॉडक्ट शोधा किंवा निवडा",
+    "invoice_date": "बिलाची तारीख",
+   "capacity" : "क्षमता",
+
+    "edit_product": "प्रॉडक्ट संपादित करा",
+    
+    "please_provide_local_name": "कृपया स्थानिक नाव ॲड करा.",
+    
+   
+    "details": "तपशील",
+   "onboarding_partners": "ऑनबोर्डिंग भागीदार",
+    "new_partner": "नवीन भागीदार",
+    "OnboardingTypesConfigure": "ऑनबोर्डिंग प्रकार",
+    "All_partnerss": "सर्व भागीदार",
+    "total_cost": "एकूण खर्च",
+    "total_outstanding": "एकूण थकबाकी",
+"total_customers": "एकूण ग्राहक",
+    "product_name": "प्रॉडक्टचे नाव",
+    "price_product": "किंमत / प्रॉडक्ट",
+    "quantity_sold": "विकलेला क्वांटिटी",
+    "enter_amount" : "भरायची रक्कम",
+    "total_revenue": "एकूण महसूल (₹)",
+    "pieces": "नग",
+    "sales_entries": "विक्री नोंदी",
+    "entries":"नोंदी",
+    "update_expense":"खर्च अपडेट करा",
+    "profit": "नफा",
+    "loss": "तोटा",
+    "due":"बाकी",
+    "price_per_product": "किंमत / प्रॉडक्ट",
+  
+    "not_available": "-",
+    "password_updated_successfully": "पासवर्ड यशस्वीरित्या अपडेट करण्यात आला आहे",
+    "please_provide_new_password": "कृपया नवीन पासवर्ड ॲड करा",
+    
+    "passwords_match": "पासवर्ड जुळले",
+    "select_report_type": "रिपोर्ट प्रकार निवडा",
+  "fetch_report": "रिपोर्ट मिळवा",
+  "address_label": "पत्ता",
+    "taluka": "तालुका",
+    "district": "जिल्हा",
+    "pincode": "पिनकोड",
+    "edit_expense_type": "खर्च प्रकार संपादित करा",
+     "add_new_product": "प्रॉडक्ट ॲड करा",
+  "bulk_upload_products": "मोठ्या क्वांटिटीत अपलोड",
+  "stock_color_code": "साठा रंग संकेत",
+  "red_stock_tooltip": "लाल - २०% पेक्षा कमी साठा उरलेला",
+  "red_stock_label": "लाल (<20%)",
+  "orange_stock_tooltip": "केशरी - २०% ते ५०% साठा उरलेला",
+  "orange_stock_label": "केशरी (20-50%)",
+  "green_stock_tooltip": "हिरवा - ५०% पेक्षा जास्त साठा उरलेला",
+  "green_stock_label": "हिरवा (>50%)",
+   "search_products": "प्रॉडक्ट शोधा",
+  "selling_price": "विक्री किंमत",
+  "qty_update": "क्वांटिटी अपडेट",
+  "add_stock": "साठा जोडा",
+  "total_quantity": "एकूण क्वांटिटी",
+  "current_stock": "सध्याचा साठा",
+  "stock_percentage": "साठ्याचे टक्केवारी",
+  "of_total_quantity": "एकूण क्वांटिटीापैकी",
+  "stock_to_add": "जोडायचा साठा",
+  "max": "कमाल",
+  "hidden" : "हिडन",
+  
+  "enter_stock_to_add": "जोडण्यासाठी साठा ॲड करा",
+  "after_adding": "जोडल्यानंतर","below": "पेक्षा कमी",
+    "above": "पेक्षा जास्त",
+  "raw_materials_inventory": "इन्वेंटरी यादी",
+    "productUpdateSuccess": "साहित्य यशस्वीरित्या अद्यतनित झाले!",
+    "singleProductUpdateSuccess": "साहित्य यशस्वीरित्या अद्यतनित झाले!",
+    "overCapacityWarning": "आपण अनुमत क्षमतेपेक्षा अधिक ॲड केले आहे.",
+    "search_name": "नावाने शोधा",
+    "template": "नमुना डाउनलोड करा",
+   "raw_material":"इन्वेंटरी यादी",
+   "no_products_found" : "कोणतेही प्रॉडक्ट उपलब्ध नाहीत",
+    "uplaoding": "अपलोड करत आहे...",
+   
+    "add_material": "साहित्य जोडा",
+    "bulk_add": "मोठ्या प्रमाणात जोडा",
+    "download_template": "नमुना डाउनलोड",
+   
+    "packaging": "पॅकेजिंग",
+    "Capacity": "क्षमता",
+    "stock_indicator": "साठा निर्देशक",
+    
+    "no": "नाही",
+    "empty_soon": "लवकरच संपेल",
+    "moderate": "मध्यम",
+    "+":"+",
+    "sufficient": "पुरेसा",
+    "qty": "प्रमाण",
+    "add": "जोडा",
+    "select_product" : "प्रॉडक्ट निवडा",
+    "back_to_list" : "लिस्ट मध्ये जा",
+    "add_raw_material": "इन्वेंटरी जोडा",
+    "material_name": "साहित्याचे नाव",
+    "keep_name_and_local_name_same": "नाव आणि स्थानिक नाव एकसारखे ठेवा",
+    "material_local_name": "साहित्याचे स्थानिक नाव",
+    "units": "युनिट्स",
+    "Kilogram": "किलोग्राम (kg)",
+    "grams": "ग्राम (gm)",
+    "liter": "लिटर (ltr)",
+    "milli_liter": "मिलिलिटर (ml)",
+    "is_packaging": "पॅकेजिंग आहे का?",
+    "is_visible": "दृश्यमान आहे का?",
+    "additional_notes": "अतिरिक्त टीपा",
+    "any_additional_info": "अतिरिक्त माहिती लिहा",
+
+ 
+    "capacityExceededWarning": "तुम्ही {{name}} मध्ये {{quantity}} जोडण्याचा प्रयत्न करत आहात, परंतु फक्त {{available}} अधिक बसू शकते (मर्यादा {{limit}}).",
+
+    "add_qty": "क्वांटिटी जोडा",
+    "used_qty": "क्वांटिटी वापरा",
+ 
+    "add_quantity": "क्वांटिटी जोडा",
+    "used_quantity": "क्वांटिटी वापरा",
+   
+    "select_unit": "एकक निवडा",
+   
+    "employee_name": "माहिती",
+    "enter_employee_name": " कामगार नाव किंवा माहिती",
+    "enter_quantity": "क्वांटिटी ॲड करा",
+    
+    "quantity_used": "क्वांटिटी वापरा",
+    
+   
+    
+    
+    "action_type": "क्रिया प्रकार",
+    "add_from_existing": "आधीची क्वांटिटी मधून घ्या",
+    "buy_new_stock": "नवीन स्टॉक खरेदी करा",
+    
+    
+    "amount_per_unit": "प्रति एकक रक्कम",
+    "enter_price_per_unit": "प्रति एकक किंमत ॲड करा",
+    
+    "auto_calculated_total": "स्वयं-गणना केलेली एकूण रक्कम",
+  
+    "save": "सेव्ह करा",
+    "saving": "साठवत आहे...",
+  "stock_will_be": "साठा होईल",
+  "stock_is_full": "साठा पूर्ण आहे",
+  "stock_full_message": "सध्याचा साठा एकूण क्वांटिटीाच्या समतुल्य आहे. अधिक साठा जोडता येणार नाही.",
+  "create_new_product": "प्रॉडक्ट ॲड करा",
+  "search_customers": "ग्राहक शोधा",
+  "add_new_customer": "नवीन ग्राहक जोडा",
+ 
+  "product_qty": "प्रॉडक्टाचे क्वांटिटी",
+  "enter_description": "अधिक माहिती भरा",
+
+  "base_price": "मूळ किंमत",
+  "please_provide_name": "कृपया नाव द्या.",
+  "looks_good": "छान आहे!",
+  "product_name_required": "प्रॉडक्टाचे नाव आवश्यक आहे",
+  "local_name_required": "स्थानिक नाव आवश्यक आहे",
+  "quantity_required": "क्वांटिटी 0 पेक्षा जास्त असले पाहिजे",
+  "base_price_required": "मूळ किंमत 0 पेक्षा जास्त असली पाहिजे",
+  "selling_price_required": "विक्री किंमत 0 पेक्षा जास्त असली पाहिजे",
+  "show_for_invoicing": "बिल वर दाखवा",
+  "create_product": "प्रॉडक्ट ॲड करा",
+  "upload_product_csv": "प्रॉडक्ट CSV अपलोड करा",
+  "sample_csv_template": "प्रॉडक्टांसाठी नमुना CSV टेम्पलेट",
+  "download_sample_template": "नमुना टेम्पलेट डाउनलोड करा",
+  
+  "select_csv_file": "CSV फाइल निवडा",
+  "uploading": "अपलोड करत आहे...",
+  "upload_csv": "CSV अपलोड करा",
+  "edit_customer": "ग्राहक संपादित करा",
+  "no_customers_available": "कोणतेही ग्राहक उपलब्ध नाहीत",
+  "no_products_available": "कोणतेही प्रॉडक्टे उपलब्ध नाहीत",
+
+   "no_results_found": "आपल्या शोधासाठी कोणतेही परिणाम सापडले नाहीत",
+    "sales_data": "विक्री डेटा",
+    "expense_data": "खर्च डेटा",
+    "profit_loss_data": "नफा आणि तोटा डेटा",
+    "product_data": "प्रॉडक्टडेटा",
+    "sr_no": "क्र.",
+    
+    "search_data": "डेटा शोधा...",
+    "clear_search": "शोध साफ करा",
+    "results_found": "साठी परिणाम सापडले",
+ 
+    "records": "नोंदी",
+    "loading_more": "अधिक लोड करत आहे...",
+    "load_more": "अधिक लोड करा",
+    "expense_types": "खर्च प्रकार",
+"search_expense_types": "खर्च प्रकार शोधा",
+"no_expense_types_available": "कोणतेही खर्च प्रकार उपलब्ध नाहीत",
+ "delivery_status_legend": "डिलिव्हरी स्थिती:",
+    "today": "आज",
+    "within_15_days": "≤ 15 दिवस",
+    "more_than_15_days": "> 15 दिवस",
+    "remark":"रिमार्क",
+      "stock_less_than_20_percent": "२०% पेक्षा कमी स्टॉक",
+    "stock_between_20_50_percent": "२०-५०% दरम्यान स्टॉक",
+    "stock_greater_than_50_percent": "५०% पेक्षा जास्त स्टॉक",
+    "customers_found" : "ग्राहक सापडले",
+    "bulk_customer_creation":"बल्क ग्राहक बनवणे",
+    "customer_created" : "नवीन ग्राहक बनला आहे",
+    "customer_updated" : "ग्राहक अपडेट झाला",
+
+
+    "search_orders": "ऑर्डर शोधा...",
+    "search_bookings": "बुकिंग्स शोधा...",
+    "search_quotation": "कोटेशन्स शोधा...",
+    
+    "no_data_available": "अवेलेबल {{type}} नाही",
+    
+    "bookings": "बुकिंग्स",
+    "quotation": "कोटेशन्स",
+
+     "project_name": "प्रोजेक्टचे नाव",
+  "contact": "संपर्क",
+  "payment_by": "देयक करणारा",
+  "payment_type": "पेमेंट प्रकार",
+  "pending_amount": "थकबाकी रक्कम",
+   "enter_project_name": "प्रोजेक्टचे नाव टाका",
+  "enter_contact": "संपर्क टाका",
+  "enter_payment_by": "देयक करणारा टाका",
+  "enter_pending_amount": "थकबाकी रक्कम टाका",
+   "project_report":"प्रोजेक्टची एकत्रित माहिती",
+       "new_project": "नवीन प्रोजेक्ट",
+    "edit_project": "प्रोजेक्ट संपादन करा",
+    "updating": "अपडेट करत आहे...",
+     "add_new_project": "नवीन प्रोजेक्ट जोडा",
+      "search_projects": "प्रोजेक्ट शोधा...",
+      "projects_found": "प्रोजेक्ट सापडले",
+      "all_projects": "सर्व प्रोजेक्ट",
+      "projects": "प्रोजेक्ट",
+      "no_projects_found": "कोणतेही प्रोजेक्ट सापडले नाहीत",
+      "no_projects_available": "कोणतेही प्रोजेक्ट उपलब्ध नाहीत",
+      "delete_project": "प्रोजेक्ट हटवा",
+      "project_created": "प्रोजेक्ट यशस्वीरीत्या तयार केला",
+      "project_updated": "प्रोजेक्ट यशस्वीरीत्या अपडेट केला",
+       "project_expenses":"प्रोजेक्ट खर्च",
+
+       "select_payment_by":"पेमेंट द्वारे निवडा",
+
+       "work_log":"दररोज वर्क लॉग",
+       "work_log_report":"वर्क लॉग रिपोर्ट "
+
+
+
+
+
+
+
+    },
+    "MSG": {
+
+      "plan_name": "योजनेचे नाव प्रविष्ट करा",
+    "enter_description_msg": "वर्णन प्रविष्ट करा",
+    "please_provide_plan_name": "कृपया वैध योजनेचे नाव प्रदान करा",
+    
+    "mobile_description_is_required_msg": "वर्णन आवश्यक आहे",
+    "data_updated_successfully_msg": "डेटा यशस्वीरीत्या अपडेट झाला",
+    "data_deleted_successfully_msg": "डेटा यशस्वीरीत्या हटवला गेला",
+   
+    "failed_to_update": "योजना अपडेट करण्यात अयशस्वी",
+    "are_you_sure_delete_plan": "तुम्हाला खात्री आहे की तुम्ही ही योजना हटवू इच्छिता",
+      
+
+      "check_fields_before_submit": "सबमिट करण्यापूर्वी सर्व माहिती तपासा.",
+  "data_saved_successfully": "ग्राहकाची माहिती यशस्वीरित्या जतन झाली.",
+  
+  "mobile_already_taken": "हा मोबाईल नंबर आधीपासून अस्तित्वात आहे.",
+ 
+ "enter_address":"पत्ता",
+      
+    "name_min_length_msg": "नाव किमान 2 अक्षरांचे असावे",
+    "name_max_length_msg": "नाव 50 अक्षरांपेक्षा जास्त नसावे",
+    "name_invalid_chars_msg": "नावात फक्त इंग्रजी किंवा मराठी अक्षरे, स्पेस, डॉट, अपोस्ट्रॉफी आणि हायफन असू शकतात",
+    "mobile_same_digits_msg": "सर्व अंक सारखे असलेला मोबाईल क्रमांक वैध नाही",
+    "mobile_start_invalid_msg": "मोबाईल क्रमांक 3 ते 9 या अंकांनी सुरू होणे आवश्यक आहे",
+    "discount_invalid_number_msg": "सवलत एक वैध संख्या असावी",
+    "discount_negative_msg": "सवलत निगेटिव्ह असू शकत नाही",
+    "discount_exceed_msg": "सवलत 100% पेक्षा जास्त असू शकत नाही",
+    "address_max_length_msg": "पत्ता 500 अक्षरांपेक्षा जास्त नसावा",
+    "please_fix_validation_msg": "सबमिट करण्यापूर्वी कृपया त्रुटी दुरुस्त करा",
+    
+    "mobile_already_taken_msg": "हा मोबाईल क्रमांक आधीच वापरला गेला आहे.",
+    "something_went_wrong": "काहीतरी चुकले: ",
+      "please_provide_local_name_msg": "कृपया स्थानिक नाव ॲड करा.",
+      "please_provide_description_msg": "कृपया छोटे वर्णन ॲड करा.",
+      "please_select_expense_category": "कृपया खर्च श्रेणी निवडा.",
+      "product_updated_successfully": "प्रॉडक्ट यशस्वीरित्या अपडेट केले",
+    "error_try_again_later": "त्रुटी आली, कृपया नंतर पुन्हा प्रयत्न करा.",
+    "product_created_successfully": "प्रॉडक्ट यशस्वीरित्या तयार केले",
+
+      "no_sales_data": "विक्रीचा डेटा उपलब्ध नाही",
+    "no_expense_data": "खर्चाचा डेटा उपलब्ध नाही",
+    "no_pnl_data": "नफा/तोटा डेटा उपलब्ध नाही",
+    "no_product_data": "प्रॉडक्ट डेटा उपलब्ध नाही",
+"loading":"रेकॉर्ड्स लोड होत आहेत. कृपया प्रतीक्षा करा...",
+      "select_dates": "डेटा आणण्यापूर्वी कृपया तारखा निवडा.",
+    "failed_fetch_sales": "विक्री नोंदी आणण्यात अयशस्वी",
+    "failed_fetch_expense": "खर्च नोंदी आणण्यात अयशस्वी",
+    "failed_fetch_product_earnings": "प्रॉडक्ट-निहाय कमाई रिपोर्ट आणण्यात अयशस्वी",
+  
+        "order_is_delivered_msg": "ऑर्डर डिलिव्हर झाली",
+        "error_occured_msg": "त्रुटी आली",
+        "provide_valid_data_msg": "वैध डेटा प्रदान करा",
+        "error_placing_the_order_msg": "ऑर्डर देताना त्रुटी",
+        "order_is_already_delivered_msg": "ऑर्डर आधीच डिलिव्हर केली आहे",
+        "order_is_cancelled_msg": "ऑर्डर रद्द केली आहे",
+        "order_is_already_cancelled_msg": "ऑर्डर आधीच रद्द केली आहे",
+
+        "name_is_required_msg": "नाव आवश्यक आहे",
+        "mobile_number_is_required_msg": "मोबाईल नंबर आवश्यक आहे",
+        "data_saved_successfully_msg": "डेटा यशस्वीरित्या जतन केला",
+        "failed_to_create": "तयार करण्यात अयशस्वी",
+        "please_provide_name": "कृपया नाव द्या",
+        "looks_good_msg": "Looks good!",
+        "please_provide_mobile_number_msg": "कृपया मोबाईल नंबर द्या",
+        "enter_customer_name_msg": "ग्राहकाचे नाव टाका",
+        "enter_mob_no_msg": "मोबाईल नंबर टाका",
+
+        "please_select_date_msg": "कृपया तारीख निवडा",
+        "booking_is_done_msg": "बुकिंग झाले आहे",
+        "network_issue": "तुम्ही सध्या ऑफलाईन आहात. कृपया तुमचे इंटरनेट कनेक्शन तपासा.",
+        "network_offline": "परत ऑनलाईन.",
+        "network_online": "तुम्ही ऑफलाईन आहात.",
+
+        "new_expense_added_successfully_msg": "नवीन खर्च यशस्वीरित्या जोडला गेला",
+        "error_occured_please_try_again_later_msg": "एरर आली, कृपया नंतर पुन्हा प्रयत्न करा",
+        "select_expense_type_msg": "खर्चाचा प्रकार निवडा",
+        "expense_type_added_successfully_msg": "खर्चाचा प्रकार यशस्वीरित्या जोडला",
+        "failed_to_add_expense_type_msg": "खर्चाचा प्रकार जोडण्यात अयशस्वी",
+
+        "report_fetched_successfully": "रिपोर्ट यशस्वीरित्या आणला",
+        "no_data_found": "कोणताही डेटा आढळला नाही",
+        "adjust_search_criteria": "आपले शोध निकष समायोजित करण्याचा प्रयत्न करा",
+        "report_downloaded": "रिपोर्ट यशस्वीरित्या डाउनलोड केला",
+        "no_report_to_download": "डाउनलोड करण्यासाठी कोणताही रिपोर्ट उपलब्ध नाही",
+
+    "select_expense_type_validation": "खर्च प्रकार निवडा",
+    "expense_description_validation": "कृपया काही नोंद द्या. फक्त अक्षरे आणि स्पेसेसची परवानगी आहे",
+    "select_date_validation": "कृपया तारीख निवडा",
+    "price_validation": "कृपया प्रति युनिट किंमत द्या. नकारात्मक संख्यांना परवानगी नाही",
+    "quantity_validation": "कृपया एकूण युनिट्स द्या. नकारात्मक संख्यांना परवानगी नाही",
+    "fill_required_fields": "कृपया सर्व आवश्यक फील्ड भरा",
+    "expense_added_to_list": "खर्च यादीत जोडला गेला",
+    "expense_removed_from_list": " यादीतून काढला गेला",
+    "add_atleast_one_expense": "कृपया यादीत किमान एक खर्च जोडा",
+    "expenses_submitted_successfully": "{{count}} खर्च यशस्वीपणे जोडले गेले",
+    "partial_expenses_submitted": "{{total}} पैकी {{success}} खर्च यशस्वीपणे जोडले गेले",
+    "error_occurred": "त्रुटी आली",
+    "confirm_submit_expenses": "तुम्हाला खात्री आहे की तुम्ही सर्व {{count}} खर्च सबमिट करू इच्छिता?",
+
+    "please_select_date_range": "कृपया तारीख श्रेणी निवडा",
+    "expense_deleted_successfully": "खर्च यशस्वीरित्या हटविला गेला",
+    "no_expenses_found": "निवडलेल्या तारीख श्रेणीसाठी कोणतेही खर्च सापडले नाहीत.",
+    "select_date_range_to_view_expenses": "खर्च पाहण्यासाठी तारीख श्रेणी निवडा.",
+
+    "please_provide_name_msg": "कृपया नाव द्या. फक्त अक्षरे, अंक आणि स्पेस वापरू शकता.",
+
+    "expense_type_updated_successfully_msg": "खर्च प्रकार यशस्वीरित्या अद्यतनित केला गेला.",
+    "failed_to_update_expense_type_msg": "त्रुटी आली. कृपया नंतर प्रयत्न करा.",
+    "expense_type_deleted_successfully": "खर्च प्रकार यशस्वीरित्या हटवला गेला.",
+
+   
+      "expense_updated_successfully": "खर्च यशस्वीरित्या अपडेट केला गेला",
+      "expense_loaded_for_editing": "खर्च संपादनासाठी लोड केला गेला",
+      "edit_cancelled": "संपादन रद्द केले गेले",
+     
+      "complete_edit_before_submit": "सर्व खर्च सबमिट करण्यापूर्वी कृपया वर्तमान संपादन पूर्ण करा किंवा रद्द करा",
+     "no_data_to_download": "डाउनलोड करण्यासाठी कोणतेही डेटा उपलब्ध नाही",
+       "project_name_is_required_msg": "प्रोजेक्ट नाव आवश्यक आहे",
+    "project_name_min_length": "प्रोजेक्ट नाव किमान २ अक्षरे असणे आवश्यक आहे",
+    "project_name_max_length": "प्रोजेक्ट नाव ५० अक्षरांपेक्षा जास्त नसावे",
+    "project_name_invalid_chars": "प्रोजेक्ट नावात फक्त इंग्रजी अक्षरे, मराठी अक्षरे, स्पेस, बिंदू, अपोस्ट्रॉफी आणि हायफन असू शकतात",
+    "enter_project_name_msg": "प्रोजेक्ट नाव प्रविष्ट करा",
+   
+    "mobile_all_same_digits": "मोबाइल नंबरमध्ये सर्व एकसमान अंक असू शकत नाहीत",
+    "mobile_invalid_start": "मोबाइल नंबर ३-९ अंकांपासून सुरू होणे आवश्यक आहे",
+    "discount_not_number": "सवलत एक वैध संख्या असणे आवश्यक आहे",
+    "discount_negative": "सवलत नकारात्मक असू शकत नाही",
+    "discount_exceed": "सवलत १००% पेक्षा जास्त असू शकत नाही",
+    "address_max_length": "पत्ता ५०० अक्षरांपेक्षा जास्त नसावा",
+    "start_date_invalid": "प्रारंभ तारीख अवैध आहे",
+    "end_date_invalid": "समाप्ती तारीख अवैध आहे",
+    
+    "failed_to_create_project": "प्रोजेक्ट तयार करण्यात अयशस्वी",
+    "failed_to_update_project": "प्रोजेक्ट अपडेट करण्यात अयशस्वी",
+    
+      "project_deleted_successfully": "प्रोजेक्ट यशस्वीरीत्या हटवला गेला",
+    "select_customer_to_view_expenses":"खर्च पाहण्यासाठी ग्राहक निवडा",
+"please_select_customer":"कृपया प्रोजेक्ट निवडा",
+ "select_project_to_view_expenses":"खर्च पाहण्यासाठी प्रोजेक्ट निवडा",
+"no_expenses_found_for_project":"निवडलेल्या प्रोजेक्ट श्रेणीसाठी कोणतेही खर्च सापडले नाहीत."
+   
+    },
+    "invoice": {
+
+      "machine_start_reading":"स्टार्ट रिडींग ",
+      "machine_end_reading":"लास्ट रिडींग",
+
+    "name": "नाव",
+    "address": "पत्ता",
+    "credit": "येणे",
+    "rs": "रु", 
+     "confirm_exit_title": "आपण बंद करू इच्छिता का?",
+    "confirm_exit_message": "बिलात भरलेली माहिती (प्रॉडक्ट अन क्वांटिटी ) हरवली / पुसली जाईल",
+     "quotation" : "कोटेशन",  
+     "submitting" : "सबमिटिंग", 
+    "customer_name": "प्रकल्पाच्या नावाने शोधा",
+    "new_customer": "नवीन ग्राहक",
+    "invoice_type": "बिल प्रकार",
+    "invoice_date": "बिल तारीख",
+    "delivery_date": "डिलिव्हरी तारीख",
+    "product": "प्रोडक्टचे नाव",
+    "price": "रेट",
+    "quantity": "क्वांटिटी",
+    "total": "एकूण ",
+    "action": "ॲक्शन",
+    "payment_type": "पेमेंट प्रकार",
+    "discount": "डिस्काउंट",
+    "paid_amount": "जमा रक्कम ",
+    "balance_amount": "शिल्लक रक्कम ",
+    "final_amount": "बिलाची टोटल",
+    "submit": "सबमिट करा",
+    "clear": "क्लिअर करा",
+    "view_qr": "QR दाखवा",
+    "regular": "नियमित",
+   "select_product" :"कृपया योग्य प्रॉडक्ट निवडा",
+    "advance_booking": "आगाऊ बुकिंग",
+    "pune": "पुणे",
+    "online": "ऑनलाइन / UPI",
+    "cash": "रोख",
+    "new_invoice" : "नवीन बिल",
+    "balance": "शिल्लक",
+    "advance": "आगाऊ",
+    "update" : "सुधारणे",
+    "last_orders": "शेवटच्या ऑर्डर",
+    "order_id": "ऑर्डर क्रमांक",
+    "date": "तारीख",
+    "reorder": "पुन्हा ऑर्डर करा",
+    "max":"कृपया 0 पेक्षा जास्त क्वांटिटी ॲड करा",
+    "error": {
+  "customer_required": "कृपया ग्राहक निवडा किंवा नवीन जोडा.",
+  "paid_amount_required": "ऑनलाइन/UPI पेमेंटसाठी, रक्कम शून्याहून अधिक असणे आवश्यक आहे.",
+  "paid_amount_exceeds": "भरलेली रक्कम अंतिम रकमेपेक्षा अधिक असू शकत नाही.",
+  "no_product": "कृपया कमीत कमी एक प्रॉडक्ट जोडा.",
+  "stock_exceeded_for": "{{product}} साठी साठा मर्यादा पार केली. उपलब्ध: {{available}}, मागणी: {{requested}}",
+  
+  "invalid_qty": "{{product}} साठी वैध प्रमाण ॲड करा.",
+  "stock_exceeded": "{{product}} साठी ऑर्डर केलेले प्रमाण उपलब्ध साठ्यापेक्षा अधिक आहे ({{stock}}).",
+  "processing_failed": "ऑर्डर प्रक्रिया करताना त्रुटी आली.",
+  "exception": "ऑर्डर सबमिट करताना त्रुटी आली."
+},
+"success": {
+  "order_delivered": "ऑर्डर यशस्वीपणे डिलिव्हर केली गेली आहे.",
+  "order_pending": "ऑर्डर प्रगत आरक्षण म्हणून तयार केली गेली आहे.",
+  "quotation_created" : "कोटेशन तयार केली गेली आहे."
+},
+"unnamed_product": "नाव नसलेले उत्पादन",
+"confirm": {
+    "title": "आपली पावती पूर्ण आहे का !",
+    "message1": "काही प्रॉडक्ट माहिती अपूर्ण आहे.",
+    "message2": "तुम्हाला भरलेली माहिती बदलायची आहे का ?",
+    "proceed": "होय, पुढे जा",
+    "cancel": "थांबा / बदल करा"
+  }
+
+    
+  },
+  "sms": {
+  "sms_part_1": "नमस्कार, तुमच्याकडे ₹",
+  "sms_part_2": " बाकी आहे. कृपया ती रक्कम भरणे.",
+  "sms_part_3": "आपला,",
+  "clear_message": "नमस्कार, आपले खाते पूर्णपणे संतुलित आहे."
+},
+"VOICE_SEARCH": {
+    "start": "आवाज शोध सुरू करा",
+    "stop": "आवाज शोध थांबवा",
+    "listening": "ऐकत आहे... थांबवण्यासाठी मायक्रोफोनवर टॅप करा",
+    "no_speech": "कोणताही आवाज आढळला नाही. कृपया पुन्हा प्रयत्न करा.",
+    "permission_denied": "मायक्रोफोन प्रवेश नाकारला. कृपया मायक्रोफोन परवानग्या सक्षम करा.",
+    "not_supported": "या डिव्हाइस/ब्राउझरवर आवाज शोध समर्थित नाही.",
+    "network_error": "नेटवर्क त्रुटी. कृपया आपले कनेक्शन तपासा.",
+    "general_error": "आवाज शोध अयशस्वी झाला. कृपया पुन्हा प्रयत्न करा.",
+    "start_error": "आवाज शोध सुरू करण्यात अयशस्वी.",
+    "keyboard_shortcut": "(Ctrl+Shift+V)"
+  }
+,
+  "delivery_sms": {
+    "greeting": "नमस्कार",
+    "already_received": "रक्कम आधीच प्राप्त झाली आहे आणि तुमचे ऑर्डर तयार आहे.",
+    "order_ready": "कृपया तुमची उर्वरित रक्कम रु. ",
+    "pay_remaining": "भरून तुमचे ऑर्डर घ्या.",
+    "from": "- कडून"
+  },
+  
+  
+  "remarkModal": {
+    "title": "रिमार्क जोडा",
+    "product": "प्रॉडक्ट",
+    "remarkLabel": "रिमार्क",
+    "placeholder": "तुमची रिमार्क येथे लिहा...",
+    "cancel": "बंद करा",
+    "save": "रिमार्क सेव्ह करा"
+  },
+   "BADGES": {
+    "missed": "चुकलेले",
+    "today": "आज",
+    "within_15_days": "≤15 दिवस",
+    "more_than_15_days": "15 दिवसांपेक्षा जास्त",
+     "out_of_stock": "स्टॉक संपलेला",
+  "below_20": "२०% पेक्षा कमी",
+  "between_20_50": "२०% ते ५०%",
+  "above_50": "५०% पेक्षा जास्त"
+  },
+  "TOAST": {
+  "invalid_amount": "अवैध रक्कम",
+  "invalid_payment_amount": "पेमेंट रक्कम थकीत रकमेपेक्षा जास्त असू शकत नाही",
+  "payment_updated": "पेमेंट यशस्वीरित्या अपडेट झाले",
+  "fetch_order_failed": "ऑर्डर मिळवण्यात अयशस्वी.",
+  "order_updated": "ऑर्डर यशस्वीरित्या अपडेट केली!",
+  "update_failed": "ऑर्डर अपडेट करण्यात अयशस्वी.",
+  "update_error": "ऑर्डर अपडेट करताना त्रुटी आली.",
+  "loading": "लोड करत आहे...",
+  
+  "order_cancelled": "ऑर्डर यशस्वीरित्या रद्द करण्यात आली",
+  "order_delivered": "ऑर्डर डिलिव्हर केली गेली आहे",
+  "error_occurred": "चूक झाली"
+},
+ 
+  "modal": {
+    "confirmDelivery": "डिलिव्हरीची पुष्टी करा"
+  },
+  "labels": {
+    "finalAmount": "एकूण रक्कम",
+    "advancedPayment": "ॲडवांस भुगतान",
+    "balanceAmount": "शिल्लक रक्कम",
+    "amountToBePaid": "देय रक्कम"
+  },
+  "buttons": {
+    "deliver": "डिलिव्हर करा",
+    "cancel": "रद्द करा",
+    "delivering" : "डेलिव्हरिंग",
+     "confirm": "हो, बंद करा"
+  },
+  "validation": {
+    "amountExceedsBalance": "रक्कम शिल्लक रकमेपेक्षा जास्त असू शकत नाही",
+    "amountCannotBeNegative": "रक्कम निगेटिव्ह (ऋणात्मक) असू शकत नाही",
+    "add_limit_exceeded": "उपलब्ध क्षमतेपेक्षा अधिक प्रमाणात साठा वाढवू शकत नाही. कमाल मर्यादा: {{max}} {{unit}}",
+    "used_limit_exceeded": "उपलब्ध साठ्यापेक्षा अधिक प्रमाणात वापर करू शकत नाही. सध्या उपलब्ध: {{max}} {{unit}}",
+    "failed_to_add_quantity": "प्रमाण वाढवण्यात अयशस्वी",
+    "failed_to_use_quantity": "प्रमाण वजा करण्यात अयशस्वी"
+  },
+  "VALIDATIONS": {
+    "invalid_quantity": "कृपया वैध प्रमाणात ॲड करा.",
+    "amountExceedsBalance": "रक्कम शिल्लक रकमेपेक्षा जास्त असू शकत नाही",
+    "amountCannotBeNegative": "रक्कम निगेटिव्ह (ऋणात्मक) असू शकत नाही",
+    "add_limit_exceeded": "उपलब्ध क्षमतेपेक्षा अधिक प्रमाणात साठा वाढवू शकत नाही. कमाल मर्यादा: {{max}} {{unit}}",
+    "used_limit_exceeded": "उपलब्ध साठ्यापेक्षा अधिक प्रमाणात वापर करू शकत नाही. सध्या उपलब्ध: {{max}} {{unit}}",
+    "failed_to_add_quantity": "प्रमाण वाढवण्यात अयशस्वी",
+    "failed_to_use_quantity": "प्रमाण वजा करण्यात अयशस्वी",
+    "enter_valid_quantity": "कृपया 0 पेक्षा जास्त क्वांटिटी ॲड करा"
+  },
+   "order":{
+    "convert_regular" : "नियमित ऑर्डर",
+     "convert_advance" : "बुकिंगची ऑर्डर"
+  },
+  "BUTTONS": {
+    "upgrade": "अपग्रेड",
+    "confirm_and_pay": "पुष्टी करा आणि पैसे द्या"
+  },
+  "MESSAGES": {
+        "no_upgrade_plans_found": "कोणत्याही अपग्रेड योजना सापडल्या नाहीत.",
+    "file_uploaded_successfully": "फाईल यशस्वीरित्या अपलोड झाली!",
+    "upload_failed": "फाईल अपलोड करण्यात अयशस्वी.",
+    "qty_added_successfully": "प्रमाण यशस्वीरित्या वाढवले!",
+    "qty_used_successfully": "प्रमाण यशस्वीरित्या वजा केले!",
+      "error_occurred": "त्रुटी आली: {{error}}",
+  "product_deleted": "उत्पादन यशस्वीपणे हटवले.",
+  "stock_updated_success": "स्टॉक यशस्वीपणे अद्ययावत केला!",
+  "update_stock_failed": "स्टॉक अद्ययावत करण्यात अयशस्वी: {{error}}",
+  "dead_stock_deducted": "डेड स्टॉक यशस्वीपणे वजा केला.",
+  "dead_stock_failed": "डेड स्टॉक वजा करण्यात त्रुटी: {{error}}",
+  "product_added_success": "उत्पादन यशस्वीपणे जोडले.",
+  "images_uploaded_success": "प्रतिमा यशस्वीपणे अपलोड केल्या.",
+  "images_upload_failed": "उत्पादन जतन झाले, पण प्रतिमा अपलोड अयशस्वी.",
+  "unexpected_response": "सर्व्हरकडून अनपेक्षित प्रतिसाद.",
+  "validation_error": "मान्यता त्रुटी: {{error}}",
+  "network_error": "नेटवर्क त्रुटी. कृपया आपले कनेक्शन तपासा.",
+  "unknown_error": "एक अनपेक्षित त्रुटी आली.",
+  "invalid_selling_price": "कृपया योग्य विक्री किंमत ॲड करा.",
+  "stock_exceeds_capacity": "स्टॉक ({{stock}}) क्षमता ({{qty}}) पेक्षा जास्त असू शकत नाही.",
+  "products_uploaded_success": "उत्पादने यशस्वीपणे अपलोड झाली.",
+  "bulk_upload_failed": "बळक अपलोड अयशस्वी: {{error}}",
+  "select_csv_file": "कृपया अपलोड करण्यासाठी CSV फाइल निवडा.",
+  "invalid_csv_file": "अवैध फाइल प्रकार. कृपया CSV फाइल अपलोड करा.",
+ 
+  "maximum_stock_limit": "कमाल {{max}} स्टॉक जोडू शकता."
+
+  },
+
+  "errors": {
+    "stock_data_missing": "{{product}} साठी स्टॉक माहिती उपलब्ध नाही.",
+    "stock_not_enough": "{{product}} साठी स्टॉक उपलब्ध नाही. उपलब्ध: {{available}}, आवश्यक: {{required}}."
+  },
+  "messages": {
+    "feature_restricted": "ही सुविधा उपलब्ध नाही. कृपया आपला प्लॅन अपग्रेड करा."
+  }
+   
+
+    
+ }
