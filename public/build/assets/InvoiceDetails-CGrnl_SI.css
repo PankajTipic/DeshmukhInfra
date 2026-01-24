@@ -1,0 +1,1 @@
+.invoice-content{font-family:Arial,sans-serif;font-size:12px}@media (max-width: 768px){.invoice-content,.table{font-size:10px}}@media print{@page{size:A4;margin:1cm;margin-top:5rem}.nav,.footer,.header,.no-print{display:none}header,.header,.timestamp,.time-stamp{display:none}}

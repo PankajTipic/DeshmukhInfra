@@ -1,0 +1,19 @@
+image: php:8.1
+
+pipelines:
+  branches:
+    prod:
+      - step:
+          name: Deploy to Production Droplet
+          script:
+            - apt-get update && apt-get install -y openssh-client
+            - mkdir -p ~/.ssh
+            - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+            - chmod 600 ~/.ssh/id_ed25519
+            - ssh-keyscan $DROPLET_IP >> ~/.ssh/known_hosts
+            - ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@$DROPLET_IP "
+                export BB_TOKEN='$BB_TOKEN';
+                cd /var/www/html/nurseryseva &&
+                git pull https://x-token-auth:\$BB_TOKEN@bitbucket.org/tipic_consultech/nurseryseva.git prod &&
+                php artisan migrate --force
+              "

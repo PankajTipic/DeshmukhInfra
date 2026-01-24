@@ -1,0 +1,60 @@
+
+
+.suggestions-list {
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  list-style-type: none;
+  padding: 0;
+  margin-top: 2px; /* small gap below input */
+  max-height: 400px;
+  overflow-y: auto;
+  width: 97%; /* match input width */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* optional */
+}
+.suggestions-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.suggestions-list li:hover {
+  background-color: #f0f0f0;
+}
+
+
+.bottom-border{
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Product suggestions list styling */
+.product-suggestions-list {
+  position: absolute;
+  z-index: 1000;
+  background-color: white;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  width: 100%;
+  border-radius: 4px;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.product-suggestions-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.product-suggestions-list li:hover {
+  background-color: #f0f0f0;
+}
+
+/* Highlight matched text in suggestions (optional enhancement) */
+.product-suggestions-list .match-highlight {
+  font-weight: bold;
+  background-color: rgba(255, 255, 0, 0.3);
+}
+  
