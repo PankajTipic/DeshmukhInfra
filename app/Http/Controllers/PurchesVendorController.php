@@ -902,13 +902,137 @@ public function getVendorWisePayments(Request $request)
 // }
 
 
+// public function getVendorLedgerReport(Request $request)
+// {
+//     $vendorId  = $request->vendor_id;
+//     $projectId = $request->project_id;
+//     $fromDate  = $request->from_date;
+//     $toDate    = $request->to_date;
+
+//     if (!$vendorId) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Vendor ID is required'
+//         ], 422);
+//     }
+
+//     // =========================
+//     // FETCH PURCHASES
+//     // =========================
+//     $purchaseQuery = PurchesVendorModel::with(['project', 'payment.logs'])
+//         ->where('vendor_id', $vendorId);
+
+//     if ($projectId) {
+//         $purchaseQuery->where('project_id', $projectId);
+//     }
+
+//     if ($fromDate && $toDate) {
+//         $purchaseQuery->whereBetween('date', [$fromDate, $toDate]);
+//     }
+
+//     $purchases = $purchaseQuery->get();
+
+//     $vendor = optional($purchases->first())->vendor;
+
+//     if (!$vendor) {
+//         return response()->json([
+//             'success' => true,
+//             'data' => []
+//         ], 200);
+//     }
+
+//     // =========================
+//     // LEDGER BUILD
+//     // =========================
+//     $ledger = collect();
+
+//     foreach ($purchases as $purchase) {
+
+//         // 🟢 PURCHASE ENTRY (DEBIT)
+//         $ledger->push([
+//             'date'        => $purchase->date,
+//             'type'        => 'Purchase',
+//             'reference'   => 'PUR-' . $purchase->id,
+//             'project'     => optional($purchase->project)->project_name,
+//             'material'    => $purchase->material_name,
+//             'qty'         => $purchase->qty,
+//             'rate'        => $purchase->price_per_unit,
+//             'gst_percent' => $purchase->gst_percent,
+//             'description' => 'Material purchase',
+//             'debit'       => $purchase->total,
+//             'credit'      => 0,
+//         ]);
+
+//         // 🔵 PAYMENT ENTRIES (CREDIT)
+//         if ($purchase->payment) {
+//             foreach ($purchase->payment->logs as $log) {
+//                 $ledger->push([
+//                     'date'        => $log->payment_date,
+//                     'type'        => 'Payment',
+//                     'reference'   => 'PAY-' . $log->id,
+//                     'project'     => optional($purchase->project)->project_name,
+//                     'material'    => $purchase->material_name,
+//                     'qty'         => $purchase->qty,
+//                     'rate'        => $purchase->price_per_unit,
+//                     'gst_percent' => $purchase->gst_percent,
+//                     'description' => 'Payment against material',
+//                     'debit'       => 0,
+//                     'credit'      => $log->amount,
+//                 ]);
+//             }
+//         }
+//     }
+
+//     // =========================
+//     // SORT + RUNNING BALANCE
+//     // =========================
+//     $runningBalance = 0;
+
+//     $ledger = $ledger->sortBy('date')->values()->map(function ($row) use (&$runningBalance) {
+//         $runningBalance += ($row['debit'] - $row['credit']);
+//         $row['balance'] = round($runningBalance, 2);
+//         return $row;
+//     });
+
+//     // =========================
+//     // FINAL RESPONSE
+//     // =========================
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Vendor ledger report generated successfully',
+//         'data' => [
+//             'vendor_details' => [
+//                 'vendor_id'   => $vendor->id,
+//                 'vendor_name' => $vendor->name,
+//                 'mobile'      => $vendor->mobile,
+//                 'address'     => $vendor->address,
+//             ],
+//             'ledger_summary' => [
+//                 'total_debit'      => $ledger->sum('debit'),
+//                 'total_credit'     => $ledger->sum('credit'),
+//                 'closing_balance'  => $ledger->last()['balance'] ?? 0,
+//             ],
+//             'ledger_entries' => $ledger
+//         ]
+//     ], 200);
+// }
+
+
+
+
+
 public function getVendorLedgerReport(Request $request)
 {
     $vendorId  = $request->vendor_id;
     $projectId = $request->project_id;
-    $fromDate  = $request->from_date;
-    $toDate    = $request->to_date;
 
+    // Accept both formats
+    $fromDate = $request->start_date ?? $request->from_date;
+    $toDate   = $request->end_date   ?? $request->to_date;
+
+    // =========================
+    // VALIDATION
+    // =========================
     if (!$vendorId) {
         return response()->json([
             'success' => false,
@@ -917,21 +1041,35 @@ public function getVendorLedgerReport(Request $request)
     }
 
     // =========================
-    // FETCH PURCHASES
+    // FETCH PURCHASES (FIXED FILTER)
     // =========================
-    $purchaseQuery = PurchesVendorModel::with(['project', 'payment.logs'])
-        ->where('vendor_id', $vendorId);
+    $purchaseQuery = PurchesVendorModel::with([
+        'project',
 
+        // Payment date filter
+        'payment.logs' => function ($q) use ($fromDate, $toDate) {
+
+            if ($fromDate && $toDate) {
+                $q->whereBetween('payment_date', [$fromDate, $toDate]);
+            }
+        }
+    ])->where('vendor_id', $vendorId);
+
+    // Project Filter
     if ($projectId) {
         $purchaseQuery->where('project_id', $projectId);
     }
 
+    // Purchase Date Filter
     if ($fromDate && $toDate) {
         $purchaseQuery->whereBetween('date', [$fromDate, $toDate]);
     }
 
     $purchases = $purchaseQuery->get();
 
+    // =========================
+    // VENDOR CHECK
+    // =========================
     $vendor = optional($purchases->first())->vendor;
 
     if (!$vendor) {
@@ -948,7 +1086,7 @@ public function getVendorLedgerReport(Request $request)
 
     foreach ($purchases as $purchase) {
 
-        // 🟢 PURCHASE ENTRY (DEBIT)
+        // PURCHASE (DEBIT)
         $ledger->push([
             'date'        => $purchase->date,
             'type'        => 'Purchase',
@@ -963,9 +1101,11 @@ public function getVendorLedgerReport(Request $request)
             'credit'      => 0,
         ]);
 
-        // 🔵 PAYMENT ENTRIES (CREDIT)
+        // PAYMENT (CREDIT)
         if ($purchase->payment) {
+
             foreach ($purchase->payment->logs as $log) {
+
                 $ledger->push([
                     'date'        => $log->payment_date,
                     'type'        => 'Payment',
@@ -988,11 +1128,17 @@ public function getVendorLedgerReport(Request $request)
     // =========================
     $runningBalance = 0;
 
-    $ledger = $ledger->sortBy('date')->values()->map(function ($row) use (&$runningBalance) {
-        $runningBalance += ($row['debit'] - $row['credit']);
-        $row['balance'] = round($runningBalance, 2);
-        return $row;
-    });
+    $ledger = $ledger
+        ->sortBy('date')
+        ->values()
+        ->map(function ($row) use (&$runningBalance) {
+
+            $runningBalance += ($row['debit'] - $row['credit']);
+
+            $row['balance'] = round($runningBalance, 2);
+
+            return $row;
+        });
 
     // =========================
     // FINAL RESPONSE
@@ -1001,22 +1147,24 @@ public function getVendorLedgerReport(Request $request)
         'success' => true,
         'message' => 'Vendor ledger report generated successfully',
         'data' => [
+
             'vendor_details' => [
                 'vendor_id'   => $vendor->id,
                 'vendor_name' => $vendor->name,
                 'mobile'      => $vendor->mobile,
                 'address'     => $vendor->address,
             ],
+
             'ledger_summary' => [
-                'total_debit'      => $ledger->sum('debit'),
-                'total_credit'     => $ledger->sum('credit'),
-                'closing_balance'  => $ledger->last()['balance'] ?? 0,
+                'total_debit'     => $ledger->sum('debit'),
+                'total_credit'    => $ledger->sum('credit'),
+                'closing_balance' => $ledger->last()['balance'] ?? 0,
             ],
+
             'ledger_entries' => $ledger
         ]
     ], 200);
 }
-
 
 
 }

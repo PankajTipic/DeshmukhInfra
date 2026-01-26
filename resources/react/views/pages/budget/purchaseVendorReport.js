@@ -479,6 +479,32 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useState, useEffect } from "react";
 import {
   CCard,
@@ -509,7 +535,7 @@ import { cilSearch, cilArrowRight } from "@coreui/icons";
 import Select from "react-select";
 import { getAPICall } from "../../../util/api";
 import { useNavigate, useLocation } from "react-router-dom";
-import { exportToPDF, exportToExcel } from "./exportPDFandExcel";
+import { exportToPDF, exportToExcel, exportDateWisePDF, exportDateWiseExcel  } from "./exportPDFandExcel";
 
 const PurchaseVendorReport = () => {
   const [vendors, setVendors] = useState([]);
@@ -526,6 +552,12 @@ const PurchaseVendorReport = () => {
   const [endDate, setEndDate] = useState("");
   const [appliedStartDate, setAppliedStartDate] = useState(""); // what is actually sent to API
   const [appliedEndDate, setAppliedEndDate] = useState("");
+
+ 
+ const [filterStartDate, setFilterStartDate] = useState("");     // input field
+ const [filterEndDate,   setFilterEndDate]   = useState("");
+ const [appliedFromDate, setAppliedFromDate] = useState("");     // actually sent to API
+  const [appliedToDate,   setAppliedToDate]   = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -561,63 +593,135 @@ const PurchaseVendorReport = () => {
   // ────────────────────────────────────────────────
   // 2. Fetch BOTH datasets when vendor changes
   // ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!selectedVendor?.value) {
-      setData(null);
-      setLedgerData(null);
-      setError("");
-      return;
-    }
+  // useEffect(() => {
+  //   if (!selectedVendor?.value) {
+  //     setData(null);
+  //     setLedgerData(null);
+  //     setError("");
+  //     return;
+  //   }
 
-    const fetchBoth = async () => {
-      setData(null);
-      setLedgerData(null);
-      setError("");
-      setLoading(true);
+  //   const fetchBoth = async () => {
+  //     setData(null);
+  //     setLedgerData(null);
+  //     setError("");
+  //     setLoading(true);
 
-      try {
-        const vendorId = selectedVendor.value;
+  //     try {
+  //       const vendorId = selectedVendor.value;
 
-        // Project-wise purchases & payments
-        const purchaseRes = await getAPICall(`/api/vendor-wise-payments?vendor_id=${vendorId}`);
-        const purchaseData = purchaseRes.data;
+  //       // Project-wise purchases & payments
+  //       const purchaseRes = await getAPICall(`/api/vendor-wise-payments?vendor_id=${vendorId}`);
+  //       const purchaseData = purchaseRes.data;
 
-        if (purchaseData?.vendor_details) {
-          setData(purchaseData);
-        }
+  //       if (purchaseData?.vendor_details) {
+  //         setData(purchaseData);
+  //       }
 
-        // Ledger / date-wise
-        // const ledgerRes = await getAPICall(`/api/getVendorLedgerReport?vendor_id=${vendorId}`);
-        // const ledger = ledgerRes.data;
+  //       // Ledger / date-wise
+  //       // const ledgerRes = await getAPICall(`/api/getVendorLedgerReport?vendor_id=${vendorId}`);
+  //       // const ledger = ledgerRes.data;
 
-       let ledgerUrl = `/api/getVendorLedgerReport?vendor_id=${vendorId}`;
-        if (appliedStartDate) ledgerUrl += `&start_date=${appliedStartDate}`;
-        if (appliedEndDate)   ledgerUrl += `&end_date=${appliedEndDate}`;
+  //      let ledgerUrl = `/api/getVendorLedgerReport?vendor_id=${vendorId}`;
+  //       if (appliedStartDate) ledgerUrl += `&start_date=${appliedStartDate}`;
+  //       if (appliedEndDate)   ledgerUrl += `&end_date=${appliedEndDate}`;
 
-        const ledgerRes = await getAPICall(ledgerUrl);
-        const ledger = ledgerRes.data;
+  //       const ledgerRes = await getAPICall(ledgerUrl);
+  //       const ledger = ledgerRes.data;
 
 
-        if (ledger?.vendor_details && ledger?.ledger_entries?.length > 0) {
-          setLedgerData(ledger);
-        }
+  //       if (ledger?.vendor_details && ledger?.ledger_entries?.length > 0) {
+  //         setLedgerData(ledger);
+  //       }
 
-        setError("");
-      } catch (err) {
-        const msg =
-          err.response?.data?.message ||
-          err.message ||
-          "Failed to load vendor report data";
-        setError(msg);
-        setData(null);
-        setLedgerData(null);
-      } finally {
-        setLoading(false);
+  //       setError("");
+  //     } catch (err) {
+  //       const msg =
+  //         err.response?.data?.message ||
+  //         err.message ||
+  //         "Failed to load vendor report data";
+  //       setError(msg);
+  //       setData(null);
+  //       setLedgerData(null);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchBoth();
+  // }, [selectedVendor, appliedStartDate, appliedEndDate]);
+
+
+
+
+
+useEffect(() => {
+  if (!selectedVendor?.value) {
+    setData(null);
+    setLedgerData(null);
+    setError("");
+    return;
+  }
+
+  const fetchBoth = async () => {
+    setLoading(true);
+    setError("");
+    setData(null);
+    setLedgerData(null);
+
+    try {
+      const vendorId = selectedVendor.value;
+
+      // Common date values
+      const from = appliedFromDate || filterStartDate; // fallback if needed
+      const to   = appliedToDate   || filterEndDate;
+
+      // ── 1. Project-wise report ────────────────────────────────
+      let projectUrl = `/api/vendor-wise-payments?vendor_id=${vendorId}`;
+      if (from)  projectUrl += `&from_date=${from}`;
+      if (to)    projectUrl += `&to_date=${to}`;
+
+      const projectRes = await getAPICall(projectUrl);
+      const projectData = projectRes.data || projectRes; // adjust depending on your getAPICall wrapper
+
+      if (projectData?.vendor_details) {
+        setData(projectData);
       }
-    };
 
-    fetchBoth();
-  }, [selectedVendor, appliedStartDate, appliedEndDate]);
+      // ── 2. Ledger / date-wise report ──────────────────────────
+      let ledgerUrl = `/api/getVendorLedgerReport?vendor_id=${vendorId}`;
+      if (from)  ledgerUrl += `&start_date=${from}`;
+      if (to)    ledgerUrl += `&end_date=${to}`;
+
+      const ledgerRes = await getAPICall(ledgerUrl);
+      const ledgerDataResponse = ledgerRes.data || ledgerRes;
+
+      console.log(ledgerDataResponse);
+      
+
+      if (ledgerDataResponse?.vendor_details) {
+        setLedgerData(ledgerDataResponse);
+      }
+
+      setError("");
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || err.message || "Failed to load report data";
+      setError(msg);
+      setData(null);
+      setLedgerData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchBoth();
+}, [selectedVendor, appliedFromDate, appliedToDate]);
+
+
+
+
+
 
   const toggleLogs = (key) => {
     setExpandedLogs((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -727,6 +831,8 @@ const PurchaseVendorReport = () => {
                 View Full Ledger
               </CButton> */}
 
+              {activeTab === "project" && (
+<>
               <CButton
                 color="success"
                 onClick={() => exportToExcel(data)}
@@ -744,50 +850,111 @@ const PurchaseVendorReport = () => {
               >
                 Export PDF
               </CButton>
+</>
+              )}
+
+
+
+              {activeTab === "date" && (
+      <>
+        {/* <CButton
+          color="success"
+          onClick={() => exportDateWiseExcel(ledgerData)}
+          disabled={loading || !ledgerData?.ledger_entries?.length}
+          style={{ padding: "6px 12px", fontSize: "0.9rem" }}
+        >
+          Export Excel 
+        </CButton> */}
+
+        <CButton
+      color="success"
+      onClick={() => exportDateWiseExcel(ledgerData, appliedStartDate, appliedEndDate)}
+      disabled={loading || !ledgerData?.ledger_entries?.length}
+      style={{ padding: "6px 12px", fontSize: "0.9rem" }}
+    >
+      Export Excel
+    </CButton>
+        {/* <CButton
+          color="warning"
+          onClick={() => exportDateWisePDF(ledgerData)}
+          disabled={loading || !ledgerData?.ledger_entries?.length}
+          style={{ padding: "6px 12px", fontSize: "0.9rem" }}
+        >
+          Export PDF 
+        </CButton> */}
+        <CButton
+  color="warning"
+  onClick={() => exportDateWisePDF(ledgerData, appliedStartDate, appliedEndDate)}
+  disabled={loading || !ledgerData?.ledger_entries?.length}
+>
+  Export PDF
+</CButton>
+      </>
+    )}
+
+
+
+
+
+
             </div>
           </div>
 
 
 
-                {activeTab === "date" && (
-            <CRow className="mb-4 g-3 align-items-end">
-              <CCol md={3}>
-                <label className="form-label fw-bold small">Start Date</label>
-                <CFormInput
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </CCol>
+      {/* ── Date filter ── (moved up, visible for both tabs) */}
+{selectedVendor && (
+  <CRow className="mb-4 g-3 align-items-end">
+    <CCol md={3}>
+      <label className="form-label fw-bold small">From Date</label>
+      <CFormInput
+        type="date"
+        value={filterStartDate}
+        onChange={(e) => setFilterStartDate(e.target.value)}
+      />
+    </CCol>
 
-              <CCol md={3}>
-                <label className="form-label fw-bold small">End Date</label>
-                <CFormInput
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </CCol>
+    <CCol md={3}>
+      <label className="form-label fw-bold small">To Date</label>
+      <CFormInput
+        type="date"
+        value={filterEndDate}
+        onChange={(e) => setFilterEndDate(e.target.value)}
+      />
+    </CCol>
 
-              <CCol md="auto" className="d-flex gap-2">
-                <CButton
-                  color="primary"
-                  onClick={handleApplyFilter}
-                  disabled={loading}
-                >
-                  Apply Filter
-                </CButton>
-                <CButton
-                  color="secondary"
-                  variant="outline"
-                  onClick={handleClearFilter}
-                  disabled={loading}
-                >
-                  Clear
-                </CButton>
-              </CCol>
-            </CRow>
-          )}
+    <CCol md="auto" className="d-flex gap-2 align-items-end">
+      <CButton
+        color="primary"
+        onClick={() => {
+          if (filterStartDate && filterEndDate && filterStartDate > filterEndDate) {
+            setError("From date cannot be after To date");
+            return;
+          }
+          setAppliedFromDate(filterStartDate);
+          setAppliedToDate(filterEndDate);
+        }}
+        disabled={loading}
+      >
+        Apply Date Filter
+      </CButton>
+
+      <CButton
+        color="secondary"
+        variant="outline"
+        onClick={() => {
+          setFilterStartDate("");
+          setFilterEndDate("");
+          setAppliedFromDate("");
+          setAppliedToDate("");
+        }}
+        disabled={loading}
+      >
+        Clear
+      </CButton>
+    </CCol>
+  </CRow>
+)}
 
 
           {loading && (
@@ -1037,8 +1204,8 @@ const PurchaseVendorReport = () => {
                         <CTableRow>
                           <CTableHeaderCell>Date</CTableHeaderCell>
                           <CTableHeaderCell>Type</CTableHeaderCell>
-                          <CTableHeaderCell>Reference</CTableHeaderCell>
                           <CTableHeaderCell>Project</CTableHeaderCell>
+                          <CTableHeaderCell>Materials</CTableHeaderCell>
                           <CTableHeaderCell>Description</CTableHeaderCell>
                           <CTableHeaderCell className="text-end">Debit</CTableHeaderCell>
                           <CTableHeaderCell className="text-end">Credit</CTableHeaderCell>
@@ -1054,8 +1221,9 @@ const PurchaseVendorReport = () => {
                                 {entry.type}
                               </CBadge>
                             </CTableDataCell>
-                            <CTableDataCell>{entry.reference || "—"}</CTableDataCell>
-                            <CTableDataCell>{entry.project || "—"}</CTableDataCell>
+                             <CTableDataCell>{entry.project || "—"}</CTableDataCell>
+                            <CTableDataCell>{entry.material || "—"}</CTableDataCell>
+                           
                             <CTableDataCell>{entry.description || "—"}</CTableDataCell>
                             <CTableDataCell className="text-end text-danger fw-bold">
                               {entry.debit > 0 ? `₹${formatAmount(entry.debit)}` : "—"}
