@@ -43,6 +43,8 @@ const Invoice = ({ editMode = false, initialData = null, onSubmit = null }) => {
   const { showToast } = useToast();
   const [showProjectModal, setShowProjectModal] = useState(false);
 
+  const [validatedProjectForm, setValidatedProjectForm] = useState(false);
+
   const [allProjects, setAllProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -652,21 +654,67 @@ const calculateTotals = (currentWorks) => {
     }));
   };
 
-  const saveNewProject = async () => {
-    try {
-      const resp = await post('/api/projects', newProjectForm);
-      if (resp) {
-        showToast('success', 'Project added successfully');
-        setShowAddProjectModal(false);
-        setShowAddProjectModal(false);
-        setNewProjectForm({ customer_name: '', mobile_number: '', project_name: '', work_place: '', project_type_id: '', is_confirm: 0 });
-        fetchProjects();
-      }
-    } catch (error) {
-      console.error('Error adding project:', error);
-      showToast('danger', 'Failed to add project');
+  // const saveNewProject = async () => {
+  //   try {
+  //     const resp = await post('/api/projects', newProjectForm);
+  //     if (resp) {
+  //       showToast('success', 'Project added successfully');
+  //       setShowAddProjectModal(false);
+  //       setShowAddProjectModal(false);
+  //       setNewProjectForm({ customer_name: '', mobile_number: '', project_name: '', work_place: '', project_type_id: '', is_confirm: 0 });
+  //       fetchProjects();
+  //     }
+  //   } catch (error) {
+  //     console.error('Error adding project:', error);
+  //     showToast('danger', 'Failed to add project');
+  //   }
+  // };
+
+
+const saveNewProject = async () => {
+  // Trigger validation
+  setValidatedProjectForm(true);
+
+  // Check all required fields
+  if (
+    !newProjectForm.customer_name ||
+    !newProjectForm.mobile_number ||
+    newProjectForm.mobile_number.length !== 10 ||
+    !/^[0-9]{10}$/.test(newProjectForm.mobile_number) ||
+    !newProjectForm.project_name ||
+    !newProjectForm.work_place ||
+    !newProjectForm.project_type_id
+  ) {
+    showToast('danger', 'Please fill all required fields correctly');
+    return;
+  }
+
+  try {
+    const resp = await post('/api/projects', newProjectForm);
+    if (resp) {
+      showToast('success', 'Project added successfully');
+      setShowAddProjectModal(false);
+      // Reset form
+      setNewProjectForm({
+        customer_name: '',
+        mobile_number: '',
+        project_name: '',
+        work_place: '',
+        project_type_id: '',
+        gst_number: '',
+        pan_number: '',
+        // is_confirm: 0,
+      });
+      setValidatedProjectForm(false); // Reset validation state
+      fetchProjects(); // Refresh project list
     }
-  };
+  } catch (error) {
+    console.error('Error adding project:', error);
+    showToast('danger', 'Failed to add project');
+  }
+};
+
+
 
   return (
     <CRow>
@@ -1398,7 +1446,7 @@ const calculateTotals = (currentWorks) => {
         </CCard>
       </CCol>
 
-      <CModal visible={showAddProjectModal} onClose={() => setShowAddProjectModal(false)}>
+      {/* <CModal visible={showAddProjectModal} onClose={() => setShowAddProjectModal(false)}>
         <CModalHeader>
           <CModalTitle>Add New Project</CModalTitle>
         </CModalHeader>
@@ -1478,14 +1526,7 @@ const calculateTotals = (currentWorks) => {
  <CRow className="mb-3">
             <CCol md={6}>
                 <CFormLabel>GST number</CFormLabel>
-                {/* <CFormInput
-                  type="text"
-                  name="gst_number"
-                  value={newProjectForm.gst_number}
-                  onChange={handleNewProjectChange}
-                  required
-                  placeholder="Enter GST number..."
-                /> */}
+              
 
                 <CFormInput
   type="text"
@@ -1511,15 +1552,7 @@ const calculateTotals = (currentWorks) => {
 
               <CCol md={6}>
                 <CFormLabel>Pan Card number</CFormLabel>
-                {/* <CFormInput
-                  type="text"
-                  name="pan_number"
-                  value={newProjectForm.pan_number}
-                  onChange={handleNewProjectChange}
-                  required
-                  placeholder="Enter Pan Card number..."
-                /> */}
-
+             
                 <CFormInput
   type="text"
   name="pan_number"
@@ -1543,24 +1576,7 @@ const calculateTotals = (currentWorks) => {
               </CCol>  
               </CRow>
 
-{/* 
-            <CRow className="mb-3">
-              <CCol md={6}>
-                <CFormCheck
-                  type="checkbox"
-                  id="is_confirm"
-                  label="Is Confirmed"
-                  //  checked={true}   
-                  checked={newProjectForm.is_confirm === 1}
-                  onChange={(e) =>
-                    setNewProjectForm((prev) => ({
-                      ...prev,
-                      is_confirm: e.target.checked ? 1 : 0,
-                    }))
-                  }
-                />
-              </CCol>
-            </CRow> */}
+
           </CForm>
         </CModalBody>
         <CModalFooter>
@@ -1571,7 +1587,152 @@ const calculateTotals = (currentWorks) => {
             Save
           </CButton>
         </CModalFooter>
-      </CModal>
+      </CModal> */}
+
+      <CModal visible={showAddProjectModal} onClose={() => setShowAddProjectModal(false)}>
+  <CModalHeader>
+    <CModalTitle>Add New Project</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    <CForm>
+      <CRow className="mb-3">
+        <CCol md={6}>
+          <CFormLabel>Customer Name <span className="text-danger">*</span></CFormLabel>
+          <CFormInput
+            type="text"
+            name="customer_name"
+            value={newProjectForm.customer_name}
+            onChange={handleNewProjectChange}
+            required
+            placeholder="Enter customer name"
+            invalid={!newProjectForm.customer_name && validatedProjectForm}
+          />
+        </CCol>
+
+        <CCol md={6}>
+          <CFormLabel>Mobile Number <span className="text-danger">*</span></CFormLabel>
+          <CFormInput
+            type="text"
+            name="mobile_number"
+            value={newProjectForm.mobile_number}
+            onChange={handleNewProjectChange}
+            required
+            maxLength={10}
+            minLength={10}
+            pattern="^[0-9]{10}$"
+            placeholder="Enter 10-digit mobile number"
+            invalid={!newProjectForm.mobile_number && validatedProjectForm}
+          />
+        </CCol>
+      </CRow>
+
+      <CRow className="mb-3">
+        <CCol md={6}>
+          <CFormLabel>Project Name <span className="text-danger">*</span></CFormLabel>
+          <CFormInput
+            type="text"
+            name="project_name"
+            value={newProjectForm.project_name}
+            onChange={handleNewProjectChange}
+            required
+            placeholder="Enter project name"
+            invalid={!newProjectForm.project_name && validatedProjectForm}
+          />
+        </CCol>
+
+        <CCol md={6}>
+          <CFormLabel>Work Place <span className="text-danger">*</span></CFormLabel>
+          <CFormInput
+            type="text"
+            name="work_place"
+            value={newProjectForm.work_place}
+            onChange={handleNewProjectChange}
+            required
+            placeholder="Enter work location / site address"
+            invalid={!newProjectForm.work_place && validatedProjectForm}
+          />
+        </CCol>
+      </CRow>
+
+      <CRow className="mb-3">
+        <CCol md={6}>
+          <CFormLabel>Project Type <span className="text-danger">*</span></CFormLabel>
+          <CFormSelect
+            name="project_type_id"
+            value={newProjectForm.project_type_id}
+            onChange={handleNewProjectChange}
+            required
+            invalid={!newProjectForm.project_type_id && validatedProjectForm}
+          >
+            <option value="">Select Project Type</option>
+            {projectTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </CFormSelect>
+        </CCol>
+
+        {/* Optional GST & PAN (kept as they were) */}
+        <CCol md={6}>
+          <CFormLabel>GST number</CFormLabel>
+          <CFormInput
+            type="text"
+            name="gst_number"
+            value={newProjectForm.gst_number || ''}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+              if (/^[A-Z0-9]{0,15}$/.test(value)) {
+                handleNewProjectChange({ target: { name: "gst_number", value } });
+              }
+            }}
+            maxLength={15}
+            placeholder="Enter GST number (15 chars)"
+          />
+        </CCol>
+      </CRow>
+
+      {/* PAN field remains optional */}
+      <CRow className="mb-3">
+        <CCol md={6}>
+          <CFormLabel>Pan Card number</CFormLabel>
+          <CFormInput
+            type="text"
+            name="pan_number"
+            value={newProjectForm.pan_number || ''}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+              if (/^[A-Z0-9]{0,10}$/.test(value)) {
+                handleNewProjectChange({ target: { name: "pan_number", value } });
+              }
+            }}
+            maxLength={10}
+            placeholder="Enter PAN number (10 chars)"
+          />
+        </CCol>
+      </CRow>
+    </CForm>
+  </CModalBody>
+
+  <CModalFooter>
+    <CButton color="secondary" onClick={() => setShowAddProjectModal(false)}>
+      Close
+    </CButton>
+    <CButton
+      color="primary"
+      onClick={saveNewProject}
+      disabled={
+        !newProjectForm.customer_name ||
+        !newProjectForm.mobile_number ||
+        !newProjectForm.project_name ||
+        !newProjectForm.work_place ||
+        !newProjectForm.project_type_id
+      }
+    >
+      Save Project
+    </CButton>
+  </CModalFooter>
+</CModal>
 
       <ProjectSelectionModal
         visible={showProjectModal}

@@ -905,85 +905,270 @@ public function update(Request $request, $id)
         });
     }
 
-    public function incomeSummaryReport(Request $request)
-    {
-        $startDate = $request->query('startDate');
-        $endDate = $request->query('endDate');
-        $perPage = $request->query('perPage', 30);
-        $cursor = $request->query('cursor');
-        $projectId = $request->query('projectId');
-        $projectTypeId = $request->query('project_type_id');
+    // public function incomeSummaryReport(Request $request)
+    // {
+    //     $startDate = $request->query('startDate');
+    //     $endDate = $request->query('endDate');
+    //     $perPage = $request->query('perPage', 30);
+    //     $cursor = $request->query('cursor');
+    //     $projectId = $request->query('projectId');
+    //     $projectTypeId = $request->query('project_type_id');
 
-        if (!$startDate || !$endDate) {
-            return response()->json(['error' => 'Start and End date are required.'], 400);
-        }
+    //     if (!$startDate || !$endDate) {
+    //         return response()->json(['error' => 'Start and End date are required.'], 400);
+    //     }
 
-        $user = Auth::user();
-        $companyId = $user->company_id;
+    //     $user = Auth::user();
+    //     $companyId = $user->company_id;
 
-        try {
-            // Overall summary from income_summary
-            $summaryQuery = DB::table('income_summary')
-                ->where('income_summary.company_id', $companyId)
-                ->whereBetween('income_summary.date', [$startDate, $endDate]);
+    //     try {
+    //         // Overall summary from income_summary
+    //         $summaryQuery = DB::table('income_summary')
+    //             ->where('income_summary.company_id', $companyId)
+    //             ->whereBetween('income_summary.date', [$startDate, $endDate]);
 
-            if ($projectId) {
-                $summaryQuery->where('income_summary.project_id', $projectId);
-            }
+    //         if ($projectId) {
+    //             $summaryQuery->where('income_summary.project_id', $projectId);
+    //         }
 
-            if ($projectTypeId) {
-                $summaryQuery->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
-                    ->where('projects.project_type_id', $projectTypeId);
-            }
+    //         if ($projectTypeId) {
+    //             $summaryQuery->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
+    //                 ->where('projects.project_type_id', $projectTypeId);
+    //         }
 
-            $summary = $summaryQuery->selectRaw('
-                SUM(income_summary.total_amount) as totalIncomeAmount,
-                SUM(income_summary.invoice_count) as totalInvoices
-            ')->first();
+    //         $summary = $summaryQuery->selectRaw('
+    //             SUM(income_summary.total_amount) as totalIncomeAmount,
+    //             SUM(income_summary.invoice_count) as totalInvoices
+    //         ')->first();
 
-            // Cursor-based paginated daily summary
-            $query = DB::table('income_summary')
-                ->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
-                ->leftJoin('project_types', 'projects.project_type_id', '=', 'project_types.id')
-                ->where('income_summary.company_id', $companyId)
-                ->whereBetween('income_summary.date', [$startDate, $endDate]);
+    //         // Cursor-based paginated daily summary
+    //         $query = DB::table('income_summary')
+    //             ->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
+    //             ->leftJoin('project_types', 'projects.project_type_id', '=', 'project_types.id')
+    //             ->where('income_summary.company_id', $companyId)
+    //             ->whereBetween('income_summary.date', [$startDate, $endDate]);
 
-            if ($projectId) {
-                $query->where('income_summary.project_id', $projectId);
-            }
+    //         if ($projectId) {
+    //             $query->where('income_summary.project_id', $projectId);
+    //         }
 
-            if ($projectTypeId) {
-                $query->where('projects.project_type_id', $projectTypeId);
-            }
+    //         if ($projectTypeId) {
+    //             $query->where('projects.project_type_id', $projectTypeId);
+    //         }
 
-            $query->select(
-                'income_summary.date',
-                'income_summary.total_amount as totalIncomeAmount',
-                'income_summary.invoice_count as invoiceCount',
-                'projects.project_name as project_name',
-                'project_types.name as project_type'
-            )->orderBy('income_summary.date', 'desc');
+    //         $query->select(
+    //             'income_summary.date',
+    //             'income_summary.total_amount as totalIncomeAmount',
+    //             'income_summary.invoice_count as invoiceCount',
+    //             'projects.project_name as project_name',
+    //             'project_types.name as project_type'
+    //         )->orderBy('income_summary.date', 'desc');
 
-            $incomes = $query->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
+    //         $incomes = $query->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
 
-            return response()->json([
-                'incomes' => $incomes->items(),
-                'next_cursor' => $incomes->nextCursor()?->encode(),
-                'has_more_pages' => $incomes->hasMorePages(),
-                'summary' => [
-                    'totalIncomeAmount' => $summary->totalIncomeAmount ?? 0,
-                    'totalInvoices' => $summary->totalInvoices ?? 0,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Income report generation failed: ' . $e->getMessage()], 500);
-        }
-    }
+    //         return response()->json([
+    //             'incomes' => $incomes->items(),
+    //             'next_cursor' => $incomes->nextCursor()?->encode(),
+    //             'has_more_pages' => $incomes->hasMorePages(),
+    //             'summary' => [
+    //                 'totalIncomeAmount' => $summary->totalIncomeAmount ?? 0,
+    //                 'totalInvoices' => $summary->totalInvoices ?? 0,
+    //             ]
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => 'Income report generation failed: ' . $e->getMessage()], 500);
+    //     }
+    // }
 
     
+// public function incomeSummaryReport(Request $request)
+// {
+//     $startDate     = $request->query('startDate');
+//     $endDate       = $request->query('endDate');
+//     $perPage       = $request->query('perPage', 30);
+//     $cursor        = $request->query('cursor');
+//     $projectId     = $request->query('projectId');
+//     $projectTypeId = $request->query('project_type_id');
+
+//     if (!$startDate || !$endDate) {
+//         return response()->json(['error' => 'Start and End date are required.'], 400);
+//     }
+
+//     $user      = Auth::user();
+//     $companyId = $user->company_id;
+
+//     try {
+//         // ────────────────────────────────────────────────
+//         // Overall summary (with tax)
+//         // ────────────────────────────────────────────────
+//         $summaryQuery = DB::table('income_summary')
+//             ->where('income_summary.company_id', $companyId)
+//             ->whereBetween('income_summary.date', [$startDate, $endDate]);
+
+//         if ($projectId) {
+//             $summaryQuery->where('income_summary.project_id', $projectId);
+//         }
+
+//         if ($projectTypeId) {
+//             $summaryQuery->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
+//                          ->where('projects.project_type_id', $projectTypeId);
+//         }
+
+//         $summary = $summaryQuery->selectRaw('
+//             SUM(total_amount)   as totalIncomeAmount,
+//             SUM(tax_amount)     as totalTaxAmount,
+//             SUM(invoice_count)  as totalInvoices
+//         ')->first();
+
+//         // ────────────────────────────────────────────────
+//         // Daily / per-date summary (paginated with cursor)
+//         // ────────────────────────────────────────────────
+//         $query = DB::table('income_summary')
+//             ->leftJoin('projects', 'income_summary.project_id', '=', 'projects.id')
+//             ->leftJoin('project_types', 'projects.project_type_id', '=', 'project_types.id')
+//             ->where('income_summary.company_id', $companyId)
+//             ->whereBetween('income_summary.date', [$startDate, $endDate]);
+
+//         if ($projectId) {
+//             $query->where('income_summary.project_id', $projectId);
+//         }
+
+//         if ($projectTypeId) {
+//             $query->where('projects.project_type_id', $projectTypeId);
+//         }
+
+//         $query->select(
+//             'income_summary.date',
+//             'income_summary.total_amount as totalIncomeAmount',
+//             'income_summary.tax_amount   as taxAmount',           // ← added
+//             'income_summary.invoice_count as invoiceCount',
+//             'projects.project_name as project_name',
+//             'project_types.name as project_type'
+//         )
+//         ->orderBy('income_summary.date', 'desc');
+
+//         $incomes = $query->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
+
+//         // Format response
+//         return response()->json([
+//             'incomes' => $incomes->items(),
+//             'next_cursor' => $incomes->nextCursor()?->encode(),
+//             'has_more_pages' => $incomes->hasMorePages(),
+//             'summary' => [
+//                 'totalIncomeAmount' => $summary->totalIncomeAmount ?? 0,
+//                 'totalTaxAmount'    => $summary->totalTaxAmount ?? 0,     // ← added
+//                 'totalInvoices'     => $summary->totalInvoices ?? 0,
+//             ]
+//         ]);
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'error' => 'Income report generation failed: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
 
 
+public function incomeSummaryReport(Request $request)
+{
+    $startDate     = $request->query('startDate');
+    $endDate       = $request->query('endDate');
+    $perPage       = $request->query('perPage', 30);
+    $cursor        = $request->query('cursor');
+    $projectId     = $request->query('projectId');
+    $projectTypeId = $request->query('project_type_id');
 
+    if (!$startDate || !$endDate) {
+        return response()->json(['error' => 'Start and End date are required.'], 400);
+    }
+
+    $user      = Auth::user();
+    $companyId = $user->company_id;
+
+    try {
+        // ────────────────────────────────────────────────
+        // 1. Overall summary (with tax)
+        // ────────────────────────────────────────────────
+        $summaryQuery = DB::table('income_summary', 'inc')
+            ->where('inc.company_id', $companyId)
+            ->whereBetween('inc.date', [$startDate, $endDate]);
+
+        if ($projectId) {
+            $summaryQuery->where('inc.project_id', $projectId);
+        }
+
+        if ($projectTypeId) {
+            $summaryQuery->leftJoin('projects as p', 'inc.project_id', '=', 'p.id')
+                         ->where('p.project_type_id', $projectTypeId);
+        }
+
+        $summary = $summaryQuery->selectRaw('
+            SUM(inc.total_amount)   as totalIncomeAmount,
+            SUM(inc.tax_amount)     as totalTaxAmount,
+            SUM(inc.invoice_count)  as totalInvoices
+        ')->first();
+
+        // ────────────────────────────────────────────────
+        // 2. Detailed daily records (paginated with cursor)
+        // ────────────────────────────────────────────────
+        $query = DB::table('income_summary', 'inc')
+            ->leftJoin('projects as p', 'inc.project_id', '=', 'p.id')
+            ->leftJoin('project_types as pt', 'p.project_type_id', '=', 'pt.id')
+            ->where('inc.company_id', $companyId)
+            ->whereBetween('inc.date', [$startDate, $endDate]);
+
+        if ($projectId) {
+            $query->where('inc.project_id', $projectId);
+        }
+
+        if ($projectTypeId) {
+            $query->where('p.project_type_id', $projectTypeId);
+        }
+
+        $query->select(
+            'inc.date',
+            'inc.total_amount       as totalIncomeAmount',
+            'inc.tax_amount         as taxAmount',             // ← now included
+            'inc.invoice_count      as invoiceCount',
+            'p.project_name',
+            'pt.name                as project_type_name'
+        )
+        ->orderBy('inc.date', 'desc');
+
+        $incomes = $query->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
+
+        // ────────────────────────────────────────────────
+        // 3. Format response (consistent naming with your chart function)
+        // ────────────────────────────────────────────────
+        return response()->json([
+            'success'         => true,
+            'range'           => [$startDate, $endDate],
+            'projectId'       => $projectId ? (int)$projectId : null,
+            'project_type_id' => $projectTypeId ? (int)$projectTypeId : null,
+
+            'incomes'         => $incomes->items(),
+            'next_cursor'     => $incomes->nextCursor()?->encode(),
+            'has_more_pages'  => $incomes->hasMorePages(),
+
+            'summary'         => [
+                'totalIncomeAmount' => round($summary->totalIncomeAmount ?? 0, 2),
+                'totalTaxAmount'    => round($summary->totalTaxAmount    ?? 0, 2),
+                'totalInvoices'     => (int) ($summary->totalInvoices    ?? 0),
+            ],
+
+            // Optional: grand totals in the same style as your chart endpoint
+            'totals' => [
+                'totalSales'    => round($summary->totalIncomeAmount ?? 0, 2),
+                'totalTax'      => round($summary->totalTaxAmount    ?? 0, 2),
+                'totalPL'       => null, // not available here (no expense data)
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error'   => 'Income report generation failed: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
 
 

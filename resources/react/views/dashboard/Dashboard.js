@@ -2755,6 +2755,697 @@
 
 
 
+// import React, { useEffect, useState } from 'react';
+// import {
+//   CCard,
+//   CCardBody,
+//   CCol,
+//   CRow,
+//   CTabs,
+//   CTabList,
+//   CTabContent,
+//   CTab,
+//   CFormLabel,
+//   CFormInput,
+//   CFormSelect,
+//   CSpinner,
+// } from '@coreui/react';
+// import WidgetsDropdown from '../widgets/WidgetsDropdown';
+// import MainChart from './MainChart';
+// import { getAPICall } from '../../util/api';
+// import { getUserData } from '../../util/session';
+// import { useToast } from '../common/toast/ToastContext';
+// import { useTranslation } from 'react-i18next';
+
+
+// // ────────────────────────────────────────────────
+// // Period selector components
+// // ────────────────────────────────────────────────
+
+// const YearSelector = ({ onChange }) => {
+//   const currentYear = new Date().getFullYear();
+//   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+//   return (
+//     <div className="d-flex align-items-center">
+//       <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+//       <CFormSelect
+//         style={{ width: '120px' }}
+//         onChange={(e) => {
+//           const year = Number(e.target.value);
+//           onChange({
+//             startDate: `${year}-01-01`,
+//             endDate: `${year}-12-31`,
+//           });
+//         }}
+//         defaultValue={currentYear}
+//       >
+//         {years.map((y) => (
+//           <option key={y} value={y}>
+//             {y}
+//           </option>
+//         ))}
+//       </CFormSelect>
+//     </div>
+//   );
+// };
+
+// const QuarterSelector = ({ onChange }) => {
+//   const currentYear = new Date().getFullYear();
+//   const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+
+//   const quarters = [
+//     { label: 'Q1 (Jan–Mar)', value: 1 },
+//     { label: 'Q2 (Apr–Jun)', value: 2 },
+//     { label: 'Q3 (Jul–Sep)', value: 3 },
+//     { label: 'Q4 (Oct–Dec)', value: 4 },
+//   ];
+
+//   const [year, setYear] = useState(currentYear);
+//   const [q, setQ] = useState(currentQuarter);
+
+//   useEffect(() => {
+//     const m = (q - 1) * 3 + 1;
+//     const start = `${year}-${String(m).padStart(2, '0')}-01`;
+//     const endMonth = m + 2;
+//     const endDay = new Date(year, endMonth, 0).getDate();
+//     const end = `${year}-${String(endMonth).padStart(2, '0')}-${endDay}`;
+//     onChange({ startDate: start, endDate: end });
+//   }, [year, q, onChange]);
+
+//   return (
+//     <div className="d-flex align-items-center gap-3">
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+//         <CFormSelect
+//           style={{ width: '120px' }}
+//           value={year}
+//           onChange={(e) => setYear(Number(e.target.value))}
+//         >
+//           {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map((y) => (
+//             <option key={y} value={y}>
+//               {y}
+//             </option>
+//           ))}
+//         </CFormSelect>
+//       </div>
+
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">Quarter:</CFormLabel>
+//         <CFormSelect
+//           style={{ width: '160px' }}
+//           value={q}
+//           onChange={(e) => setQ(Number(e.target.value))}
+//         >
+//           {quarters.map((qt) => (
+//             <option key={qt.value} value={qt.value}>
+//               {qt.label}
+//             </option>
+//           ))}
+//         </CFormSelect>
+//       </div>
+//     </div>
+//   );
+// };
+
+// const MonthSelector = ({ onChange }) => {
+//   const currentYear = new Date().getFullYear();
+//   const currentMonth = new Date().getMonth() + 1;
+
+//   const [year, setYear] = useState(currentYear);
+//   const [month, setMonth] = useState(currentMonth);
+
+//   useEffect(() => {
+//     const start = `${year}-${String(month).padStart(2, '0')}-01`;
+//     const endDay = new Date(year, month, 0).getDate();
+//     const end = `${year}-${String(month).padStart(2, '0')}-${endDay}`;
+//     onChange({ startDate: start, endDate: end });
+//   }, [year, month, onChange]);
+
+//   return (
+//     <div className="d-flex align-items-center gap-3">
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+//         <CFormSelect
+//           style={{ width: '120px' }}
+//           value={year}
+//           onChange={(e) => setYear(Number(e.target.value))}
+//         >
+//           {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map((y) => (
+//             <option key={y} value={y}>
+//               {y}
+//             </option>
+//           ))}
+//         </CFormSelect>
+//       </div>
+
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">Month:</CFormLabel>
+//         <CFormSelect
+//           style={{ width: '140px' }}
+//           value={month}
+//           onChange={(e) => setMonth(Number(e.target.value))}
+//         >
+//           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+//             <option key={m} value={m}>
+//               {new Date(2000, m - 1, 1).toLocaleString('default', { month: 'long' })}
+//             </option>
+//           ))}
+//         </CFormSelect>
+//       </div>
+//     </div>
+//   );
+// };
+
+// const WeekSelector = ({ onChange }) => {
+//   const today = new Date();
+//   const currentYear = today.getFullYear();
+//   const currentMonth = today.getMonth();
+
+//   const [year, setYear] = useState(currentYear);
+//   const [month, setMonth] = useState(currentMonth);
+//   const [selectedWeek, setSelectedWeek] = useState(null);
+//   const [showCalendar, setShowCalendar] = useState(false);
+
+//   // Get all weeks in a month
+//   const getWeeksInMonth = (year, month) => {
+//     const weeks = [];
+//     const firstDay = new Date(year, month, 1);
+//     const lastDay = new Date(year, month + 1, 0);
+    
+//     let currentWeekStart = new Date(firstDay);
+//     const dayOfWeek = currentWeekStart.getDay();
+//     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+//     currentWeekStart.setDate(currentWeekStart.getDate() + mondayOffset);
+
+//     while (currentWeekStart <= lastDay) {
+//       const weekEnd = new Date(currentWeekStart);
+//       weekEnd.setDate(currentWeekStart.getDate() + 6);
+      
+//       weeks.push({
+//         start: new Date(currentWeekStart),
+//         end: new Date(weekEnd),
+//         startDate: currentWeekStart.toISOString().slice(0, 10),
+//         endDate: weekEnd.toISOString().slice(0, 10),
+//       });
+      
+//       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+//     }
+    
+//     return weeks;
+//   };
+
+//   const weeks = getWeeksInMonth(year, month);
+
+//   // Get calendar days for the month
+//   const getCalendarDays = () => {
+//     const firstDay = new Date(year, month, 1);
+//     const lastDay = new Date(year, month + 1, 0);
+//     const prevMonthLastDay = new Date(year, month, 0);
+    
+//     const days = [];
+//     const startDayOfWeek = firstDay.getDay();
+//     const offset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+//     // Previous month days
+//     for (let i = offset - 1; i >= 0; i--) {
+//       days.push({
+//         date: prevMonthLastDay.getDate() - i,
+//         isCurrentMonth: false,
+//       });
+//     }
+
+//     // Current month days
+//     for (let i = 1; i <= lastDay.getDate(); i++) {
+//       days.push({
+//         date: i,
+//         isCurrentMonth: true,
+//         fullDate: new Date(year, month, i),
+//       });
+//     }
+
+//     // Next month days to complete the grid
+//     const remainingDays = 42 - days.length;
+//     for (let i = 1; i <= remainingDays; i++) {
+//       days.push({
+//         date: i,
+//         isCurrentMonth: false,
+//       });
+//     }
+
+//     return days;
+//   };
+
+//   const isDateInWeek = (date, week) => {
+//     if (!date || !week) return false;
+//     return date >= week.start && date <= week.end;
+//   };
+
+//   const handleWeekClick = (week) => {
+//     setSelectedWeek(week);
+//     onChange({ startDate: week.startDate, endDate: week.endDate });
+//     setShowCalendar(false);
+//   };
+
+//   const handleMonthChange = (direction) => {
+//     let newMonth = month + direction;
+//     let newYear = year;
+    
+//     if (newMonth > 11) {
+//       newMonth = 0;
+//       newYear++;
+//     } else if (newMonth < 0) {
+//       newMonth = 11;
+//       newYear--;
+//     }
+    
+//     setMonth(newMonth);
+//     setYear(newYear);
+//     setSelectedWeek(null);
+//   };
+
+//   useEffect(() => {
+//     if (weeks.length > 0 && !selectedWeek) {
+//       const currentWeek = weeks.find(week => {
+//         const now = new Date();
+//         return now >= week.start && now <= week.end;
+//       }) || weeks[0];
+//       setSelectedWeek(currentWeek);
+//       onChange({ startDate: currentWeek.startDate, endDate: currentWeek.endDate });
+//     }
+//   }, [weeks, month, year]);
+
+//   const formatDateRange = (week) => {
+//     if (!week) return '';
+//     const start = week.start.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+//     const end = week.end.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+//     return `${start} to ${end}`;
+//   };
+
+//   const calendarDays = getCalendarDays();
+
+//   return (
+//     <div style={{ position: 'relative' }}>
+//       <div 
+//         className="d-flex align-items-center border rounded px-3 py-2 bg-white" 
+//         style={{ cursor: 'pointer', minWidth: '280px' }}
+//         onClick={() => setShowCalendar(!showCalendar)}
+//       >
+//         <span>{selectedWeek ? formatDateRange(selectedWeek) : 'Select week'}</span>
+//       </div>
+
+//       {showCalendar && (
+//         <div 
+//           className="border rounded bg-white shadow-lg mt-2" 
+//           style={{ 
+//             position: 'absolute', 
+//             zIndex: 1000, 
+//             width: '360px',
+//             padding: '16px'
+//           }}
+//         >
+//           {/* Month Navigation */}
+//           <div className="d-flex justify-content-between align-items-center mb-3">
+//             <button 
+//               className="btn btn-sm btn-light"
+//               onClick={(e) => { e.stopPropagation(); handleMonthChange(-1); }}
+//             >
+//               ‹
+//             </button>
+//             <span className="fw-semibold">
+//               {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+//             </span>
+//             <button 
+//               className="btn btn-sm btn-light"
+//               onClick={(e) => { e.stopPropagation(); handleMonthChange(1); }}
+//             >
+//               ›
+//             </button>
+//           </div>
+
+//           {/* Calendar Header */}
+//           <div className="d-flex mb-2">
+//             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+//               <div key={day} className="text-center fw-semibold" style={{ width: '14.28%', fontSize: '12px' }}>
+//                 {day}
+//               </div>
+//             ))}
+//           </div>
+
+//           {/* Calendar Grid */}
+//           <div>
+//             {Array.from({ length: 6 }).map((_, weekIndex) => {
+//               const weekDays = calendarDays.slice(weekIndex * 7, (weekIndex + 1) * 7);
+//               const currentWeek = weeks.find(w => 
+//                 weekDays.some(day => day.isCurrentMonth && isDateInWeek(day.fullDate, w))
+//               );
+              
+//               const isSelectedWeek = currentWeek && selectedWeek && 
+//                 currentWeek.startDate === selectedWeek.startDate;
+
+//               return (
+//                 <div 
+//                   key={weekIndex} 
+//                   className="d-flex"
+//                   style={{ 
+//                     cursor: currentWeek ? 'pointer' : 'default',
+//                     backgroundColor: isSelectedWeek ? '#ff8800' : 'transparent',
+//                     borderRadius: '4px',
+//                     margin: '2px 0'
+//                   }}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     if (currentWeek) handleWeekClick(currentWeek);
+//                   }}
+//                 >
+//                   {weekDays.map((day, dayIndex) => (
+//                     <div
+//                       key={dayIndex}
+//                       className="text-center py-1"
+//                       style={{
+//                         width: '14.28%',
+//                         color: day.isCurrentMonth ? (isSelectedWeek ? '#fff' : '#000') : '#ccc',
+//                         fontSize: '14px'
+//                       }}
+//                     >
+//                       {day.date}
+//                     </div>
+//                   ))}
+//                 </div>
+//               );
+//             })}
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// const CustomDateSelector = ({ onChange }) => {
+//   const [start, setStart] = useState('');
+//   const [end, setEnd] = useState('');
+
+//   useEffect(() => {
+//     if (start && end && start <= end) {
+//       onChange({ startDate: start, endDate: end });
+//     }
+//   }, [start, end, onChange]);
+
+//   return (
+//     <div className="d-flex align-items-center gap-3">
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">From:</CFormLabel>
+//         <CFormInput
+//           type="date"
+//           style={{ width: '160px' }}
+//           value={start}
+//           onChange={(e) => setStart(e.target.value)}
+//         />
+//       </div>
+//       <div className="d-flex align-items-center">
+//         <CFormLabel className="mb-0 me-2 text-nowrap">To:</CFormLabel>
+//         <CFormInput
+//           type="date"
+//           style={{ width: '160px' }}
+//           value={end}
+//           onChange={(e) => setEnd(e.target.value)}
+//         />
+//       </div>
+//     </div>
+//   );
+// };
+
+// // ────────────────────────────────────────────────
+// // Main Dashboard Component
+// // ────────────────────────────────────────────────
+
+// const Dashboard = () => {
+//   const { t } = useTranslation();
+//   const { showToast } = useToast();
+//   const userData = getUserData();
+//   const mode = userData?.company_info?.appMode ?? 'advance';
+
+//   const [activeTab, setActiveTab] = useState('Month');
+//   const [selectedRange, setSelectedRange] = useState({
+//     startDate: '2026-01-01',
+//     endDate: '2026-01-31',
+//   });
+
+//   // Project filters
+//   const [projects, setProjects] = useState([]);
+//   const [projectTypes, setProjectTypes] = useState([]);
+//   const [selectedProjectType, setSelectedProjectType] = useState('');
+//   const [selectedProject, setSelectedProject] = useState('');
+
+//   const [reportData, setReportData] = useState({
+//     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+//     monthlySales: Array(12).fill(0),
+//     monthlyTax: Array(12).fill(0),
+//     monthlyExpense: Array(12).fill(0),
+//     monthlyPandL: Array(12).fill(0),
+//     totals: { totalSales: 0, totalTax: 0, totalExpenses: 0, totalPL: 0 },
+//   });
+
+//   const [loading, setLoading] = useState(false);
+
+//   // Load project types & projects once
+//   useEffect(() => {
+//     const fetchFilters = async () => {
+//       try {
+//         const [projectsRes, typesRes] = await Promise.all([
+//           getAPICall('/api/projects'),
+//           getAPICall('/api/project-types'),
+//         ]);
+
+//         if (Array.isArray(projectsRes)) {
+//           setProjects(
+//             projectsRes.map((p) => ({
+//               value: p.id,
+//               label: p.project_name,
+//               typeId: p.project_type_id,
+//             }))
+//           );
+//         }
+
+//         if (Array.isArray(typesRes)) {
+//           setProjectTypes(typesRes);
+//         }
+//       } catch (err) {
+//         console.error('Error loading project filters:', err);
+//         showToast('danger', 'Failed to load project filters');
+//       }
+//     };
+
+//     if (mode === 'advance') {
+//       fetchFilters();
+//     }
+//   }, [mode]);
+
+//   const fetchFinancialSummary = async () => {
+//     if (mode !== 'advance') return;
+//     if (!selectedRange.startDate || !selectedRange.endDate) return;
+
+//     setLoading(true);
+
+//     try {
+//       const params = new URLSearchParams({
+//         startDate: selectedRange.startDate,
+//         endDate: selectedRange.endDate,
+//       });
+
+//       if (selectedProjectType) {
+//         params.append('project_type_id', selectedProjectType);
+//       }
+//       if (selectedProject) {
+//         params.append('projectId', selectedProject);
+//       }
+
+//       const url = `/api/monthlyIncomeSummaries?${params.toString()}`;
+//       const response = await getAPICall(url);
+
+//       if (response?.success !== false) {
+//         setReportData({
+//           labels: response.labels || reportData.labels,
+//           monthlySales: response.monthlySales?.map(Number) ?? Array(12).fill(0),
+//           monthlyTax: response.monthlyTax?.map(Number) ?? Array(12).fill(0),
+//           monthlyExpense: response.monthlyExpense?.map(Number) ?? Array(12).fill(0),
+//           monthlyPandL: response.monthlyPandL?.map(Number) ?? Array(12).fill(0),
+//           totals: response.totals || reportData.totals,
+//         });
+//       } else {
+//         showToast('warning', response?.message || 'No data returned');
+//       }
+//     } catch (err) {
+//       console.error('Financial summary fetch error:', err);
+//       showToast('danger', 'Failed to load financial summary');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // Re-fetch when any relevant value changes
+//   useEffect(() => {
+//     fetchFinancialSummary();
+//   }, [
+//     activeTab,
+//     selectedRange.startDate,
+//     selectedRange.endDate,
+//     selectedProjectType,
+//     selectedProject,
+//   ]);
+
+//   const handleProjectTypeChange = (value) => {
+//     setSelectedProjectType(value);
+//     setSelectedProject(''); // Reset project selection when type changes
+//   };
+
+//   const renderPeriodSelector = () => {
+//     switch (activeTab) {
+//       case 'Year':
+//         return <YearSelector onChange={setSelectedRange} />;
+//       case 'Quarter':
+//         return <QuarterSelector onChange={setSelectedRange} />;
+//       case 'Month':
+//         return <MonthSelector onChange={setSelectedRange} />;
+//       case 'Week':
+//         return <WeekSelector onChange={setSelectedRange} />;
+//       case 'Custom':
+//         return <CustomDateSelector onChange={setSelectedRange} />;
+//       default:
+//         return null;
+//     }
+//   };
+
+//   return (
+//     <>
+//       {mode === 'advance' && (
+//         <div className="mb-4">
+//           {/* Tabs */}
+//           <div className="mb-3">
+//             <CTabs activeItemKey={activeTab} onChange={setActiveTab}>
+//               <CTabList variant="tabs">
+//                 <CTab itemKey="Year">Year</CTab>
+//                 <CTab itemKey="Quarter">Quarter</CTab>
+//                 <CTab itemKey="Month">Month</CTab>
+//                 <CTab itemKey="Week">Week</CTab>
+//                 <CTab itemKey="Custom">Custom</CTab>
+//               </CTabList>
+//             </CTabs>
+//           </div>
+
+//           {/* Single row with all filters */}
+//           <div className="d-flex align-items-center gap-3 mb-4 flex-wrap" style={{ padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
+//             {/* Period Selector */}
+//             <div className="d-flex align-items-center" style={{ minWidth: 'fit-content' }}>
+//               {renderPeriodSelector()}
+//             </div>
+
+//             {/* Vertical divider */}
+//             <div style={{ width: '1px', height: '32px', background: '#dee2e6', margin: '0 8px' }}></div>
+
+//             {/* Project Type Filter */}
+//             <div className="d-flex align-items-center">
+//               <CFormLabel className="mb-0 me-2 text-nowrap">Project Type:</CFormLabel>
+//               <CFormSelect
+//                 style={{ width: '180px' }}
+//                 value={selectedProjectType}
+//                 onChange={(e) => handleProjectTypeChange(e.target.value)}
+//               >
+//                 <option value="">All Types</option>
+//                 {projectTypes.map((pt) => (
+//                   <option key={pt.id} value={pt.id}>
+//                     {pt.name}
+//                   </option>
+//                 ))}
+//               </CFormSelect>
+//             </div>
+
+//             {/* Project Filter */}
+//             <div className="d-flex align-items-center">
+//               <CFormLabel className="mb-0 me-2 text-nowrap">Project:</CFormLabel>
+//               <CFormSelect
+//                 style={{ width: '200px' }}
+//                 value={selectedProject}
+//                 onChange={(e) => setSelectedProject(e.target.value)}
+//                 disabled={!selectedProjectType}
+//               >
+//                 <option value="">All Projects</option>
+//                 {projects
+//                   .filter((p) => !selectedProjectType || p.typeId === Number(selectedProjectType))
+//                   .map((project) => (
+//                     <option key={project.value} value={project.value}>
+//                       {project.label}
+//                     </option>
+//                   ))}
+//               </CFormSelect>
+//             </div>
+//           </div>
+
+//           {loading ? (
+//             <div className="text-center py-5">
+//               <CSpinner color="primary" />
+//               <div className="mt-2 text-body-secondary">Loading financial data...</div>
+//             </div>
+//           ) : (
+//             <>
+//               <WidgetsDropdown
+//                 className="mb-4"
+//                 reportMonth={reportData}
+//                 activeFilter={activeTab.toLowerCase()}
+//                 selectedRangeTotals={reportData.totals}
+//               />
+
+//               <CCard className="mb-4">
+//                 <CCardBody>
+//                   <CRow className="mb-3">
+//                     <CCol>
+//                       <h5 className="card-title mb-1">Profit & Loss Overview</h5>
+//                       <div className="small text-body-secondary">
+//                         {selectedRange.startDate} → {selectedRange.endDate}
+//                         {selectedProjectType &&
+//                           ` • Type: ${projectTypes.find((t) => t.id === Number(selectedProjectType))?.name || '?'}`}
+//                         {selectedProject &&
+//                           ` • Project: ${projects.find((p) => p.value === selectedProject)?.label || '?'}`}
+//                       </div>
+//                     </CCol>
+//                   </CRow>
+
+//                   <MainChart
+//                     monthlyPandL={reportData.monthlyPandL}
+//                     monthlySales={reportData.monthlySales}
+//                     monthlyExpense={reportData.monthlyExpense}
+//                   />
+//                 </CCardBody>
+//               </CCard>
+//             </>
+//           )}
+//         </div>
+//       )}
+
+//       {/* If you want to show something when not in advance mode */}
+//       {mode !== 'advance' && (
+//         <div className="text-center py-5">
+//           <p>Financial dashboard is only available in Advance mode.</p>
+//         </div>
+//       )}
+//     </>
+//   );
+// };
+
+// export default Dashboard;
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useState } from 'react';
 import {
   CCard,
@@ -2770,6 +3461,7 @@ import {
   CFormSelect,
   CSpinner,
 } from '@coreui/react';
+
 import WidgetsDropdown from '../widgets/WidgetsDropdown';
 import MainChart from './MainChart';
 import { getAPICall } from '../../util/api';
@@ -2778,30 +3470,35 @@ import { useToast } from '../common/toast/ToastContext';
 import { useTranslation } from 'react-i18next';
 
 // ────────────────────────────────────────────────
-// Period selector components
+// Selector Components (all use onChange prop)
 // ────────────────────────────────────────────────
 
 const YearSelector = ({ onChange }) => {
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const initialFY = currentMonth <= 3 ? currentYear - 1 : currentYear;
+
+  const [year, setYear] = useState(initialFY);
+
+  useEffect(() => {
+    onChange({
+      startDate: `${year}-04-01`,
+      endDate: `${year + 1}-03-31`,
+    });
+  }, [year, onChange]);
 
   return (
     <div className="d-flex align-items-center">
-      <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+      <CFormLabel className="me-2">Financial Year:</CFormLabel>
       <CFormSelect
-        style={{ width: '120px' }}
-        onChange={(e) => {
-          const year = Number(e.target.value);
-          onChange({
-            startDate: `${year}-01-01`,
-            endDate: `${year}-12-31`,
-          });
-        }}
-        defaultValue={currentYear}
+        style={{ width: 160 }}
+        value={year}
+        onChange={(e) => setYear(Number(e.target.value))}
       >
-        {years.map((y) => (
+        {Array.from({ length: 8 }, (_, i) => 2023 + i).map((y) => (
           <option key={y} value={y}>
-            {y}
+            {y}–{(y + 1).toString().slice(-2)}
           </option>
         ))}
       </CFormSelect>
@@ -2810,57 +3507,73 @@ const YearSelector = ({ onChange }) => {
 };
 
 const QuarterSelector = ({ onChange }) => {
-  const currentYear = new Date().getFullYear();
-  const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+  const today = new Date();
+  const cy = today.getFullYear();
+  const cm = today.getMonth() + 1;
+  const initialYear = cm <= 3 ? cy - 1 : cy;
+  const initialQ =
+    cm >= 4 && cm <= 6 ? '1' :
+    cm >= 7 && cm <= 9 ? '2' :
+    cm >= 10 ? '3' : '4';
 
-  const quarters = [
-    { label: 'Q1 (Jan–Mar)', value: 1 },
-    { label: 'Q2 (Apr–Jun)', value: 2 },
-    { label: 'Q3 (Jul–Sep)', value: 3 },
-    { label: 'Q4 (Oct–Dec)', value: 4 },
-  ];
-
-  const [year, setYear] = useState(currentYear);
-  const [q, setQ] = useState(currentQuarter);
+  const [year, setYear] = useState(initialYear);
+  const [quarter, setQuarter] = useState(initialQ);
 
   useEffect(() => {
-    const m = (q - 1) * 3 + 1;
-    const start = `${year}-${String(m).padStart(2, '0')}-01`;
-    const endMonth = m + 2;
-    const endDay = new Date(year, endMonth, 0).getDate();
-    const end = `${year}-${String(endMonth).padStart(2, '0')}-${endDay}`;
+    const y = Number(year);
+    let start, end;
+    switch (quarter) {
+      case '1':
+        start = `${y}-04-01`;
+        end = `${y}-06-30`;
+        break;
+      case '2':
+        start = `${y}-07-01`;
+        end = `${y}-09-30`;
+        break;
+      case '3':
+        start = `${y}-10-01`;
+        end = `${y}-12-31`;
+        break;
+      case '4':
+        start = `${y + 1}-01-01`;
+        end = `${y + 1}-03-31`;
+        break;
+      default:
+        start = `${y}-04-01`;
+        end = `${y}-06-30`;
+    }
     onChange({ startDate: start, endDate: end });
-  }, [year, q, onChange]);
+  }, [year, quarter, onChange]);
 
   return (
-    <div className="d-flex align-items-center gap-3">
+    <div className="d-flex gap-3">
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+        <CFormLabel className="me-2">Fin. Year:</CFormLabel>
         <CFormSelect
-          style={{ width: '120px' }}
+          style={{ width: 160 }}
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
         >
-          {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map((y) => (
+          {Array.from({ length: 8 }, (_, i) => 2023 + i).map((y) => (
             <option key={y} value={y}>
-              {y}
+              {y}–{(y + 1).toString().slice(-2)}
             </option>
           ))}
         </CFormSelect>
       </div>
 
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">Quarter:</CFormLabel>
+        <CFormLabel className="me-2">Quarter:</CFormLabel>
         <CFormSelect
-          style={{ width: '160px' }}
-          value={q}
-          onChange={(e) => setQ(Number(e.target.value))}
+          style={{ width: 180 }}
+          value={quarter}
+          onChange={(e) => setQuarter(e.target.value)}
         >
-          {quarters.map((qt) => (
-            <option key={qt.value} value={qt.value}>
-              {qt.label}
-            </option>
-          ))}
+          <option value="1">Q1 (Apr–Jun)</option>
+          <option value="2">Q2 (Jul–Sep)</option>
+          <option value="3">Q3 (Oct–Dec)</option>
+          <option value="4">Q4 (Jan–Mar)</option>
         </CFormSelect>
       </div>
     </div>
@@ -2868,29 +3581,29 @@ const QuarterSelector = ({ onChange }) => {
 };
 
 const MonthSelector = ({ onChange }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const [year, setYear] = useState(currentYear);
-  const [month, setMonth] = useState(currentMonth);
+  const getLastDay = (y, m) => new Date(y, m, 0).getDate();
 
   useEffect(() => {
-    const start = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDay = new Date(year, month, 0).getDate();
-    const end = `${year}-${String(month).padStart(2, '0')}-${endDay}`;
-    onChange({ startDate: start, endDate: end });
+    const last = getLastDay(year, month);
+    onChange({
+      startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+      endDate: `${year}-${String(month).padStart(2, '0')}-${last}`,
+    });
   }, [year, month, onChange]);
 
   return (
-    <div className="d-flex align-items-center gap-3">
+    <div className="d-flex gap-3">
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">Year:</CFormLabel>
+        <CFormLabel className="me-2">Year:</CFormLabel>
         <CFormSelect
-          style={{ width: '120px' }}
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
         >
-          {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map((y) => (
+          {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map((y) => (
             <option key={y} value={y}>
               {y}
             </option>
@@ -2899,15 +3612,14 @@ const MonthSelector = ({ onChange }) => {
       </div>
 
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">Month:</CFormLabel>
+        <CFormLabel className="me-2">Month:</CFormLabel>
         <CFormSelect
-          style={{ width: '140px' }}
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
         >
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
             <option key={m} value={m}>
-              {new Date(2000, m - 1, 1).toLocaleString('default', { month: 'long' })}
+              {new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}
             </option>
           ))}
         </CFormSelect>
@@ -2918,221 +3630,97 @@ const MonthSelector = ({ onChange }) => {
 
 const WeekSelector = ({ onChange }) => {
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-
-  const [year, setYear] = useState(currentYear);
-  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  // Get all weeks in a month
-  const getWeeksInMonth = (year, month) => {
+  const getWeeksInMonth = (y, m) => {
     const weeks = [];
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    let currentWeekStart = new Date(firstDay);
-    const dayOfWeek = currentWeekStart.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    currentWeekStart.setDate(currentWeekStart.getDate() + mondayOffset);
+    const first = new Date(y, m, 1);
+    const last = new Date(y, m + 1, 0);
 
-    while (currentWeekStart <= lastDay) {
-      const weekEnd = new Date(currentWeekStart);
-      weekEnd.setDate(currentWeekStart.getDate() + 6);
-      
+    let start = new Date(first);
+    const dow = start.getDay();
+    const offset = dow === 0 ? -6 : 1 - dow;
+    start.setDate(start.getDate() + offset);
+
+    while (start <= last) {
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
       weeks.push({
-        start: new Date(currentWeekStart),
-        end: new Date(weekEnd),
-        startDate: currentWeekStart.toISOString().slice(0, 10),
-        endDate: weekEnd.toISOString().slice(0, 10),
+        start,
+        end,
+        startDate: start.toISOString().slice(0, 10),
+        endDate: end.toISOString().slice(0, 10),
       });
-      
-      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      start = new Date(start);
+      start.setDate(start.getDate() + 7);
     }
-    
     return weeks;
   };
 
   const weeks = getWeeksInMonth(year, month);
 
-  // Get calendar days for the month
-  const getCalendarDays = () => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const prevMonthLastDay = new Date(year, month, 0);
-    
-    const days = [];
-    const startDayOfWeek = firstDay.getDay();
-    const offset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-
-    // Previous month days
-    for (let i = offset - 1; i >= 0; i--) {
-      days.push({
-        date: prevMonthLastDay.getDate() - i,
-        isCurrentMonth: false,
-      });
+  useEffect(() => {
+    if (weeks.length > 0 && !selectedWeek) {
+      const now = new Date();
+      const current = weeks.find(w => now >= w.start && now <= w.end) || weeks[0];
+      setSelectedWeek(current);
+      onChange({ startDate: current.startDate, endDate: current.endDate });
     }
+  }, [weeks, onChange]);
 
-    // Current month days
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push({
-        date: i,
-        isCurrentMonth: true,
-        fullDate: new Date(year, month, i),
-      });
-    }
-
-    // Next month days to complete the grid
-    const remainingDays = 42 - days.length;
-    for (let i = 1; i <= remainingDays; i++) {
-      days.push({
-        date: i,
-        isCurrentMonth: false,
-      });
-    }
-
-    return days;
-  };
-
-  const isDateInWeek = (date, week) => {
-    if (!date || !week) return false;
-    return date >= week.start && date <= week.end;
-  };
-
-  const handleWeekClick = (week) => {
+  const handleWeekSelect = (week) => {
     setSelectedWeek(week);
     onChange({ startDate: week.startDate, endDate: week.endDate });
     setShowCalendar(false);
   };
 
-  const handleMonthChange = (direction) => {
-    let newMonth = month + direction;
-    let newYear = year;
-    
-    if (newMonth > 11) {
-      newMonth = 0;
-      newYear++;
-    } else if (newMonth < 0) {
-      newMonth = 11;
-      newYear--;
-    }
-    
-    setMonth(newMonth);
-    setYear(newYear);
-    setSelectedWeek(null);
-  };
-
-  useEffect(() => {
-    if (weeks.length > 0 && !selectedWeek) {
-      const currentWeek = weeks.find(week => {
-        const now = new Date();
-        return now >= week.start && now <= week.end;
-      }) || weeks[0];
-      setSelectedWeek(currentWeek);
-      onChange({ startDate: currentWeek.startDate, endDate: currentWeek.endDate });
-    }
-  }, [weeks, month, year]);
-
-  const formatDateRange = (week) => {
-    if (!week) return '';
-    const start = week.start.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const end = week.end.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return `${start} to ${end}`;
-  };
-
-  const calendarDays = getCalendarDays();
-
   return (
     <div style={{ position: 'relative' }}>
-      <div 
-        className="d-flex align-items-center border rounded px-3 py-2 bg-white" 
+      <div
+        className="border rounded px-3 py-2 bg-white"
         style={{ cursor: 'pointer', minWidth: '280px' }}
         onClick={() => setShowCalendar(!showCalendar)}
       >
-        <span>{selectedWeek ? formatDateRange(selectedWeek) : 'Select week'}</span>
+        {selectedWeek
+          ? `${selectedWeek.start.toLocaleDateString()} – ${selectedWeek.end.toLocaleDateString()}`
+          : 'Select Week'}
       </div>
 
       {showCalendar && (
-        <div 
-          className="border rounded bg-white shadow-lg mt-2" 
-          style={{ 
-            position: 'absolute', 
-            zIndex: 1000, 
-            width: '360px',
-            padding: '16px'
-          }}
+        <div
+          className="border rounded bg-white shadow mt-2 p-3"
+          style={{ position: 'absolute', zIndex: 1000, width: 360 }}
         >
-          {/* Month Navigation */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <button 
-              className="btn btn-sm btn-light"
-              onClick={(e) => { e.stopPropagation(); handleMonthChange(-1); }}
-            >
-              ‹
-            </button>
-            <span className="fw-semibold">
-              {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </span>
-            <button 
-              className="btn btn-sm btn-light"
-              onClick={(e) => { e.stopPropagation(); handleMonthChange(1); }}
-            >
-              ›
-            </button>
+          {/* Simple month/year selector + week list */}
+          <div className="d-flex gap-2 mb-3">
+            <CFormSelect value={month} onChange={e => setMonth(Number(e.target.value))}>
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>
+                  {new Date(year, i).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </CFormSelect>
+            <CFormSelect value={year} onChange={e => setYear(Number(e.target.value))}>
+              {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </CFormSelect>
           </div>
 
-          {/* Calendar Header */}
-          <div className="d-flex mb-2">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-              <div key={day} className="text-center fw-semibold" style={{ width: '14.28%', fontSize: '12px' }}>
-                {day}
+          <div>
+            {weeks.map((w, i) => (
+              <div
+                key={i}
+                className="p-2 border-bottom"
+                style={{ cursor: 'pointer', background: selectedWeek === w ? '#e0f7fa' : '' }}
+                onClick={() => handleWeekSelect(w)}
+              >
+                {w.start.toLocaleDateString()} – {w.end.toLocaleDateString()}
               </div>
             ))}
-          </div>
-
-          {/* Calendar Grid */}
-          <div>
-            {Array.from({ length: 6 }).map((_, weekIndex) => {
-              const weekDays = calendarDays.slice(weekIndex * 7, (weekIndex + 1) * 7);
-              const currentWeek = weeks.find(w => 
-                weekDays.some(day => day.isCurrentMonth && isDateInWeek(day.fullDate, w))
-              );
-              
-              const isSelectedWeek = currentWeek && selectedWeek && 
-                currentWeek.startDate === selectedWeek.startDate;
-
-              return (
-                <div 
-                  key={weekIndex} 
-                  className="d-flex"
-                  style={{ 
-                    cursor: currentWeek ? 'pointer' : 'default',
-                    backgroundColor: isSelectedWeek ? '#ff8800' : 'transparent',
-                    borderRadius: '4px',
-                    margin: '2px 0'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (currentWeek) handleWeekClick(currentWeek);
-                  }}
-                >
-                  {weekDays.map((day, dayIndex) => (
-                    <div
-                      key={dayIndex}
-                      className="text-center py-1"
-                      style={{
-                        width: '14.28%',
-                        color: day.isCurrentMonth ? (isSelectedWeek ? '#fff' : '#000') : '#ccc',
-                        fontSize: '14px'
-                      }}
-                    >
-                      {day.date}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
@@ -3151,21 +3739,19 @@ const CustomDateSelector = ({ onChange }) => {
   }, [start, end, onChange]);
 
   return (
-    <div className="d-flex align-items-center gap-3">
+    <div className="d-flex gap-3">
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">From:</CFormLabel>
+        <CFormLabel className="me-2">From:</CFormLabel>
         <CFormInput
           type="date"
-          style={{ width: '160px' }}
           value={start}
           onChange={(e) => setStart(e.target.value)}
         />
       </div>
       <div className="d-flex align-items-center">
-        <CFormLabel className="mb-0 me-2 text-nowrap">To:</CFormLabel>
+        <CFormLabel className="me-2">To:</CFormLabel>
         <CFormInput
           type="date"
-          style={{ width: '160px' }}
           value={end}
           onChange={(e) => setEnd(e.target.value)}
         />
@@ -3181,20 +3767,20 @@ const CustomDateSelector = ({ onChange }) => {
 const Dashboard = () => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const userData = getUserData();
-  const mode = userData?.company_info?.appMode ?? 'advance';
+
+  const user = getUserData();
+  const mode = user?.company_info?.appMode || 'advance';
 
   const [activeTab, setActiveTab] = useState('Month');
-  const [selectedRange, setSelectedRange] = useState({
-    startDate: '2026-01-01',
-    endDate: '2026-01-31',
-  });
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
-  // Project filters
   const [projects, setProjects] = useState([]);
   const [projectTypes, setProjectTypes] = useState([]);
-  const [selectedProjectType, setSelectedProjectType] = useState('');
-  const [selectedProject, setSelectedProject] = useState('');
+
+  const [projectType, setProjectType] = useState('');
+  const [project, setProject] = useState('');
+
+  const [loading, setLoading] = useState(false);
 
   const [reportData, setReportData] = useState({
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -3205,229 +3791,189 @@ const Dashboard = () => {
     totals: { totalSales: 0, totalTax: 0, totalExpenses: 0, totalPL: 0 },
   });
 
-  const [loading, setLoading] = useState(false);
-
-  // Load project types & projects once
+  // Load project & type filters
   useEffect(() => {
-    const fetchFilters = async () => {
+    if (mode !== 'advance') return;
+
+    const load = async () => {
       try {
-        const [projectsRes, typesRes] = await Promise.all([
+        const [p, t] = await Promise.all([
           getAPICall('/api/projects'),
           getAPICall('/api/project-types'),
         ]);
 
-        if (Array.isArray(projectsRes)) {
-          setProjects(
-            projectsRes.map((p) => ({
-              value: p.id,
-              label: p.project_name,
-              typeId: p.project_type_id,
-            }))
-          );
-        }
+        setProjects(
+          p?.map((x) => ({
+            value: x.id,
+            label: x.project_name,
+            typeId: x.project_type_id,
+          })) || []
+        );
 
-        if (Array.isArray(typesRes)) {
-          setProjectTypes(typesRes);
-        }
-      } catch (err) {
-        console.error('Error loading project filters:', err);
-        showToast('danger', 'Failed to load project filters');
+        setProjectTypes(t || []);
+      } catch {
+        showToast('danger', 'Failed to load filters');
       }
     };
 
-    if (mode === 'advance') {
-      fetchFilters();
-    }
-  }, [mode, showToast]);
+    load();
+  }, [mode]);
 
-  const fetchFinancialSummary = async () => {
-    if (mode !== 'advance') return;
-    if (!selectedRange.startDate || !selectedRange.endDate) return;
+  // Fetch financial summary
+  const fetchSummary = async () => {
+    if (!dateRange.startDate || !dateRange.endDate) return;
 
     setLoading(true);
 
     try {
       const params = new URLSearchParams({
-        startDate: selectedRange.startDate,
-        endDate: selectedRange.endDate,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
       });
 
-      if (selectedProjectType) {
-        params.append('project_type_id', selectedProjectType);
-      }
-      if (selectedProject) {
-        params.append('projectId', selectedProject);
+      if (projectType) params.append('project_type_id', projectType);
+      if (project) params.append('projectId', project);
+
+      const resp = await getAPICall(`/api/monthlyIncomeSummaries?${params}`);
+
+      if (resp?.success === false) {
+        showToast('warning', resp.message || 'No data');
+        return;
       }
 
-      const url = `/api/monthlyIncomeSummaries?${params.toString()}`;
-      const response = await getAPICall(url);
-
-      if (response?.success !== false) {
-        setReportData({
-          labels: response.labels || reportData.labels,
-          monthlySales: response.monthlySales?.map(Number) ?? Array(12).fill(0),
-          monthlyTax: response.monthlyTax?.map(Number) ?? Array(12).fill(0),
-          monthlyExpense: response.monthlyExpense?.map(Number) ?? Array(12).fill(0),
-          monthlyPandL: response.monthlyPandL?.map(Number) ?? Array(12).fill(0),
-          totals: response.totals || reportData.totals,
-        });
-      } else {
-        showToast('warning', response?.message || 'No data returned');
-      }
+      setReportData({
+        labels: reportData.labels,
+        monthlySales: resp.monthlySales?.map(Number) || Array(12).fill(0),
+        monthlyTax: resp.monthlyTax?.map(Number) || Array(12).fill(0),
+        monthlyExpense: resp.monthlyExpense?.map(Number) || Array(12).fill(0),
+        monthlyPandL: resp.monthlyPandL?.map(Number) || Array(12).fill(0),
+        totals: resp.totals || reportData.totals,
+      });
     } catch (err) {
-      console.error('Financial summary fetch error:', err);
-      showToast('danger', 'Failed to load financial summary');
+      console.error(err);
+      showToast('danger', 'Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch when any relevant value changes
   useEffect(() => {
-    fetchFinancialSummary();
-  }, [
-    activeTab,
-    selectedRange.startDate,
-    selectedRange.endDate,
-    selectedProjectType,
-    selectedProject,
-  ]);
+    fetchSummary();
+  }, [dateRange, projectType, project, activeTab]);
 
   const handleProjectTypeChange = (value) => {
-    setSelectedProjectType(value);
-    setSelectedProject(''); // Reset project selection when type changes
+    setProjectType(value);
+    setProject('');
   };
 
-  const renderPeriodSelector = () => {
+  const renderSelector = () => {
     switch (activeTab) {
       case 'Year':
-        return <YearSelector onChange={setSelectedRange} />;
+        return <YearSelector onChange={setDateRange} />;
       case 'Quarter':
-        return <QuarterSelector onChange={setSelectedRange} />;
+        return <QuarterSelector onChange={setDateRange} />;
       case 'Month':
-        return <MonthSelector onChange={setSelectedRange} />;
+        return <MonthSelector onChange={setDateRange} />;
       case 'Week':
-        return <WeekSelector onChange={setSelectedRange} />;
+        return <WeekSelector onChange={setDateRange} />;
       case 'Custom':
-        return <CustomDateSelector onChange={setSelectedRange} />;
+        return <CustomDateSelector onChange={setDateRange} />;
       default:
         return null;
     }
   };
 
+  if (mode !== 'advance') {
+    return <div className="text-center py-5">Dashboard only for Advance Mode</div>;
+  }
+
   return (
-    <>
-      {mode === 'advance' && (
-        <div className="mb-4">
-          {/* Tabs */}
-          <div className="mb-3">
-            <CTabs activeItemKey={activeTab} onChange={setActiveTab}>
-              <CTabList variant="tabs">
-                <CTab itemKey="Year">Year</CTab>
-                <CTab itemKey="Quarter">Quarter</CTab>
-                <CTab itemKey="Month">Month</CTab>
-                <CTab itemKey="Week">Week</CTab>
-                <CTab itemKey="Custom">Custom</CTab>
-              </CTabList>
-            </CTabs>
-          </div>
+    <div className="mb-4">
+      {/* Tabs */}
+      <CTabs activeItemKey={activeTab} onChange={setActiveTab}>
+        <CTabList variant="tabs">
+          <CTab itemKey="Year">Year</CTab>
+          <CTab itemKey="Quarter">Quarter</CTab>
+          <CTab itemKey="Month">Month</CTab>
+          <CTab itemKey="Week">Week</CTab>
+          <CTab itemKey="Custom">Custom</CTab>
+        </CTabList>
+      </CTabs>
 
-          {/* Single row with all filters */}
-          <div className="d-flex align-items-center gap-3 mb-4 flex-wrap" style={{ padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
-            {/* Period Selector */}
-            <div className="d-flex align-items-center" style={{ minWidth: 'fit-content' }}>
-              {renderPeriodSelector()}
-            </div>
+      {/* Filters Row */}
+      <div className="d-flex flex-wrap gap-3 p-3 bg-light rounded mb-4">
+        {renderSelector()}
 
-            {/* Vertical divider */}
-            <div style={{ width: '1px', height: '32px', background: '#dee2e6', margin: '0 8px' }}></div>
-
-            {/* Project Type Filter */}
-            <div className="d-flex align-items-center">
-              <CFormLabel className="mb-0 me-2 text-nowrap">Project Type:</CFormLabel>
-              <CFormSelect
-                style={{ width: '180px' }}
-                value={selectedProjectType}
-                onChange={(e) => handleProjectTypeChange(e.target.value)}
-              >
-                <option value="">All Types</option>
-                {projectTypes.map((pt) => (
-                  <option key={pt.id} value={pt.id}>
-                    {pt.name}
-                  </option>
-                ))}
-              </CFormSelect>
-            </div>
-
-            {/* Project Filter */}
-            <div className="d-flex align-items-center">
-              <CFormLabel className="mb-0 me-2 text-nowrap">Project:</CFormLabel>
-              <CFormSelect
-                style={{ width: '200px' }}
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                disabled={!selectedProjectType}
-              >
-                <option value="">All Projects</option>
-                {projects
-                  .filter((p) => !selectedProjectType || p.typeId === Number(selectedProjectType))
-                  .map((project) => (
-                    <option key={project.value} value={project.value}>
-                      {project.label}
-                    </option>
-                  ))}
-              </CFormSelect>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-5">
-              <CSpinner color="primary" />
-              <div className="mt-2 text-body-secondary">Loading financial data...</div>
-            </div>
-          ) : (
-            <>
-              <WidgetsDropdown
-                className="mb-4"
-                reportMonth={reportData}
-                activeFilter={activeTab.toLowerCase()}
-                selectedRangeTotals={reportData.totals}
-              />
-
-              <CCard className="mb-4">
-                <CCardBody>
-                  <CRow className="mb-3">
-                    <CCol>
-                      <h5 className="card-title mb-1">Profit & Loss Overview</h5>
-                      <div className="small text-body-secondary">
-                        {selectedRange.startDate} → {selectedRange.endDate}
-                        {selectedProjectType &&
-                          ` • Type: ${projectTypes.find((t) => t.id === Number(selectedProjectType))?.name || '?'}`}
-                        {selectedProject &&
-                          ` • Project: ${projects.find((p) => p.value === selectedProject)?.label || '?'}`}
-                      </div>
-                    </CCol>
-                  </CRow>
-
-                  <MainChart
-                    monthlyPandL={reportData.monthlyPandL}
-                    monthlySales={reportData.monthlySales}
-                    monthlyExpense={reportData.monthlyExpense}
-                  />
-                </CCardBody>
-              </CCard>
-            </>
-          )}
+        <div className="d-flex align-items-center">
+          <CFormLabel className="me-2">Project Type:</CFormLabel>
+          <CFormSelect
+            value={projectType}
+            onChange={(e) => handleProjectTypeChange(e.target.value)}
+          >
+            <option value="">All</option>
+            {projectTypes.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </CFormSelect>
         </div>
-      )}
 
-      {/* If you want to show something when not in advance mode */}
-      {mode !== 'advance' && (
+        <div className="d-flex align-items-center">
+          <CFormLabel className="me-2">Project:</CFormLabel>
+          <CFormSelect
+            value={project}
+            disabled={!projectType}
+            onChange={(e) => setProject(e.target.value)}
+          >
+            <option value="">All</option>
+            {projects
+              .filter((p) => !projectType || p.typeId === Number(projectType))
+              .map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+          </CFormSelect>
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
         <div className="text-center py-5">
-          <p>Financial dashboard is only available in Advance mode.</p>
+          <CSpinner />
+          <div>Loading...</div>
         </div>
+      ) : (
+        <>
+          <WidgetsDropdown
+            className="mb-4"
+            reportMonth={reportData}
+            activeFilter={activeTab.toLowerCase()}
+            selectedRangeTotals={reportData.totals}
+          />
+
+          <CCard>
+            <CCardBody>
+              <CRow className="mb-3">
+                <CCol>
+                  <h5>Profit & Loss Overview</h5>
+                  <small className="text-muted">
+                    {dateRange.startDate || '—'} → {dateRange.endDate || '—'}
+                  </small>
+                </CCol>
+              </CRow>
+
+              <MainChart
+                monthlyPandL={reportData.monthlyPandL}
+                monthlySales={reportData.monthlySales}
+                monthlyExpense={reportData.monthlyExpense}
+              />
+            </CCardBody>
+          </CCard>
+        </>
       )}
-    </>
+    </div>
   );
 };
 

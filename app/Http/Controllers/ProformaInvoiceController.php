@@ -714,6 +714,151 @@ class ProformaInvoiceController extends Controller
 
   
 
+// public function recordPayment(Request $request, $id)
+// {
+//     $user = Auth::user();
+
+//     $validated = $request->validate([
+//         'received_amount' => 'required|numeric|min:0.01',
+//         'received_by'     => 'required|string|max:255',
+//         'payment_type'    => 'required|in:imps,rtgs,upi,cash,cheque',
+//         'senders_bank'    => 'required|string|max:255',
+//         'receivers_bank'  => 'required|string|max:255',
+//         'remark'          => 'nullable|string|max:500',
+//     ]);
+
+//     DB::beginTransaction();
+
+//     try {
+//         $proformaInvoice = ProformaInvoice::with('project')->findOrFail($id);
+
+//         if ($proformaInvoice->company_id !== $user->company_id) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Unauthorized access'
+//             ], 403);
+//         }
+
+//         $newPayment = round($validated['received_amount'], 2);
+//         $remainingAmount = round($proformaInvoice->pending_amount, 2);
+
+//         if ($newPayment > $remainingAmount) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Payment amount exceeds pending amount'
+//             ], 400);
+//         }
+
+//         $order = Order::find($proformaInvoice->work_order_id);
+//         $poNumber = $order ? $order->po_number : null;
+
+//         /* ===========================
+//            GST CALCULATION (UNCHANGED)
+//         ============================*/
+//         $basicAmount = round($newPayment / 1.18, 2);
+//         $gstAmount   = round($newPayment - $basicAmount, 2);
+
+//         /* ===========================
+//            INCOME TABLE (NO CHANGE)
+//         ============================*/
+//         $income = Income::create([
+//             'project_id'          => $proformaInvoice->project_id,
+//             'order_id'            => $proformaInvoice->work_order_id,
+//             'proforma_invoice_id' => $proformaInvoice->id,
+//             'company_id'          => $user->company_id,
+//             'po_no'               => $poNumber ?? 'N/A',
+//             'po_date'             => $proformaInvoice->invoice_date,
+//             'invoice_no'          => $proformaInvoice->proforma_invoice_number,
+//             'invoice_date'        => $proformaInvoice->invoice_date,
+//             'basic_amount'        => $basicAmount,
+//             'gst_amount'          => $gstAmount,
+//             'billing_amount'      => $newPayment,
+//             'received_amount'     => $newPayment,
+//             'pending_amount'      => 0.00,
+//             'received_by'         => $validated['received_by'],
+//             'payment_type'        => $validated['payment_type'],
+//             'senders_bank'        => $validated['senders_bank'],
+//             'receivers_bank'      => $validated['receivers_bank'],
+//             'remark'              => $validated['remark'] ?? "Payment for PI #{$proformaInvoice->proforma_invoice_number}",
+//             'payment_date'        => Carbon::today()->toDateString(),
+//         ]);
+
+//         /* ===========================
+//            PROFORMA UPDATE
+//         ============================*/
+//         $newPaidAmount = round($proformaInvoice->paid_amount + $newPayment, 2);
+//         $newPendingAmount = round($proformaInvoice->final_amount - $newPaidAmount, 2);
+
+//         $paymentStatus = 'partial';
+//         if ($newPendingAmount <= 0) {
+//             $paymentStatus = 'paid';
+//         }
+
+//         $proformaInvoice->update([
+//             'paid_amount'    => $newPaidAmount,
+//             'pending_amount' => $newPendingAmount,
+//             'payment_status' => $paymentStatus,
+//             'updated_by'     => $user->id,
+//         ]);
+
+//         if ($order) {
+//             $order->update([
+//                 'paidAmount' => DB::raw("paidAmount + {$newPayment}"),
+//                 'updated_by' => $user->id,
+//             ]);
+//         }
+
+//         /* ===========================
+//            INCOME SUMMARY
+//            ✅ ONLY TAX_AMOUNT FIX
+//         ============================*/
+//         $today = Carbon::today()->toDateString();
+
+//         $incomeSummary = IncomeSummary::firstOrNew([
+//             'company_id' => $user->company_id,
+//             'project_id' => $proformaInvoice->project_id,
+//             'date'       => $today,
+//         ]);
+
+//         if ($incomeSummary->exists) {
+//             $incomeSummary->invoice_count += 1;
+//             $incomeSummary->total_amount  += $newPayment;
+//             $incomeSummary->tax_amount    += $gstAmount;   // ✅ FIXED
+//         } else {
+//             $incomeSummary->invoice_count = 1;
+//             $incomeSummary->total_amount  = $newPayment;
+//             $incomeSummary->pending_amount = 0;
+//             $incomeSummary->tax_amount    = $gstAmount;    // ✅ FIXED
+//         }
+
+//         $incomeSummary->save();
+
+//         DB::commit();
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Payment recorded successfully',
+//             'data' => [
+//                 'income_id'          => $income->id,
+//                 'payment_amount'     => $newPayment,
+//                 'gst_amount'         => $gstAmount,
+//                 'paid_amount'        => $newPaidAmount,
+//                 'pending_amount'     => $newPendingAmount,
+//                 'payment_status'     => $paymentStatus,
+//             ]
+//         ]);
+
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to record payment',
+//             'error'   => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+
 public function recordPayment(Request $request, $id)
 {
     $user = Auth::user();
@@ -730,9 +875,13 @@ public function recordPayment(Request $request, $id)
     DB::beginTransaction();
 
     try {
-        $proformaInvoice = ProformaInvoice::with('project')->findOrFail($id);
 
-        if ($proformaInvoice->company_id !== $user->company_id) {
+        /* ===========================
+           FETCH PROFORMA
+        ============================*/
+        $proforma = ProformaInvoice::with('project')->findOrFail($id);
+
+        if ($proforma->company_id !== $user->company_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access'
@@ -740,66 +889,132 @@ public function recordPayment(Request $request, $id)
         }
 
         $newPayment = round($validated['received_amount'], 2);
-        $remainingAmount = round($proformaInvoice->pending_amount, 2);
+        $pending    = round($proforma->pending_amount, 2);
 
-        if ($newPayment > $remainingAmount) {
+        if ($newPayment > $pending) {
             return response()->json([
                 'success' => false,
-                'message' => 'Payment amount exceeds pending amount'
+                'message' => 'Payment exceeds pending amount'
             ], 400);
         }
 
-        $order = Order::find($proformaInvoice->work_order_id);
-        $poNumber = $order ? $order->po_number : null;
 
         /* ===========================
-           GST CALCULATION (UNCHANGED)
+           GET ORDER / PO
         ============================*/
-        $basicAmount = round($newPayment / 1.18, 2);
-        $gstAmount   = round($newPayment - $basicAmount, 2);
+        $order = Order::find($proforma->work_order_id);
+        $poNumber = $order?->po_number ?? 'N/A';
+
 
         /* ===========================
-           INCOME TABLE (NO CHANGE)
+           ✅ GST FROM DETAILS TABLE
         ============================*/
+
+        $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->get();
+
+        if ($details->isEmpty()) {
+            throw new \Exception("Invoice details not found");
+        }
+
+        // Sum GST from items
+        $totalCGST = round($details->sum('cgst_amount'), 2);
+        $totalSGST = round($details->sum('sgst_amount'), 2);
+
+        $invoiceGST = round($totalCGST + $totalSGST, 2);
+
+        // Basic & Total
+        $invoiceBasic = $proforma->taxable_amount;
+        $invoiceTotal = $proforma->final_amount;
+
+        if ($invoiceTotal <= 0) {
+            throw new \Exception("Invalid invoice total");
+        }
+
+
+        /* ===========================
+           PROPORTIONAL CALCULATION
+        ============================*/
+
+        $ratio = $newPayment / $invoiceTotal;
+
+        $basicAmount = round($invoiceBasic * $ratio, 2);
+        $gstAmount   = round($invoiceGST * $ratio, 2);
+
+        $cgstAmount  = round($totalCGST * $ratio, 2);
+        $sgstAmount  = round($totalSGST * $ratio, 2);
+
+        // Future ready (IGST)
+        $igstAmount = 0;
+
+
+        /* ===========================
+           SAVE INCOME
+        ============================*/
+
         $income = Income::create([
-            'project_id'          => $proformaInvoice->project_id,
-            'order_id'            => $proformaInvoice->work_order_id,
-            'proforma_invoice_id' => $proformaInvoice->id,
+
+            'project_id'          => $proforma->project_id,
+            'order_id'            => $proforma->work_order_id,
+            'proforma_invoice_id' => $proforma->id,
+
             'company_id'          => $user->company_id,
-            'po_no'               => $poNumber ?? 'N/A',
-            'po_date'             => $proformaInvoice->invoice_date,
-            'invoice_no'          => $proformaInvoice->proforma_invoice_number,
-            'invoice_date'        => $proformaInvoice->invoice_date,
+
+            'po_no'               => $poNumber,
+            'po_date'             => $proforma->invoice_date,
+
+            'invoice_no'          => $proforma->proforma_invoice_number,
+            'invoice_date'        => $proforma->invoice_date,
+
             'basic_amount'        => $basicAmount,
             'gst_amount'          => $gstAmount,
+
+            'cgst_amount'         => $cgstAmount,
+            'sgst_amount'         => $sgstAmount,
+            'igst_amount'         => $igstAmount,
+
             'billing_amount'      => $newPayment,
             'received_amount'     => $newPayment,
-            'pending_amount'      => 0.00,
+            'pending_amount'      => 0,
+
             'received_by'         => $validated['received_by'],
             'payment_type'        => $validated['payment_type'],
+
             'senders_bank'        => $validated['senders_bank'],
             'receivers_bank'      => $validated['receivers_bank'],
-            'remark'              => $validated['remark'] ?? "Payment for PI #{$proformaInvoice->proforma_invoice_number}",
+
+            'remark'              => $validated['remark']
+                ?? "Payment for PI #{$proforma->proforma_invoice_number}",
+
             'payment_date'        => Carbon::today()->toDateString(),
         ]);
 
-        /* ===========================
-           PROFORMA UPDATE
-        ============================*/
-        $newPaidAmount = round($proformaInvoice->paid_amount + $newPayment, 2);
-        $newPendingAmount = round($proformaInvoice->final_amount - $newPaidAmount, 2);
 
-        $paymentStatus = 'partial';
-        if ($newPendingAmount <= 0) {
-            $paymentStatus = 'paid';
+        /* ===========================
+           UPDATE PROFORMA
+        ============================*/
+
+        $newPaid    = round($proforma->paid_amount + $newPayment, 2);
+        $newPending = round($proforma->final_amount - $newPaid, 2);
+
+        $status = 'partial';
+
+        if ($newPending <= 0) {
+            $status = 'paid';
+            $newPending = 0;
         }
 
-        $proformaInvoice->update([
-            'paid_amount'    => $newPaidAmount,
-            'pending_amount' => $newPendingAmount,
-            'payment_status' => $paymentStatus,
+        $proforma->update([
+
+            'paid_amount'    => $newPaid,
+            'pending_amount' => $newPending,
+            'payment_status' => $status,
             'updated_by'     => $user->id,
         ]);
+
+
+        /* ===========================
+           UPDATE ORDER
+        ============================*/
 
         if ($order) {
             $order->update([
@@ -808,55 +1023,85 @@ public function recordPayment(Request $request, $id)
             ]);
         }
 
+
         /* ===========================
-           INCOME SUMMARY
-           ✅ ONLY TAX_AMOUNT FIX
+           UPDATE INCOME SUMMARY
         ============================*/
+
         $today = Carbon::today()->toDateString();
 
-        $incomeSummary = IncomeSummary::firstOrNew([
+        $summary = IncomeSummary::firstOrNew([
+
             'company_id' => $user->company_id,
-            'project_id' => $proformaInvoice->project_id,
+            'project_id' => $proforma->project_id,
             'date'       => $today,
         ]);
 
-        if ($incomeSummary->exists) {
-            $incomeSummary->invoice_count += 1;
-            $incomeSummary->total_amount  += $newPayment;
-            $incomeSummary->tax_amount    += $gstAmount;   // ✅ FIXED
+        if ($summary->exists) {
+
+            $summary->invoice_count += 1;
+            $summary->total_amount  += $newPayment;
+            $summary->tax_amount    += $gstAmount;
+
         } else {
-            $incomeSummary->invoice_count = 1;
-            $incomeSummary->total_amount  = $newPayment;
-            $incomeSummary->pending_amount = 0;
-            $incomeSummary->tax_amount    = $gstAmount;    // ✅ FIXED
+
+            $summary->invoice_count  = 1;
+            $summary->total_amount   = $newPayment;
+            $summary->pending_amount = 0;
+            $summary->tax_amount     = $gstAmount;
         }
 
-        $incomeSummary->save();
+        $summary->save();
+
 
         DB::commit();
 
+
+        /* ===========================
+           RESPONSE
+        ============================*/
+
         return response()->json([
+
             'success' => true,
             'message' => 'Payment recorded successfully',
+
             'data' => [
-                'income_id'          => $income->id,
-                'payment_amount'     => $newPayment,
-                'gst_amount'         => $gstAmount,
-                'paid_amount'        => $newPaidAmount,
-                'pending_amount'     => $newPendingAmount,
-                'payment_status'     => $paymentStatus,
+
+                'income_id'      => $income->id,
+
+                'payment_amount' => $newPayment,
+
+                'basic_amount'   => $basicAmount,
+                'gst_amount'     => $gstAmount,
+
+                'cgst_amount'    => $cgstAmount,
+                'sgst_amount'    => $sgstAmount,
+                'igst_amount'    => $igstAmount,
+
+                'paid_amount'    => $newPaid,
+                'pending_amount' => $newPending,
+
+                'status'         => $status,
             ]
         ]);
 
+
     } catch (\Exception $e) {
+
         DB::rollBack();
+
         return response()->json([
+
             'success' => false,
             'message' => 'Failed to record payment',
+
             'error'   => $e->getMessage()
+
         ], 500);
     }
 }
+
 
 
 
