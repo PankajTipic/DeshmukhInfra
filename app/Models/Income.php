@@ -55,4 +55,9 @@ class Income extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    public function proformaInvoice()
+    {
+        return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id');
+    }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\ProformaInvoice; 
 use App\Models\Order;
+use App\Models\ProformaInvoiceDetail;
 
 class IncomeController extends Controller
 {
@@ -70,6 +71,8 @@ class IncomeController extends Controller
             ]
         ]);
     }
+
+
 
     /**
      * CREATE - Enhanced to support order_id linking and payment_date
@@ -140,139 +143,7 @@ class IncomeController extends Controller
         });
     }
 
-    /**
-     * UPDATE - Enhanced with better order synchronization and payment_date handling
-     */
-    // public function update(Request $request, $id)
-    // {
-    //     return DB::transaction(function () use ($request, $id) {
-    //         $income = Income::findOrFail($id);
-
-    //         $validated = $request->validate([
-    //             'project_id'      => 'sometimes|integer',
-    //             'order_id'        => 'sometimes|nullable|integer',
-    //             'po_no'           => 'sometimes|string',
-    //             'po_date'         => 'sometimes|date',
-    //             'invoice_no'      => 'sometimes|string',
-    //             'invoice_date'    => 'sometimes|date',
-    //             'basic_amount'    => 'sometimes|numeric',
-    //             'gst_amount'      => 'sometimes|numeric',
-    //             'billing_amount'  => 'sometimes|numeric',
-    //             'received_amount' => 'sometimes|numeric',
-    //             'received_by'     => 'sometimes|string',
-    //             'senders_bank'    => 'sometimes|string',
-    //             'payment_type'    => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-    //             'receivers_bank'  => 'sometimes|string',
-    //             'pending_amount'  => 'sometimes|numeric',
-    //             'remark'          => 'nullable|string',
-    //             'payment_date'    => 'sometimes|nullable|date',
-    //         ]);
-
-    //         // Store old values for summary update
-    //         $oldBillingAmount = $income->billing_amount;
-    //         $oldPendingAmount = $income->pending_amount;
-    //         $oldReceivedAmount = $income->received_amount;
-    //         $oldPaymentDate = $income->payment_date ?? Carbon::parse($income->created_at)->toDateString();
-    //         $newPaymentDate = $validated['payment_date'] ?? $oldPaymentDate;
-
-    //         // If payment_date changed, we need to update summaries on both dates
-    //         $paymentDateChanged = ($oldPaymentDate !== $newPaymentDate);
-
-    //         // Remove from old date summary
-    //         $oldSummary = IncomeSummary::where('company_id', $income->company_id)
-    //             ->where('project_id', $income->project_id)
-    //             ->whereDate('date', $oldPaymentDate)
-    //             ->first();
-
-    //         if ($oldSummary) {
-    //             $oldSummary->total_amount -= $oldBillingAmount;
-    //             $oldSummary->pending_amount -= $oldPendingAmount;
-    //             if ($paymentDateChanged) {
-    //                 $oldSummary->decrement('invoice_count');
-    //             }
-                
-    //             // Delete the summary if it's empty after update
-    //             if ($oldSummary->invoice_count <= 0 && $oldSummary->total_amount <= 0) {
-    //                 $oldSummary->delete();
-    //             } else {
-    //                 $oldSummary->save();
-    //             }
-    //         }
-
-    //         // Update the income record
-    //         $income->update($validated);
-
-    //         // Add to new date summary (or same date if not changed)
-    //         if ($paymentDateChanged) {
-    //             // Only update new summary if date actually changed
-    //             $newSummary = IncomeSummary::where('company_id', $income->company_id)
-    //                 ->where('project_id', $income->project_id)
-    //                 ->whereDate('date', $newPaymentDate)
-    //                 ->first();
-
-    //             if ($newSummary) {
-    //                 $newSummary->total_amount += $income->billing_amount;
-    //                 $newSummary->pending_amount += $income->pending_amount;
-    //                 $newSummary->increment('invoice_count');
-    //                 $newSummary->save();
-    //             } else {
-    //                 // Create new summary for the new date
-    //                 IncomeSummary::create([
-    //                     'company_id'     => $income->company_id,
-    //                     'project_id'     => $income->project_id,
-    //                     'date'           => $newPaymentDate,
-    //                     'total_amount'   => $income->billing_amount,
-    //                     'pending_amount' => $income->pending_amount,
-    //                     'invoice_count'  => 1
-    //                 ]);
-    //             }
-    //         } else {
-    //             // Date didn't change, just update amounts on the same date
-    //             if ($oldSummary) {
-    //                 $oldSummary->total_amount += $income->billing_amount;
-    //                 $oldSummary->pending_amount += $income->pending_amount;
-    //                 $oldSummary->save();
-    //             }
-    //         }
-
-    //         // If this income is linked to an order and received_amount changed, sync with order
-    //         if ($income->order_id && isset($validated['received_amount'])) {
-    //             $newReceivedAmount = $validated['received_amount'];
-    //             $receivedAmountDifference = $newReceivedAmount - $oldReceivedAmount;
-                
-    //             if ($receivedAmountDifference != 0) {
-    //                 // Call the order controller to update the order's paid amount
-    //                 try {
-    //                     $orderController = new \App\Http\Controllers\OrderController();
-    //                     $orderUpdateRequest = new Request([
-    //                         'paidAmount' => $newReceivedAmount,
-    //                         'incomeId' => $income->id,
-    //                         'oldAmount' => $oldReceivedAmount
-    //                     ]);
-                        
-    //                     $orderController->updatePaymentDetails($orderUpdateRequest, $income->order_id);
-    //                 } catch (\Exception $e) {
-    //                     // Log error but don't fail the income update
-    //                     \Log::warning("Failed to sync order payment after income update", [
-    //                         'income_id' => $income->id,
-    //                         'order_id' => $income->order_id,
-    //                         'error' => $e->getMessage()
-    //                     ]);
-    //                 }
-    //             }
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Income updated successfully',
-    //             'data'    => $income
-    //         ], 200);
-    //     });
-    // }
-
-
-
-
+   
 
 
 
@@ -282,276 +153,7 @@ class IncomeController extends Controller
 
 //         $income = Income::findOrFail($id);
 
-//         $validated = $request->validate([
-//             'project_id'      => 'sometimes|integer',
-//             'order_id'        => 'sometimes|nullable|integer',
-//             'po_no'           => 'sometimes|string',
-//             'po_date'         => 'sometimes|date',
-//             'invoice_no'      => 'sometimes|string',
-//             'invoice_date'    => 'sometimes|date',
-//             'basic_amount'    => 'sometimes|numeric',
-//             'gst_amount'      => 'sometimes|numeric',
-//             'billing_amount'  => 'sometimes|numeric',
-//             'received_amount' => 'sometimes|numeric',
-//             'received_by'     => 'sometimes|string',
-//             'senders_bank'    => 'sometimes|string',
-//             'payment_type'    => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-//             'receivers_bank'  => 'sometimes|string',
-//             'pending_amount'  => 'sometimes|numeric',
-//             'remark'          => 'nullable|string',
-//             'payment_date'    => 'sometimes|nullable|date',
-//         ]);
-
-//         // ------------------------------------
-//         // OLD DATE (before update)
-//         // ------------------------------------
-//         $oldDate = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::parse($income->created_at)->toDateString();
-
-//         // ------------------------------------
-//         // UPDATE MAIN INCOME ROW
-//         // ------------------------------------
-//         $income->update($validated);
-
-//         // ------------------------------------
-//         // NEW DATE (after update)
-//         // ------------------------------------
-//         $newDate = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::today()->toDateString();
-
-//         // ------------------------------------
-//         // REBUILD SUMMARY (OLD + NEW DATE)
-//         // Single unified logic
-//         // ------------------------------------
-//         foreach ([$oldDate, $newDate] as $date) {
-
-//             // Delete old summary
-//             IncomeSummary::where('company_id', $income->company_id)
-//                 ->where('project_id', $income->project_id)
-//                 ->whereDate('date', $date)
-//                 ->delete();
-
-//             // Recalculate totals
-//             $data = Income::where('company_id', $income->company_id)
-//                 ->where('project_id', $income->project_id)
-//                 ->whereDate('payment_date', $date)
-//                 ->selectRaw('
-//                     SUM(received_amount) as total_received,
-//                     SUM(pending_amount) as total_pending,
-//                     COUNT(*) as total_invoices
-//                 ')
-//                 ->first();
-
-//             if ($data && $data->total_invoices > 0) {
-//                 IncomeSummary::create([
-//                     'company_id'     => $income->company_id,
-//                     'project_id'     => $income->project_id,
-//                     'date'           => $date,
-//                     'total_amount'   => $data->total_received,
-//                     'pending_amount' => $data->total_pending,
-//                     'invoice_count'  => $data->total_invoices
-//                 ]);
-//             }
-//         }
-
-//         // ------------------------------------
-//         // PROFORMA INVOICE UPDATE
-//         // ------------------------------------
-//         if ($income->proforma_invoice_id) {
-
-//             $proforma = ProformaInvoice::find($income->proforma_invoice_id);
-
-//             if ($proforma) {
-
-//                 $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
-//                     ->sum('received_amount');
-
-//                 $proforma->paid_amount     = $totalReceived;
-//                 $proforma->pending_amount  = $proforma->final_amount - $totalReceived;
-
-//                 if ($proforma->pending_amount <= 0) {
-//                     $proforma->payment_status = "paid";
-//                 } elseif ($proforma->paid_amount > 0) {
-//                     $proforma->payment_status = "partial";
-//                 } else {
-//                     $proforma->payment_status = "pending";
-//                 }
-
-//                 $proforma->save();
-//             }
-//         }
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => 'Income updated successfully',
-//             'data'    => $income
-//         ], 200);
-//     });
-// }
-
-
-
-
-
-
-
-// public function update(Request $request, $id)
-// {
-//     return DB::transaction(function () use ($request, $id) {
-
-//         $income = Income::findOrFail($id);
-
-//         $validated = $request->validate([
-//             'project_id'      => 'sometimes|integer',
-//             'order_id'        => 'sometimes|nullable|integer',
-//             'po_no'           => 'sometimes|string',
-//             'po_date'         => 'sometimes|date',
-//             'invoice_no'      => 'sometimes|string',
-//             'invoice_date'    => 'sometimes|date',
-//             'basic_amount'    => 'sometimes|numeric',
-//             'gst_amount'      => 'sometimes|numeric',
-
-//             // ❗ YOU TOLD: DO NOT USE billing_amount — so we keep it but never use it
-//             'billing_amount'  => 'sometimes|numeric',
-
-//             // ✔ ALWAYS use received_amount
-//             'received_amount' => 'sometimes|numeric',
-
-//             'received_by'     => 'sometimes|string',
-//             'senders_bank'    => 'sometimes|string',
-//             'payment_type'    => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-//             'receivers_bank'  => 'sometimes|string',
-//             'pending_amount'  => 'sometimes|numeric',
-//             'remark'          => 'nullable|string',
-//             'payment_date'    => 'sometimes|nullable|date',
-//         ]);
-
-//         // ------------------------------
-//         // OLD DATE
-//         // ------------------------------
-//         $oldDate = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::parse($income->created_at)->toDateString();
-
-//         // ------------------------------
-//         // UPDATE INCOME TABLE
-//         // ------------------------------
-//         $income->update($validated);
-
-//         // ------------------------------
-//         // NEW DATE
-//         // ------------------------------
-//         $newDate = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::today()->toDateString();
-
-//         // ------------------------------
-//         // REBUILD SUMMARY FOR OLD + NEW DATE
-//         // ------------------------------
-//         foreach ([$oldDate, $newDate] as $date) {
-
-//             IncomeSummary::where('company_id', $income->company_id)
-//                 ->where('project_id', $income->project_id)
-//                 ->whereDate('date', $date)
-//                 ->delete();
-
-//             $data = Income::where('company_id', $income->company_id)
-//                 ->where('project_id', $income->project_id)
-//                 ->whereDate('payment_date', $date)
-//                 ->selectRaw('
-//                     SUM(received_amount) as total_received,
-//                     SUM(pending_amount) as total_pending,
-//                     COUNT(*) as total_invoices
-//                 ')
-//                 ->first();
-
-//             if ($data && $data->total_invoices > 0) {
-//                 IncomeSummary::create([
-//                     'company_id'     => $income->company_id,
-//                     'project_id'     => $income->project_id,
-//                     'date'           => $date,
-//                     'total_amount'   => $data->total_received, // ✔ RECEIVED ONLY
-//                     'pending_amount' => $data->total_pending,
-//                     'invoice_count'  => $data->total_invoices
-//                 ]);
-//             }
-//         }
-
-//         // ------------------------------
-//         // UPDATE ORDER TABLE
-//         // ------------------------------
-//         if ($income->order_id) {
-
-//             $order = Order::find($income->order_id);
-
-//             if ($order) {
-
-//                 // ✔ Calculate total paid using ONLY received_amount
-//                 $totalPaid = Income::where('order_id', $income->order_id)
-//                     ->sum('received_amount');
-
-//                 $order->paidAmount = $totalPaid;
-
-//                 // ✔ Apply correct orderStatus logic (payment-based)
-//                 if ($totalPaid >= $order->finalAmount) {
-//                     $order->orderStatus = 1; // fully paid
-//                 } elseif ($totalPaid > 0) {
-//                     $order->orderStatus = 2; // partial paid
-//                 } else {
-//                     $order->orderStatus = 3; // pending
-//                 }
-
-//                 $order->save();
-//             }
-//         }
-
-//         // ------------------------------
-//         // UPDATE PROFORMA INVOICE
-//         // ------------------------------
-//         if ($income->proforma_invoice_id) {
-
-//             $proforma = ProformaInvoice::find($income->proforma_invoice_id);
-
-//             if ($proforma) {
-
-//                 $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
-//                     ->sum('received_amount');
-
-//                 $proforma->paid_amount     = $totalReceived;
-//                 $proforma->pending_amount  = $proforma->final_amount - $totalReceived;
-
-//                 if ($proforma->pending_amount <= 0) {
-//                     $proforma->payment_status = "paid";
-//                 } elseif ($proforma->paid_amount > 0) {
-//                     $proforma->payment_status = "partial";
-//                 } else {
-//                     $proforma->payment_status = "pending";
-//                 }
-
-//                 $proforma->save();
-//             }
-//         }
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => 'Income updated successfully',
-//             'data'    => $income
-//         ], 200);
-//     });
-// }
-
-
-
-
-// public function update(Request $request, $id)
-// {
-//     return DB::transaction(function () use ($request, $id) {
-
-//         $income = Income::findOrFail($id);
-
-//         // Validate
+//         // Validate fields
 //         $validated = $request->validate([
 //             'project_id'      => 'sometimes|integer',
 //             'order_id'        => 'sometimes|nullable|integer',
@@ -574,9 +176,9 @@ class IncomeController extends Controller
 
 //         $validated['company_id'] = $income->company_id;
 
-//         // OLD values before update
-//         $old_project_id = $income->project_id;
-//         $old_company_id = $income->company_id;
+//         // ---------------- OLD VALUES ----------------
+//         $old_company = $income->company_id;
+//         $old_project = $income->project_id;
 
 //         $old_date = $income->payment_date
 //             ? Carbon::parse($income->payment_date)->toDateString()
@@ -585,9 +187,9 @@ class IncomeController extends Controller
 //         // Update income
 //         $income->update($validated);
 
-//         // NEW values after update
-//         $new_project_id = $income->project_id;
-//         $new_company_id = $income->company_id;
+//         // ---------------- NEW VALUES ----------------
+//         $new_company = $income->company_id;
+//         $new_project = $income->project_id;
 
 //         $new_date = $income->payment_date
 //             ? Carbon::parse($income->payment_date)->toDateString()
@@ -595,52 +197,103 @@ class IncomeController extends Controller
 
 //         /*
 //         |--------------------------------------------------------------------------
-//         | UPDATE OLD SUMMARY
+//         | PERFECT FIX: ALWAYS REBUILD SUMMARY FOR OLD + NEW DATE
 //         |--------------------------------------------------------------------------
 //         */
-//         $old_total = Income::where('company_id', $old_company_id)
-//             ->where('project_id', $old_project_id)
-//             ->whereDate('payment_date', $old_date)
-//             ->sum('received_amount');
 
-//         if ($old_total > 0) {
-//             IncomeSummary::updateOrCreate(
-//                 [
-//                     'company_id' => $old_company_id,
-//                     'project_id' => $old_project_id,
-//                     'date'       => $old_date
-//                 ],
-//                 [
-//                     'total_amount' => $old_total
-//                 ]
-//             );
-//         } else {
-//             IncomeSummary::where('company_id', $old_company_id)
-//                 ->where('project_id', $old_project_id)
-//                 ->whereDate('date', $old_date)
+//         $rebuildTargets = [
+//             [$old_company, $old_project, $old_date],
+//             [$new_company, $new_project, $new_date],
+//         ];
+
+//         foreach ($rebuildTargets as [$companyId, $projectId, $date]) {
+
+//             // Remove old summary for this date/project/company
+//             IncomeSummary::where('company_id', $companyId)
+//                 ->where('project_id', $projectId)
+//                 ->whereDate('date', $date)
 //                 ->delete();
+
+//             // Get fresh totals
+//             $totals = Income::where('company_id', $companyId)
+//                 ->where('project_id', $projectId)
+//                 ->whereDate('payment_date', $date)
+//                 ->selectRaw('
+//                     SUM(received_amount) as total_received,
+//                     SUM(pending_amount) as total_pending,
+//                     COUNT(*) as total_invoices
+//                 ')
+//                 ->first();
+
+//             // Only insert if data exists
+//             if ($totals && $totals->total_invoices > 0) {
+//                 IncomeSummary::create([
+//                     'company_id'     => $companyId,
+//                     'project_id'     => $projectId,
+//                     'date'           => $date,
+//                     'total_amount'   => $totals->total_received,  // RECEIVED ONLY
+//                     'pending_amount' => $totals->total_pending,
+//                     'invoice_count'  => $totals->total_invoices,
+//                 ]);
+//             }
 //         }
 
 //         /*
 //         |--------------------------------------------------------------------------
-//         | UPDATE NEW SUMMARY
+//         | UPDATE ORDER TABLE
 //         |--------------------------------------------------------------------------
 //         */
-//         $new_total = Income::where('company_id', $new_company_id)
-//             ->where('project_id', $new_project_id)
-//             ->whereDate('payment_date', $new_date)
-//             ->sum('received_amount');
+//         if ($income->order_id) {
 
-//         IncomeSummary::updateOrCreate(
-//             [
-//                 'company_id' => $new_company_id,
-//                 'project_id' => $new_project_id,
-//                 'date'       => $new_date
-//             ],
-//             [
-//                 'total_amount' => $new_total
-//             ]
-//         );
+//             $order = Order::find($income->order_id);
+
+//             if ($order) {
+
+//                 $totalPaid = Income::where('order_id', $income->order_id)
+//                     ->sum('received_amount');
+
+//                 $order->paidAmount = $totalPaid;
+
+//                 if ($totalPaid >= $order->finalAmount) {
+//                     $order->orderStatus = 1;  // Fully Paid
+//                 } elseif ($totalPaid > 0) {
+//                     $order->orderStatus = 2;  // Partial Paid
+//                 } else {
+//                     $order->orderStatus = 3;  // Pending
+//                 }
+
+//                 $order->save();
+//             }
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | UPDATE PROFORMA INVOICE
+//         |--------------------------------------------------------------------------
+//         */
+//         if ($income->proforma_invoice_id) {
+
+//             $proforma = ProformaInvoice::find($income->proforma_invoice_id);
+
+//             if ($proforma) {
+
+//                 $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
+//                     ->sum('received_amount');
+
+//                 $proforma->paid_amount    = $totalReceived;
+//                 $proforma->pending_amount = $proforma->final_amount - $totalReceived;
+
+//                 if ($proforma->pending_amount <= 0) {
+//                     $proforma->payment_status = "paid";
+//                 } elseif ($proforma->paid_amount > 0) {
+//                     $proforma->payment_status = "partial";
+//                 } else {
+//                     $proforma->payment_status = "pending";
+//                 }
+
+//                 $proforma->save();
+//             }
+//         }
 
 //         return response()->json([
 //             'success' => true,
@@ -649,162 +302,192 @@ class IncomeController extends Controller
 //         ]);
 //     });
 // }
+
+
 public function update(Request $request, $id)
 {
     return DB::transaction(function () use ($request, $id) {
 
         $income = Income::findOrFail($id);
 
-        // Validate fields
+        $isLinkedToProforma = (bool) $income->proforma_invoice_id;
+        $isLinkedToOrder    = (bool) $income->order_id;
+
+        // Removed: no longer block decreasing received_amount
+        // You can still add other protections if needed (e.g. only admin can decrease, or log changes)
+
+        // ── Validation ────────────────────────────────────────────────────────────────
         $validated = $request->validate([
-            'project_id'      => 'sometimes|integer',
-            'order_id'        => 'sometimes|nullable|integer',
-            'po_no'           => 'sometimes|string',
-            'po_date'         => 'sometimes|date',
-            'invoice_no'      => 'sometimes|string',
-            'invoice_date'    => 'sometimes|date',
-            'basic_amount'    => 'sometimes|numeric',
-            'gst_amount'      => 'sometimes|numeric',
-            'billing_amount'  => 'sometimes|numeric',
-            'received_amount' => 'sometimes|numeric',
-            'received_by'     => 'sometimes|string',
-            'senders_bank'    => 'sometimes|string',
-            'payment_type'    => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-            'receivers_bank'  => 'sometimes|string',
-            'pending_amount'  => 'sometimes|numeric',
-            'remark'          => 'nullable|string',
-            'payment_date'    => 'sometimes|nullable|date',
+            'project_id'          => 'sometimes|integer|exists:projects,id',
+            'order_id'            => 'sometimes|nullable|integer|exists:orders,id',
+            'proforma_invoice_id' => 'sometimes|nullable|integer|exists:proforma_invoices,id',
+            'po_no'               => 'sometimes|string|max:100',
+            'po_date'             => 'sometimes|nullable|date',
+            'invoice_no'          => 'sometimes|string|max:100',
+            'invoice_date'        => 'sometimes|nullable|date',
+            'received_amount'     => 'sometimes|numeric|min:0',
+            'received_by'         => 'sometimes|string|max:255',
+            'senders_bank'        => 'sometimes|string|max:255',
+            'receivers_bank'      => 'sometimes|string|max:255',
+            'payment_type'        => 'sometimes|in:imps,rtgs,upi,cash,cheque',
+            'remark'              => 'nullable|string|max:1000',
+            'payment_date'        => 'sometimes|nullable|date',
         ]);
 
-        $validated['company_id'] = $income->company_id;
+        $validated['company_id'] = $income->company_id; // immutable
 
-        // ---------------- OLD VALUES ----------------
-        $old_company = $income->company_id;
-        $old_project = $income->project_id;
+        // ── Remember old values for summary rebuild ───────────────────────────────────
+        $oldPaymentDate = $income->payment_date
+            ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
+            : Carbon::parse($income->created_at)->startOfDay()->toDateString();
 
-        $old_date = $income->payment_date
-            ? Carbon::parse($income->payment_date)->toDateString()
-            : Carbon::parse($income->created_at)->toDateString();
-
-        // Update income
-        $income->update($validated);
-
-        // ---------------- NEW VALUES ----------------
-        $new_company = $income->company_id;
-        $new_project = $income->project_id;
-
-        $new_date = $income->payment_date
-            ? Carbon::parse($income->payment_date)->toDateString()
-            : Carbon::today()->toDateString();
-
-        /*
-        |--------------------------------------------------------------------------
-        | PERFECT FIX: ALWAYS REBUILD SUMMARY FOR OLD + NEW DATE
-        |--------------------------------------------------------------------------
-        */
-
-        $rebuildTargets = [
-            [$old_company, $old_project, $old_date],
-            [$new_company, $new_project, $new_date],
+        $old = [
+            'company_id' => $income->company_id,
+            'project_id' => $income->project_id,
+            'date'       => $oldPaymentDate,
+            'received'   => $income->received_amount,
+            'gst'        => $income->gst_amount ?? 0,
         ];
 
-        foreach ($rebuildTargets as [$companyId, $projectId, $date]) {
+        // ── If linked to proforma → always recalculate GST split proportionally ───────
+        $proformaId = $validated['proforma_invoice_id'] ?? $income->proforma_invoice_id;
 
-            // Remove old summary for this date/project/company
+        if ($isLinkedToProforma && $proformaId) {
+            $proforma = ProformaInvoice::find($proformaId);
+            if (!$proforma) {
+                throw new \Exception("Proforma invoice not found");
+            }
+
+            $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->get();
+            if ($details->isEmpty()) {
+                throw new \Exception("Proforma details not found");
+            }
+
+            $totalCgst    = round($details->sum('cgst_amount'), 2);
+            $totalSgst    = round($details->sum('sgst_amount'), 2);
+            $totalGst     = round($totalCgst + $totalSgst, 2);
+            $invoiceTotal = round($proforma->final_amount, 2);
+
+            if ($invoiceTotal <= 0) {
+                throw new \Exception("Invalid proforma total");
+            }
+
+            // Use new received amount if provided, otherwise keep old
+            $received = isset($validated['received_amount'])
+                ? round($validated['received_amount'], 2)
+                : $income->received_amount;
+
+            // If received_amount becomes 0 or very small → ratio becomes small → GST becomes small
+            $ratio = $invoiceTotal > 0 ? $received / $invoiceTotal : 0;
+
+            $validated['basic_amount']    = round($received - ($totalGst * $ratio), 2);
+            $validated['gst_amount']      = round($totalGst * $ratio, 2);
+            $validated['cgst_amount']     = round($totalCgst * $ratio, 2);
+            $validated['sgst_amount']     = round($totalSgst * $ratio, 2);
+            $validated['igst_amount']     = 0;
+            $validated['billing_amount']  = $received;
+            $validated['received_amount'] = $received;
+            $validated['pending_amount']  = 0;
+        }
+
+        // ── Perform update ────────────────────────────────────────────────────────────
+        $income->update($validated);
+
+        // ── New values for summary rebuild ────────────────────────────────────────────
+        $newPaymentDate = $income->payment_date
+            ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
+            : Carbon::today()->startOfDay()->toDateString();
+
+        $new = [
+            'company_id' => $income->company_id,
+            'project_id' => $income->project_id,
+            'date'       => $newPaymentDate,
+            'received'   => $income->received_amount,
+            'gst'        => $income->gst_amount ?? 0,
+        ];
+
+        // ── Rebuild IncomeSummary for affected dates ──────────────────────────────────
+        $datesToRebuild = array_unique([
+            [$old['company_id'], $old['project_id'], $old['date']],
+            [$new['company_id'], $new['project_id'], $new['date']],
+        ], SORT_REGULAR);
+
+        foreach ($datesToRebuild as [$companyId, $projectId, $date]) {
             IncomeSummary::where('company_id', $companyId)
                 ->where('project_id', $projectId)
                 ->whereDate('date', $date)
                 ->delete();
 
-            // Get fresh totals
             $totals = Income::where('company_id', $companyId)
                 ->where('project_id', $projectId)
                 ->whereDate('payment_date', $date)
                 ->selectRaw('
-                    SUM(received_amount) as total_received,
-                    SUM(pending_amount) as total_pending,
-                    COUNT(*) as total_invoices
+                    SUM(received_amount) AS total_received,
+                    SUM(pending_amount)  AS total_pending,
+                    SUM(gst_amount)      AS total_gst,
+                    COUNT(*)             AS invoice_count
                 ')
                 ->first();
 
-            // Only insert if data exists
-            if ($totals && $totals->total_invoices > 0) {
+            if ($totals && $totals->invoice_count > 0) {
                 IncomeSummary::create([
                     'company_id'     => $companyId,
                     'project_id'     => $projectId,
                     'date'           => $date,
-                    'total_amount'   => $totals->total_received,  // RECEIVED ONLY
-                    'pending_amount' => $totals->total_pending,
-                    'invoice_count'  => $totals->total_invoices,
+                    'total_amount'   => round($totals->total_received ?? 0, 2),
+                    'pending_amount' => round($totals->total_pending ?? 0, 2),
+                    'tax_amount'     => round($totals->total_gst ?? 0, 2),
+                    'invoice_count'  => (int) $totals->invoice_count,
                 ]);
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | UPDATE ORDER TABLE
-        |--------------------------------------------------------------------------
-        */
-        if ($income->order_id) {
-
-            $order = Order::find($income->order_id);
-
-            if ($order) {
-
-                $totalPaid = Income::where('order_id', $income->order_id)
-                    ->sum('received_amount');
-
-                $order->paidAmount = $totalPaid;
-
-                if ($totalPaid >= $order->finalAmount) {
-                    $order->orderStatus = 1;  // Fully Paid
-                } elseif ($totalPaid > 0) {
-                    $order->orderStatus = 2;  // Partial Paid
-                } else {
-                    $order->orderStatus = 3;  // Pending
-                }
-
-                $order->save();
-            }
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | UPDATE PROFORMA INVOICE
-        |--------------------------------------------------------------------------
-        */
+        // ── Refresh linked Proforma totals ────────────────────────────────────────────
         if ($income->proforma_invoice_id) {
-
             $proforma = ProformaInvoice::find($income->proforma_invoice_id);
-
             if ($proforma) {
-
                 $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
                     ->sum('received_amount');
 
-                $proforma->paid_amount    = $totalReceived;
-                $proforma->pending_amount = $proforma->final_amount - $totalReceived;
+                $proforma->paid_amount    = round($totalReceived, 2);
+                $proforma->pending_amount = round(max(0, $proforma->final_amount - $totalReceived), 2);
 
-                if ($proforma->pending_amount <= 0) {
-                    $proforma->payment_status = "paid";
-                } elseif ($proforma->paid_amount > 0) {
-                    $proforma->payment_status = "partial";
-                } else {
-                    $proforma->payment_status = "pending";
-                }
+                $proforma->payment_status = match (true) {
+                    $proforma->pending_amount <= 0 => 'paid',
+                    $proforma->paid_amount > 0     => 'partial',
+                    default                        => 'pending',
+                };
 
                 $proforma->save();
             }
         }
 
+        // ── Refresh linked Order totals ───────────────────────────────────────────────
+        if ($income->order_id) {
+            $order = Order::find($income->order_id);
+            if ($order) {
+                $totalPaid = Income::where('order_id', $income->order_id)
+                    ->sum('received_amount');
+
+                $order->paidAmount = round($totalPaid, 2);
+
+                $order->orderStatus = match (true) {
+                    $totalPaid >= ($order->finalAmount ?? 0) => 1, // fully paid
+                    $totalPaid > 0                           => 2, // partial
+                    default                                  => 3, // pending
+                };
+
+                $order->save();
+            }
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Income updated successfully',
-            'data' => $income
+            'message' => 'Income record updated successfully',
+            'data'    => $income->fresh()->load(['order', 'proformaInvoice'])
         ]);
     });
 }
-
 
 
 
