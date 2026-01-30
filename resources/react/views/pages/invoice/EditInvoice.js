@@ -282,6 +282,7 @@ const EditInvoice = () => {
             price: Number(item.price || 0),
             total_price: Number(item.total_price || 0),
             remark: item.remark || '',
+            work_sub_description: item.work_sub_description || '',
             gst_percent: item.gst_percent !== null && item.gst_percent !== undefined 
               ? Number(item.gst_percent) 
               : 18,

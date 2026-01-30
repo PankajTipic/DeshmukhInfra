@@ -559,6 +559,15 @@ const PurchaseVendorReport = () => {
  const [appliedFromDate, setAppliedFromDate] = useState("");     // actually sent to API
   const [appliedToDate,   setAppliedToDate]   = useState("");
 
+  // Add near other useState declarations
+const [projects, setProjects] = useState([]);
+const [filterProject, setFilterProject] = useState(null);   // selected project object {value, label}
+const [appliedProjectId, setAppliedProjectId] = useState(null);  // actually sent to API
+
+const [materials, setMaterials] = useState([]);              // array of strings
+const [selectedMaterial, setSelectedMaterial] = useState(null);  // {value, label} or null
+const [appliedMaterialName, setAppliedMaterialName] = useState(null); // string sent to API
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -590,69 +599,42 @@ const PurchaseVendorReport = () => {
     fetchVendors();
   }, [location.state?.vendorId]);
 
-  // ────────────────────────────────────────────────
-  // 2. Fetch BOTH datasets when vendor changes
-  // ────────────────────────────────────────────────
-  // useEffect(() => {
-  //   if (!selectedVendor?.value) {
-  //     setData(null);
-  //     setLedgerData(null);
-  //     setError("");
-  //     return;
-  //   }
 
-  //   const fetchBoth = async () => {
-  //     setData(null);
-  //     setLedgerData(null);
-  //     setError("");
-  //     setLoading(true);
+  useEffect(() => {
+  const fetchProjects = async () => {
+    try {
+      const res = await getAPICall("/api/projects");
+      setProjects(res || []);
+    } catch (err) {
+      console.error("Failed to load projects", err);
+      // Optional: show toast/notification
+      // showToast('danger', 'Failed to load projects');
+    }
+  };
 
-  //     try {
-  //       const vendorId = selectedVendor.value;
+  fetchProjects();
+}, []);
 
-  //       // Project-wise purchases & payments
-  //       const purchaseRes = await getAPICall(`/api/vendor-wise-payments?vendor_id=${vendorId}`);
-  //       const purchaseData = purchaseRes.data;
+useEffect(() => {
+  const fetchMaterials = async () => {
+    try {
+      const res = await getAPICall("/api/materialList");
+      // res is array like ["Ciment", "Sand (Updated)", "Pipes", ...]
+      const materialOptions = (res || []).map(name => ({
+        value: name,
+        label: name,
+      }));
 
-  //       if (purchaseData?.vendor_details) {
-  //         setData(purchaseData);
-  //       }
+      setMaterials(materialOptions);
+    } catch (err) {
+      console.error("Failed to load materials", err);
+      // Optional: setError("Could not load material list");
+    }
+  };
 
-  //       // Ledger / date-wise
-  //       // const ledgerRes = await getAPICall(`/api/getVendorLedgerReport?vendor_id=${vendorId}`);
-  //       // const ledger = ledgerRes.data;
-
-  //      let ledgerUrl = `/api/getVendorLedgerReport?vendor_id=${vendorId}`;
-  //       if (appliedStartDate) ledgerUrl += `&start_date=${appliedStartDate}`;
-  //       if (appliedEndDate)   ledgerUrl += `&end_date=${appliedEndDate}`;
-
-  //       const ledgerRes = await getAPICall(ledgerUrl);
-  //       const ledger = ledgerRes.data;
-
-
-  //       if (ledger?.vendor_details && ledger?.ledger_entries?.length > 0) {
-  //         setLedgerData(ledger);
-  //       }
-
-  //       setError("");
-  //     } catch (err) {
-  //       const msg =
-  //         err.response?.data?.message ||
-  //         err.message ||
-  //         "Failed to load vendor report data";
-  //       setError(msg);
-  //       setData(null);
-  //       setLedgerData(null);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchBoth();
-  // }, [selectedVendor, appliedStartDate, appliedEndDate]);
-
-
-
+  fetchMaterials();
+}, []);
+  
 
 
 useEffect(() => {
@@ -675,11 +657,15 @@ useEffect(() => {
       // Common date values
       const from = appliedFromDate || filterStartDate; // fallback if needed
       const to   = appliedToDate   || filterEndDate;
+      const projectId = appliedProjectId;
+      const material = appliedMaterialName;
 
       // ── 1. Project-wise report ────────────────────────────────
       let projectUrl = `/api/vendor-wise-payments?vendor_id=${vendorId}`;
       if (from)  projectUrl += `&from_date=${from}`;
       if (to)    projectUrl += `&to_date=${to}`;
+      if (projectId)  projectUrl += `&project_id=${projectId}`;
+      if (material)   projectUrl += `&material_name=${encodeURIComponent(material)}`;
 
       const projectRes = await getAPICall(projectUrl);
       const projectData = projectRes.data || projectRes; // adjust depending on your getAPICall wrapper
@@ -692,6 +678,8 @@ useEffect(() => {
       let ledgerUrl = `/api/getVendorLedgerReport?vendor_id=${vendorId}`;
       if (from)  ledgerUrl += `&start_date=${from}`;
       if (to)    ledgerUrl += `&end_date=${to}`;
+      if (projectId)  ledgerUrl += `&project_id=${projectId}`;
+      if (material)   ledgerUrl += `&material_name=${encodeURIComponent(material)}`;
 
       const ledgerRes = await getAPICall(ledgerUrl);
       const ledgerDataResponse = ledgerRes.data || ledgerRes;
@@ -716,7 +704,7 @@ useEffect(() => {
   };
 
   fetchBoth();
-}, [selectedVendor, appliedFromDate, appliedToDate]);
+}, [selectedVendor, appliedFromDate, appliedToDate, appliedProjectId, appliedMaterialName]);
 
 
 
@@ -903,7 +891,7 @@ useEffect(() => {
 
 
       {/* ── Date filter ── (moved up, visible for both tabs) */}
-{selectedVendor && (
+{/* {selectedVendor && (
   <CRow className="mb-4 g-3 align-items-end">
     <CCol md={3}>
       <label className="form-label fw-bold small">From Date</label>
@@ -954,7 +942,114 @@ useEffect(() => {
       </CButton>
     </CCol>
   </CRow>
+)} */}
+
+{selectedVendor && (
+  <CRow className="mb-4 g-3 align-items-end">
+
+    {/* Project Filter */}
+    <CCol md={4} lg={3}>
+      <label className="form-label fw-bold small">Project</label>
+      <Select
+        placeholder="Filter by Project"
+        options={projects.map((p) => ({
+          value: p.id,
+          label: p.project_name || "Unnamed Project",
+        }))}
+        value={filterProject}
+        onChange={(option) => setFilterProject(option)}
+        isClearable
+        isSearchable
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: "38px",
+            fontSize: "0.9rem",
+          }),
+        }}
+      />
+    </CCol>
+
+    <CCol md={4} lg={3}>
+    <label className="form-label fw-bold small">Material</label>
+    <Select
+      placeholder="Filter by Material"
+      options={materials}
+      value={selectedMaterial}
+      onChange={(option) => setSelectedMaterial(option)}
+      isClearable
+      isSearchable
+      styles={{ control: base => ({ ...base, minHeight: "38px", fontSize: "0.9rem" }) }}
+    />
+  </CCol>
+
+    {/* From Date */}
+    <CCol md={3}>
+      <label className="form-label fw-bold small">From Date</label>
+      <CFormInput
+        type="date"
+        value={filterStartDate}
+        onChange={(e) => setFilterStartDate(e.target.value)}
+      />
+    </CCol>
+
+    {/* To Date */}
+    <CCol md={3}>
+      <label className="form-label fw-bold small">To Date</label>
+      <CFormInput
+        type="date"
+        value={filterEndDate}
+        onChange={(e) => setFilterEndDate(e.target.value)}
+      />
+    </CCol>
+
+    {/* Buttons */}
+    <CCol md="auto" className="d-flex gap-2 align-items-end">
+      <CButton
+        color="primary"
+        onClick={() => {
+          // Validation
+          if (filterStartDate && filterEndDate && filterStartDate > filterEndDate) {
+            setError("From date cannot be after To date");
+            return;
+          }
+          setAppliedFromDate(filterStartDate);
+          setAppliedToDate(filterEndDate);
+          setAppliedProjectId(filterProject?.value || null);   // ← key line
+          setAppliedMaterialName(selectedMaterial?.value || null);
+        }}
+        disabled={loading}
+      >
+        Apply Filters
+      </CButton>
+
+      <CButton
+        color="secondary"
+        variant="outline"
+        onClick={() => {
+          setFilterStartDate("");
+          setFilterEndDate("");
+          setAppliedFromDate("");
+          setAppliedToDate("");
+          setFilterProject(null);
+          setAppliedProjectId(null);
+          setSelectedMaterial(null);              // ← reset dropdown
+        setAppliedMaterialName(null);
+        }}
+        disabled={loading}
+      >
+        Clear All
+      </CButton>
+    </CCol>
+  </CRow>
 )}
+
+
+
+
+
+
+
 
 
           {loading && (

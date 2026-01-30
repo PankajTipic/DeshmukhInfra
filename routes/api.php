@@ -241,6 +241,8 @@ Route::put('/updatePurchesVendorPayment',[PurchesVendorController::class, 'updat
 
 Route::get('/vendor-wise-payments',[PurchesVendorController::class, 'getVendorWisePayments']);
 Route::get('/getVendorLedgerReport',[PurchesVendorController::class, 'getVendorLedgerReport']);
+Route::get('/materialList',[PurchesVendorController::class, 'materialList']);
+
 
 
 // _____________________________________________________________________________________________________________________ 

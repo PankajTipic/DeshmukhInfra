@@ -734,6 +734,8 @@ const PurchesVendorPayment = () => {
         error={modalError}
       />
 
+ 
+
        <PaymentLogsModal
         visible={showLogsModal}
         onClose={() => setShowLogsModal(false)}

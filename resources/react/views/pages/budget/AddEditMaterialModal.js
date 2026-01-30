@@ -1,5 +1,160 @@
+// // src/components/purchase-vendor/AddEditMaterialModal.jsx
+// import React from "react";
+// import {
+//   CModal,
+//   CModalHeader,
+//   CModalTitle,
+//   CModalBody,
+//   CModalFooter,
+//   CButton,
+//   CForm,
+//   CFormLabel,
+//   CFormInput,
+//   CRow,
+//   CCol,
+//   CAlert,
+// } from "@coreui/react";
+
+// const AddEditMaterialModal = ({
+//   visible,
+//   onClose,
+//   isEdit = false,
+//   form = {},           // ← Default empty object
+//   vendors = [],        // ← Prevent errors when vendors not loaded
+//   onChange,
+//   onSubmit,
+//   error,
+// }) => {
+//   // Safety guard – if form is missing, don't render anything (or show loader)
+//   if (!form || !vendors) {
+//     return null;
+//   }
+
+//   return (
+//     <CModal visible={visible} onClose={onClose} size="lg" backdrop="static">
+//       <CModalHeader onClose={onClose}>
+//         <CModalTitle>{isEdit ? "Edit" : "Add"} Material</CModalTitle>
+//       </CModalHeader>
+
+//       <CModalBody>
+//         <CForm>
+//           <CRow className="g-3">
+//             <CCol md={6}>
+//               <CFormLabel>Vendor *</CFormLabel>
+//               <select
+//                 className="form-select"
+//                 name="vendor_id"
+//                 value={form.vendor_id || ""}
+//                 onChange={onChange}
+//               >
+//                 <option value="">Select Vendor</option>
+//                 {vendors.map((v) => (
+//                   <option key={v.id} value={v.id}>
+//                     {v.name}
+//                   </option>
+//                 ))}
+//               </select>
+//             </CCol>
+
+//             <CCol md={6}>
+//               <CFormLabel>Material Name *</CFormLabel>
+//               <CFormInput
+//                 name="material_name"
+//                 value={form.material_name || ""}
+//                 onChange={onChange}
+//                 placeholder="e.g. Cement, Bricks"
+//               />
+//             </CCol>
+//           </CRow>
+
+//           <CRow className="g-3 mt-3">
+//             <CCol>
+//               <CFormLabel>About (optional)</CFormLabel>
+//               <CFormInput
+//                 name="about"
+//                 value={form.about || ""}
+//                 onChange={onChange}
+//                 placeholder="Any additional details"
+//               />
+//             </CCol>
+//           </CRow>
+
+//           <CRow className="g-3 mt-3 align-items-end">
+//             <CCol md={3}>
+//               <CFormLabel>Qty *</CFormLabel>
+//               <CFormInput
+//                 type="number"
+//                 name="qty"
+//                 value={form.qty || ""}
+//                 onChange={onChange}
+//                 min="0.01"
+//                 step="0.01"
+//               />
+//             </CCol>
+
+//             <CCol md={3}>
+//               <CFormLabel>Price/Unit *</CFormLabel>
+//               <CFormInput
+//                 type="number"
+//                 name="price"
+//                 value={form.price || ""}
+//                 onChange={onChange}
+//                 min="0"
+//                 step="0.01"
+//               />
+//             </CCol>
+
+//             <CCol md={3}>
+//               <CFormLabel>Total</CFormLabel>
+//               <CFormInput
+//                 value={(form.qty && form.price ? (form.qty * form.price).toFixed(2) : "0.00")}
+//                 readOnly
+//                 className="bg-light"
+//               />
+//             </CCol>
+
+//             <CCol md={3}>
+//               <CFormLabel>Date *</CFormLabel>
+//               <CFormInput
+//                 type="date"
+//                 name="date"
+//                 value={form.date || ""}
+//                 onChange={onChange}
+//                 max={new Date().toISOString().split("T")[0]}
+//               />
+//             </CCol>
+//           </CRow>
+
+//           {error && <CAlert color="danger" className="mt-3">{error}</CAlert>}
+//         </CForm>
+//       </CModalBody>
+
+//       <CModalFooter>
+//         <CButton color="secondary" onClick={onClose}>
+//           Cancel
+//         </CButton>
+//         <CButton color="primary" onClick={onSubmit}>
+//           {isEdit ? "Update" : "Save"}
+//         </CButton>
+//       </CModalFooter>
+//     </CModal>
+//   );
+// };
+
+// export default AddEditMaterialModal;
+
+
+
+
+
+
+
+
+
+
+
 // src/components/purchase-vendor/AddEditMaterialModal.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   CModal,
   CModalHeader,
@@ -9,26 +164,89 @@ import {
   CButton,
   CForm,
   CFormLabel,
-  CFormInput,
   CRow,
   CCol,
   CAlert,
+  CFormInput,
 } from "@coreui/react";
+import CreatableSelect from 'react-select/creatable';   // ← Changed to CreatableSelect
+import { getAPICall } from "../../../util/api";
 
 const AddEditMaterialModal = ({
   visible,
   onClose,
   isEdit = false,
-  form = {},           // ← Default empty object
-  vendors = [],        // ← Prevent errors when vendors not loaded
+  form = {},
+  vendors = [],
   onChange,
   onSubmit,
   error,
 }) => {
-  // Safety guard – if form is missing, don't render anything (or show loader)
-  if (!form || !vendors) {
-    return null;
-  }
+  // Material dropdown states
+  const [materials, setMaterials] = useState([]);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
+
+  // Fetch material list on mount
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      try {
+        const res = await getAPICall("/api/materialList");
+        const options = (res || []).map(name => ({
+          value: name,
+          label: name,
+        }));
+        setMaterials(options);
+      } catch (err) {
+        console.error("Failed to load materials", err);
+      }
+    };
+    fetchMaterials();
+  }, []);
+
+  // Pre-select material when editing or form changes
+  useEffect(() => {
+    if (form.material_name) {
+      const found = materials.find(m => m.value === form.material_name);
+      setSelectedMaterial(found || { value: form.material_name, label: form.material_name });
+    } else {
+      setSelectedMaterial(null);
+    }
+  }, [form.material_name, materials]);
+
+  // Handle both selection and creation
+  const handleMaterialChange = (newValue, actionMeta) => {
+    if (actionMeta.action === 'create-option') {
+      // New material was typed and created
+      setSelectedMaterial({ value: newValue.value, label: newValue.label });
+      onChange({
+        target: {
+          name: "material_name",
+          value: newValue.value.trim(),
+        },
+      });
+    } else if (newValue) {
+      // Existing material selected
+      setSelectedMaterial(newValue);
+      onChange({
+        target: {
+          name: "material_name",
+          value: newValue.value.trim(),
+        },
+      });
+    } else {
+      // Cleared
+      setSelectedMaterial(null);
+      onChange({
+        target: {
+          name: "material_name",
+          value: "",
+        },
+      });
+    }
+  };
+
+  // Calculate total for display
+  const total = (parseFloat(form.qty || 0) * parseFloat(form.price || 0)).toFixed(2);
 
   return (
     <CModal visible={visible} onClose={onClose} size="lg" backdrop="static">
@@ -46,6 +264,7 @@ const AddEditMaterialModal = ({
                 name="vendor_id"
                 value={form.vendor_id || ""}
                 onChange={onChange}
+                required
               >
                 <option value="">Select Vendor</option>
                 {vendors.map((v) => (
@@ -58,11 +277,23 @@ const AddEditMaterialModal = ({
 
             <CCol md={6}>
               <CFormLabel>Material Name *</CFormLabel>
-              <CFormInput
+              <CreatableSelect
+                options={materials}
+                value={selectedMaterial}
+                onChange={handleMaterialChange}
+                placeholder="Search or type new material name..."
+                isSearchable
+                isClearable
+                formatCreateLabel={(input) => `Create new: "${input}"`}
+                noOptionsMessage={() => "No materials found – type to create new"}
+                required
+              />
+              {/* Hidden input for form validation */}
+              <input
+                type="hidden"
                 name="material_name"
                 value={form.material_name || ""}
-                onChange={onChange}
-                placeholder="e.g. Cement, Bricks"
+                required
               />
             </CCol>
           </CRow>
@@ -89,6 +320,7 @@ const AddEditMaterialModal = ({
                 onChange={onChange}
                 min="0.01"
                 step="0.01"
+                required
               />
             </CCol>
 
@@ -101,15 +333,16 @@ const AddEditMaterialModal = ({
                 onChange={onChange}
                 min="0"
                 step="0.01"
+                required
               />
             </CCol>
 
             <CCol md={3}>
               <CFormLabel>Total</CFormLabel>
               <CFormInput
-                value={(form.qty && form.price ? (form.qty * form.price).toFixed(2) : "0.00")}
+                value={total}
                 readOnly
-                className="bg-light"
+                className="bg-light fw-bold"
               />
             </CCol>
 
@@ -121,6 +354,7 @@ const AddEditMaterialModal = ({
                 value={form.date || ""}
                 onChange={onChange}
                 max={new Date().toISOString().split("T")[0]}
+                required
               />
             </CCol>
           </CRow>

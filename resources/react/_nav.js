@@ -368,6 +368,7 @@ className: 'ms-2',
             to: '/OpratorList',
             className: 'ms-2',
           },
+          
           {
             component: CNavItem,
             // name: t("LABELS.supervisor"),
@@ -588,6 +589,14 @@ className: 'ms-2',
         name: "Manage Software",
         icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
         items: [
+
+          {
+            component: CNavItem,
+            name: "Project Types Config",
+            to: '/project-types',
+            className: 'ms-2',
+          },
+
           {
             component: CNavItem,
             name: t("LABELS.all_customers"),

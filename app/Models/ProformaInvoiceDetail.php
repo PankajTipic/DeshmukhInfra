@@ -18,6 +18,7 @@ class ProformaInvoiceDetail extends Model
         'price',
         'total_price',
         'remark',
+        'work_sub_description',
         'gst_percent',
 'cgst_amount',
 'sgst_amount'

@@ -435,6 +435,8 @@ export default function fetchRoutes(){
       { path: '/displayPurchesVendors', name: 'Purches vendors', element: DisplayVendors },
  { path: '/NewPurchesVendor', name: 'New Purches Vendor', element: NewPurchesVendor },
 
+  { path:'/project-types' , name : 'Project Types', element: ProjectTypeManager},
+
  
    ]
   }

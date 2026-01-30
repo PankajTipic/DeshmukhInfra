@@ -293,6 +293,8 @@ const ProformaInvoiceDetails = () => {
                   <tr>
                     <th>Sr. No</th>
                     <th>Work Type</th>
+                    <th>Scope Of Work</th>
+
                     <th>UOM</th>
                     <th>Qty</th>
                     <th>Rate</th>
@@ -315,11 +317,53 @@ const ProformaInvoiceDetails = () => {
                       const cgstPercent = gstPercent ? gstPercent / 2 : 0
                       const sgstPercent = gstPercent ? gstPercent / 2 : 0
                       const totalPrice = parseFloat(item.total_price) || 0
+                      
 
                       return (
                         <tr key={index}>
                           <td>{index + 1}</td>
                           <td>{item.work_type || 'N/A'}</td>
+
+<td style={{ 
+  padding: '8px 12px',
+  verticalAlign: 'top',
+  lineHeight: '1.6',
+  fontSize: '0.95rem'
+}}>
+  {item.work_sub_description ? (
+    <div className="d-flex flex-column">
+      {item.work_sub_description.split('\n').map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        
+        return (
+          <div 
+            key={i}
+            className="py-2 px-0 border-bottom border-secondary-subtle"
+            style={{
+              borderBottomWidth: '1px',
+              borderBottomStyle: 'solid',
+              borderBottomColor: '#ced4da',        // same medium gray
+              minHeight: '28px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            {trimmed}
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="py-2 text-muted small text-center fst-italic">
+      No sub-description provided
+    </div>
+  )}
+</td>
+
+
+
+
                           <td>{item.uom || 'N/A'}</td>
                           <td>{qty.toFixed(2)}</td>
                           <td>₹{price.toFixed(2)}</td>
@@ -356,7 +400,7 @@ const ProformaInvoiceDetails = () => {
                   {/* Total Row */}
                   {proformaInvoice.details && proformaInvoice.details.length > 0 && (
                     <tr className="table-warning fw-bold">
-                      <td colSpan={showRowGST ? "5" : "4"} className="text-end">Total:</td>
+                      <td colSpan={showRowGST ? "6" : "5"} className="text-end">Total:</td>
                       {showRowGST && <td>₹{displayTotals.subtotalWithoutGST.toFixed(2)}</td>}
                       {showRowGST && <td>-</td>}
                       {showRowGST && <td>₹{displayTotals.rowCGST.toFixed(2)}</td>}

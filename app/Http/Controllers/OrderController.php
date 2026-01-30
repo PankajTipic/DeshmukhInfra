@@ -251,6 +251,7 @@ public function store(Request $request)
                 'total_price' => $item['total_price'] ?? 0,
                 'remark'      => $item['remark'] ?? null,
 
+                'work_sub_description' => $item['work_sub_description'] ?? null,
 
                  'gst_percent' => $item['gst_percent'] ?? 0,
                 'cgst_amount' => $item['cgst_amount'] ?? 0,
@@ -601,6 +602,7 @@ public function update(Request $request, $id)
                     'price'       => $item['price'] ?? 0,
                     'total_price' => $item['total_price'] ?? 0,
                     'remark'      => $item['remark'] ?? null,
+                     'work_sub_description' => $item['work_sub_description'] ?? null,
                     'gst_percent' => $item['gst_percent'] ?? 0,
                     'cgst_amount' => $item['cgst_amount'] ?? 0,
                     'sgst_amount' => $item['sgst_amount'] ?? 0,

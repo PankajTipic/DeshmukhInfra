@@ -161,6 +161,7 @@ const InvoiceDetails = () => {
         price: item.dPrice || item.price || 0,
         total_price: item.total_price || 0,
         remark: item.remark || '',
+        work_sub_description : item.work_sub_description || '',
         gst_percent: Number(item.gst_percent) || 0,
         cgst_amount: Number(item.cgst_amount) || 0,
         sgst_amount: Number(item.sgst_amount) || 0,
@@ -344,11 +345,12 @@ Thank you!`)
 
           <div className="row section">
             <div className="col-md-12">
-              <table className="table table-bordered border-black">
+              <table className="table table-bordered border-secondary">
                 <thead>
                   <tr>
                     <th>Sr. No.</th>
                     <th>Work Type</th>
+                    <th>Scope of Work / Sub Descriptions</th>
                     <th>Unit</th>
                     <th>Quantity</th>
                     <th>Price</th>
@@ -367,8 +369,49 @@ Thank you!`)
                       
                       return (
                         <tr key={index}>
-                          <td>{index + 1}</td>
+                          <td className='text-center'>{index + 1}</td>
                           <td>{item.work_type}</td>
+
+
+                        {/* NEW: Scope of Work / Sub Descriptions column */}
+ {/* NEW: Scope of Work / Sub Descriptions column */}
+<td style={{ 
+  padding: '8px 12px',
+  verticalAlign: 'top',
+  lineHeight: '1.6',
+  fontSize: '0.95rem'
+}}>
+  {item.work_sub_description ? (
+    <div className="d-flex flex-column">
+      {item.work_sub_description.split('\n').map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        
+        return (
+          <div 
+            key={i}
+            className="py-2 px-0 border-bottom border-secondary-subtle"
+            style={{
+              borderBottomWidth: '1px',
+              borderBottomStyle: 'solid',          // solid line instead of dashed
+              borderBottomColor: '#ced4da',        // medium gray
+              minHeight: '28px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            {trimmed}
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="py-2 text-muted small text-center fst-italic">
+      No sub-description provided
+    </div>
+  )}
+</td>
+
                           <td>{item?.uom}</td>
                           <td>{item.qty}</td>
                           <td>₹{item.price.toFixed(2)}</td>
@@ -401,7 +444,7 @@ Thank you!`)
                   {/* Total Row */}
                   {formData.items && formData.items.length > 0 && (
                     <tr className="table-warning fw-bold">
-                      <td colSpan={showRowGST ? "5" : "4"} className="text-end">Total:</td>
+                      <td colSpan={showRowGST ? "6" : "5"} className="text-end">Total:</td>
                       {showRowGST && <td>₹{displayTotals.subtotalWithoutGST.toFixed(2)}</td>}
                       {showRowGST && <td>-</td>}
                       {showRowGST && <td>₹{displayTotals.rowCGST.toFixed(2)}</td>}
