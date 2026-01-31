@@ -23,6 +23,15 @@ class OrderDetail extends Model
 
     ];
 
+    protected $casts = [
+        'qty'           => 'decimal:2',
+        'price'         => 'decimal:2',
+        'total_price'   => 'decimal:2',
+        'gst_percent'   => 'decimal:2',
+        'cgst_amount'   => 'decimal:2',
+        'sgst_amount'   => 'decimal:2',
+    ];
+
     /**
      * The attributes that should be hidden for serialization.
      *

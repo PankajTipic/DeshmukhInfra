@@ -282,39 +282,83 @@ Thank you!`)
   const showGlobalGST = hasGlobalGST()
 
   // Calculate totals from items
-  const calculateDisplayTotals = () => {
-    const subtotalWithoutGST = formData.items.reduce((sum, item) => 
-      sum + (item.qty * item.price), 0
-    )
+  // const calculateDisplayTotals = () => {
+  //   const subtotalWithoutGST = formData.items.reduce((sum, item) => 
+  //     sum + (item.qty * item.price), 0
+  //   )
     
-    // Row-level GST totals (already included in item.total_price)
-    const rowCGST = formData.items.reduce((sum, item) => 
-      sum + (item.cgst_amount || 0), 0
-    )
-    const rowSGST = formData.items.reduce((sum, item) => 
-      sum + (item.sgst_amount || 0), 0
-    )
-    const totalAfterRowGST = formData.items.reduce((sum, item) => 
-      sum + (item.total_price || 0), 0
-    )
+  //   // Row-level GST totals (already included in item.total_price)
+  //   const rowCGST = formData.items.reduce((sum, item) => 
+  //     sum + (item.cgst_amount || 0), 0
+  //   )
+  //   const rowSGST = formData.items.reduce((sum, item) => 
+  //     sum + (item.sgst_amount || 0), 0
+  //   )
+  //   const totalAfterRowGST = formData.items.reduce((sum, item) => 
+  //     sum + (item.total_price || 0), 0
+  //   )
     
-    // Global GST (from GST Details section - applied on top)
-    const globalCGST = Number(formData.cgst || 0)
-    const globalSGST = Number(formData.sgst || 0)
-    const globalIGST = Number(formData.igst || 0)
-    const globalTotalGST = globalCGST + globalSGST + globalIGST
+  //   // Global GST (from GST Details section - applied on top)
+  //   const globalCGST = Number(formData.cgst || 0)
+  //   const globalSGST = Number(formData.sgst || 0)
+  //   const globalIGST = Number(formData.igst || 0)
+  //   const globalTotalGST = globalCGST + globalSGST + globalIGST
 
-    return {
-      subtotalWithoutGST,
-      rowCGST,
-      rowSGST,
-      totalAfterRowGST,
-      globalCGST,
-      globalSGST,
-      globalIGST,
-      globalTotalGST,
-    }
+  //   return {
+  //     subtotalWithoutGST,
+  //     rowCGST,
+  //     rowSGST,
+  //     totalAfterRowGST,
+  //     globalCGST,
+  //     globalSGST,
+  //     globalIGST,
+  //     globalTotalGST,
+  //   }
+  // }
+
+
+
+
+  const calculateDisplayTotals = () => {
+  const subtotalWithoutGST = formData.items.reduce(
+    (sum, item) => sum + (Number(item.qty) * Number(item.price)),
+    0
+  )
+
+  const rowCGST = formData.items.reduce(
+    (sum, item) => sum + Number(item.cgst_amount || 0),
+    0
+  )
+
+  const rowSGST = formData.items.reduce(
+    (sum, item) => sum + Number(item.sgst_amount || 0),
+    0
+  )
+
+  const totalAfterRowGST = formData.items.reduce(
+    (sum, item) => sum + Number(item.total_price || 0),
+    0
+  )
+
+  const globalCGST = Number(formData.cgst || 0)
+  const globalSGST = Number(formData.sgst || 0)
+  const globalIGST = Number(formData.igst || 0)
+
+  const globalTotalGST = globalCGST + globalSGST + globalIGST
+
+  return {
+    subtotalWithoutGST,
+    rowCGST,
+    rowSGST,
+    totalAfterRowGST,
+    globalCGST,
+    globalSGST,
+    globalIGST,
+    globalTotalGST,
   }
+}
+
+
 
   const displayTotals = calculateDisplayTotals()
 
@@ -414,7 +458,7 @@ Thank you!`)
 
                           <td>{item?.uom}</td>
                           <td>{item.qty}</td>
-                          <td>₹{item.price.toFixed(2)}</td>
+                          <td>₹{item?.price}</td>
                           {showRowGST && <td>₹{(item.qty * item.price).toFixed(2)}</td>}
                           {showRowGST && <td>{item.gst_percent ? `${item.gst_percent}%` : '-'}</td>}
                           {showRowGST && (
@@ -431,7 +475,9 @@ Thank you!`)
                                 : '-'}
                             </td>
                           )}
-                          <td>₹{item.total_price.toFixed(2)}</td>
+                          <td>₹{item.total_price}</td>
+                          {/* <td>₹{(item.total_price || 0).toFixed(2)}</td> */}
+
                         </tr>
                       );
                     })
@@ -449,7 +495,10 @@ Thank you!`)
                       {showRowGST && <td>-</td>}
                       {showRowGST && <td>₹{displayTotals.rowCGST.toFixed(2)}</td>}
                       {showRowGST && <td>₹{displayTotals.rowSGST.toFixed(2)}</td>}
-                      <td>₹{displayTotals.totalAfterRowGST.toFixed(2)}</td>
+                      {/* <td>₹{displayTotals.totalAfterRowGST?.toFixed(2)}</td> */}
+                    <td>₹{Number(displayTotals.totalAfterRowGST || 0).toFixed(2)}</td>
+
+
                     </tr>
                   )}
                 </tbody>

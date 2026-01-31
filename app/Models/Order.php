@@ -39,6 +39,18 @@ class Order extends Model
         	'po_number'
     ];
 
+    protected $casts = [
+        'finalAmount'  => 'decimal:2',
+        'totalAmount'  => 'decimal:2',
+        'paidAmount'   => 'decimal:2',
+        'discount'     => 'decimal:2',
+        'gst'          => 'decimal:2',
+        'cgst'         => 'decimal:2',
+        'sgst'         => 'decimal:2',
+        'igst'         => 'decimal:2',
+        'profit'       => 'decimal:2',
+    ];
+
     public function project()
     {
         return $this->belongsTo(Project::class);

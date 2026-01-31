@@ -5,114 +5,6 @@ import * as XLSX from "xlsx";
 import { getUserData } from "../../../util/session";
 import { host } from "../../../util/constants";
 
-/* =================================================================== */
-/* 1. Summary Report - PDF & Excel (Main Table)                        */
-/* =================================================================== */
-
-// export const exportToPDF = (payments, searchQuery) => {
-//   const doc = new jsPDF("landscape");
-
-//   // Header
-//   doc.setFontSize(22).setFont(undefined, "bold").text("Purchase Vendor Payments Report", 14, 20);
-//   doc.setFontSize(14).setFont(undefined, "normal").text(`Project: ${searchQuery}`, 14, 32);
-//   doc.setFontSize(12).text(
-//     `Generated on: ${new Date().toLocaleString("en-GB", {
-//       day: "2-digit",
-//       month: "2-digit",
-//       year: "numeric",
-//       hour: "2-digit",
-//       minute: "2-digit",
-//       second: "2-digit",
-//     })}`,
-//     14,
-//     42
-//   );
-
-//   const tableColumn = ["Vendor Name", "Material", "Qty", "Price/Unit", "Total", "Paid", "Balance", "Status", "Created"];
-//   const tableRows = [];
-//   let totalAmount = 0,
-//     totalPaid = 0,
-//     totalBalance = 0;
-
-//   payments.forEach((p) => {
-//     const amount = parseFloat(p.amount);
-//     const paid = parseFloat(p.paid_amount);
-//     const balance = parseFloat(p.balance_amount);
-//     const qty = parseFloat(p?.purchase?.qty || 0);
-//     const pricePerUnit = parseFloat(p?.purchase?.price_per_unit || 0);
-//     const percentage = paid / amount;
-//     const status = percentage === 0 ? "Unpaid" : percentage === 1 ? "Paid" : "Partial";
-
-//     totalAmount += amount;
-//     totalPaid += paid;
-//     totalBalance += balance;
-
-//     tableRows.push([
-//       p?.purchase?.vendor?.name || "-",
-//       p?.purchase?.material_name || "-",
-//       qty.toFixed(2),
-//       pricePerUnit.toFixed(2),
-//       amount.toFixed(2),
-//       paid.toFixed(2),
-//       balance.toFixed(2),
-//       status,
-//       new Date(p.created_at).toLocaleDateString("en-GB"),
-//     ]);
-//   });
-
-//   tableRows.push([
-//     "Total:",
-//     "",
-//     "",
-//     "",
-//     totalAmount.toFixed(2),
-//     totalPaid.toFixed(2),
-//     totalBalance.toFixed(2),
-//     "",
-//     "",
-//   ]);
-
-//   doc.autoTable({
-//     head: [tableColumn],
-//     body: tableRows,
-//     startY: 52,
-//     theme: "grid",
-//     styles: { fontSize: 9, cellPadding: 3, lineColor: [44, 62, 80], lineWidth: 0.1 },
-//     headStyles: { 
-//       fillColor: [52, 152, 219], 
-//       textColor: [255, 255, 255], 
-//       fontStyle: "bold", 
-//       halign: "center", 
-//       fontSize: 10 
-//     },
-//     columnStyles: {
-//       0: { cellWidth: 35, halign: "left" },
-//       1: { cellWidth: 30, halign: "left" },
-//       2: { cellWidth: 20, halign: "right" },
-//       3: { cellWidth: 24, halign: "right" },
-//       4: { cellWidth: 24, halign: "right" },
-//       5: { cellWidth: 24, halign: "right" },
-//       6: { cellWidth: 24, halign: "right" },
-//       7: { cellWidth: 22, halign: "center" },
-//       8: { cellWidth: 26, halign: "center" },
-//     },
-//     alternateRowStyles: { fillColor: [245, 245, 245] },
-//     didParseCell: (data) => {
-//       if (data.row.index === tableRows.length - 1) {
-//         data.cell.styles.fontStyle = "bold";
-//         data.cell.styles.fillColor = [220, 230, 241];
-//       }
-//     },
-//   });
-
-//   doc.save(`vendor-payments-${searchQuery.replace(/\s+/g, "-")}-${Date.now()}.pdf`);
-// };
-
-
-
-
-
-
 
 /* ================= UTILS ================= */
 
@@ -124,6 +16,8 @@ const formatIndianNumber = (number) => {
 };
 
 /* ================= PDF EXPORT ================= */
+
+
 
 export const exportToPDF = (payments, searchQuery = "All") => {
   const doc = new jsPDF("landscape", "pt", "a4");
@@ -145,91 +39,98 @@ export const exportToPDF = (payments, searchQuery = "All") => {
 
   /* ================= HEADER (STYLE FROM downloadPDF) ================= */
 
-const drawHeaderAndBorder = () => {
-  /* ================= OUTER BORDER ================= */
-  doc.setDrawColor(80, 80, 80);
-  doc.setLineWidth(0.4);
-  doc.rect(
-    margin,
-    margin,
-    pageWidth - margin * 2,
-    pageHeight - margin * 2
-  );
+  const drawHeaderAndBorder = () => {
+    /* ================= OUTER BORDER ================= */
+    doc.setDrawColor(80, 80, 80);
+    doc.setLineWidth(0.4);
+    doc.rect(
+      margin,
+      margin,
+      pageWidth - margin * 2,
+      pageHeight - margin * 2
+    );
 
-  /* ================= LOGO ================= */
-  const logoSize = 75;
-  const headerTop = margin + 16;
-  const logoX = pageWidth - margin - logoSize - 6;
-  const logoY = headerTop;
+    /* ================= LOGO ================= */
+    const logoSize = 75;
+    const headerTop = margin + 16;
+    const logoX = pageWidth - margin - logoSize - 6;
+    const logoY = headerTop;
 
-  let logoUrl = null;
-  if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-    logoUrl = `${host}/img/${companyInfo.logo}`;
-  }
-
-  if (logoUrl) {
-    try {
-      doc.addImage(logoUrl, "PNG", logoX, logoY, logoSize, logoSize);
-    } catch {
-      doc.setFillColor(220, 220, 240);
-      doc.rect(logoX, logoY, logoSize, logoSize, "F");
-      doc.setFontSize(9);
-      doc.text("LOGO", logoX + 6, logoY + 14);
+    let logoUrl = null;
+    if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+      logoUrl = `${host}/img/${companyInfo.logo}`;
     }
-  }
 
-  /* ================= COMPANY NAME ================= */
-  const headerX = margin + 14;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(40, 40, 60);
-  doc.text(
-    companyInfo.company_name || "Deshmukh Infra Soft",
-    headerX,
-    headerTop + 12
-  );
-
-  /* ================= COMPANY DETAILS ================= */
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(70);
-
-  let detailY = headerTop + 36;   // 🔑 IMPORTANT FIX
-  const lineHeight = 14;          // 🔑 IMPORTANT FIX
-
-  [
-    companyInfo.land_mark || "Urali Kanchan, Pune",
-    `Phone: ${companyInfo.phone_no || "9173635656"}`,
-    `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-    `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-  ].forEach((line) => {
-    if (line) {
-      doc.text(line, headerX, detailY);
-      detailY += lineHeight;
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, "PNG", logoX, logoY, logoSize, logoSize);
+      } catch {
+        doc.setFillColor(220, 220, 240);
+        doc.rect(logoX, logoY, logoSize, logoSize, "F");
+        doc.setFontSize(9);
+        doc.text("LOGO", logoX + 6, logoY + 14);
+      }
     }
-  });
 
-  /* ================= SEPARATOR ================= */
-  const separatorY = detailY + 8;
-  doc.setLineWidth(1);
-  doc.setDrawColor(0, 0, 0);
-  doc.line(
-    margin + 6,
-    separatorY,
-    pageWidth - margin - 6,
-    separatorY
-  );
+    /* ================= COMPANY NAME ================= */
+    const headerX = margin + 14;
 
-  /* ================= TITLE ================= */
-  const titleY = separatorY + 24;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(40, 40, 60);
+    doc.text(
+      companyInfo.company_name || "Deshmukh Infra Soft",
+      headerX,
+      headerTop + 12
+    );
+
+    /* ================= COMPANY DETAILS ================= */
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(70);
+
+    let detailY = headerTop + 36;
+    const lineHeight = 14;
+
+    [
+      companyInfo.land_mark || "Urali Kanchan, Pune",
+      `Phone: ${companyInfo.phone_no || "9173635656"}`,
+      `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+      `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+    ].forEach((line) => {
+      if (line) {
+        doc.text(line, headerX, detailY);
+        detailY += lineHeight;
+      }
+    });
+
+    /* ================= SEPARATOR ================= */
+    const separatorY = detailY + 8;
+    doc.setLineWidth(1);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(
+      margin + 6,
+      separatorY,
+      pageWidth - margin - 6,
+      separatorY
+    );
+
+    /* ================= RETURN SAFE HEADER HEIGHT (4px gap after HR) ================= */
+    return separatorY + 4;
+  };
+
+  /* ================= FIRST PAGE HEADER + TITLE ================= */
+
+  let yPosition = drawHeaderAndBorder();
+
+  /* ================= TITLE (ONLY ON FIRST PAGE) ================= */
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(0);
   doc.text(
     "PURCHASE VENDOR PAYMENTS REPORT",
     pageWidth / 2,
-    titleY,
+    yPosition + 20,
     { align: "center" }
   );
 
@@ -240,26 +141,19 @@ const drawHeaderAndBorder = () => {
   doc.text(
     `Project: ${searchQuery}`,
     pageWidth / 2,
-    titleY + 18,
+    yPosition + 38,
     { align: "center" }
   );
   doc.text(
     `Generated on: ${new Date().toLocaleDateString("en-GB")}`,
     pageWidth / 2,
-    titleY + 34,
+    yPosition + 54,
     { align: "center" }
   );
 
-  /* ================= RETURN SAFE HEADER HEIGHT ================= */
-  return titleY + 52;   // 🔒 NOTHING BELOW CAN OVERLAP
-};
+  yPosition += 70;
 
-
-  /* ================= HEADER CALL ================= */
-
-  let yPosition = drawHeaderAndBorder();
-
-  /* ================= GRAND TOTAL ================= */
+  /* ================= GRAND TOTAL (SINGLE LINE) ================= */
 
   let totalAmount = 0,
     totalPaid = 0,
@@ -275,33 +169,20 @@ const drawHeaderAndBorder = () => {
   doc.setDrawColor(192, 57, 43);
   doc.setLineWidth(2);
 
-  doc.rect(contentLeft, yPosition, contentWidth, 60, "FD");
+  doc.rect(contentLeft, yPosition, contentWidth, 35, "FD");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(255);
 
-  doc.text("Grand Total of Payments", pageWidth / 2, yPosition + 20, {
-    align: "center",
-  });
-
   doc.text(
-    `Total Amount: ${formatIndianNumber(totalAmount)}`,
+    `Grand Total: ${totalAmount} | Paid: ${totalPaid} | Balance: ${totalBalance}`,
     pageWidth / 2,
-    yPosition + 38,
+    yPosition + 22,
     { align: "center" }
   );
 
-  doc.text(
-    `Paid: ${formatIndianNumber(totalPaid)} | Balance: ${formatIndianNumber(
-      totalBalance
-    )}`,
-    pageWidth / 2,
-    yPosition + 56,
-    { align: "center" }
-  );
-
-  yPosition += 75;
+  yPosition += 50;
 
   /* ================= TABLE ================= */
 
@@ -352,7 +233,11 @@ const drawHeaderAndBorder = () => {
     body: tableRows,
     startY: yPosition,
     tableWidth: contentWidth,
-    margin: { left: contentLeft, right: margin + innerPadding },
+    margin: { 
+      left: contentLeft, 
+      right: margin + innerPadding,
+      top: margin + 140  // Reserve space for header on new pages
+    },
     theme: "grid",
     styles: {
       fontSize: 9,
@@ -378,12 +263,15 @@ const drawHeaderAndBorder = () => {
         data.cell.styles.fillColor = [220, 230, 241];
       }
     },
-    didDrawPage: () => {
+    didDrawPage: (data) => {
+      // Draw header and border on every page
       drawHeaderAndBorder();
+      
+      // Page number
       doc.setFontSize(9);
       doc.setTextColor(100);
       doc.text(
-        `Page ${doc.internal.getNumberOfPages()}`,
+        `Page ${data.pageNumber}`,
         pageWidth - margin - 10,
         pageHeight - 15,
         { align: "right" }
@@ -410,10 +298,6 @@ const drawHeaderAndBorder = () => {
 
   doc.save(`vendor-payments-${searchQuery.replace(/\s+/g, "-")}.pdf`);
 };
-
-
-
-
 
 
 
@@ -532,93 +416,12 @@ export const exportToExcel = (payments, searchQuery) => {
   XLSX.writeFile(wb, `vendor-payments-${searchQuery.replace(/\s+/g, "-")}-${Date.now()}.xlsx`);
 };
 
+
+
 /* =================================================================== */
 /* 2. All Logs Report - PDF & Excel (Detailed with Payment History)   */
 /* =================================================================== */
 
-// export const exportAllLogsToPDF = (payments, searchQuery) => {
-//   const doc = new jsPDF("landscape");
-
-//   doc.setFontSize(18).setFont("helvetica", "bold").text("All Vendor Payment Logs", 14, 15);
-//   doc.setFontSize(12).setFont("helvetica", "normal").text(`Project: ${searchQuery}`, 14, 23);
-//   doc.setFontSize(10).text(`Generated: ${new Date().toLocaleString("en-GB")}`, 14, 30);
-
-//   const body = [];
-//   let grandTotal = 0,
-//     grandPaid = 0,
-//     grandBalance = 0;
-
-//   payments.forEach((p) => {
-//     const vendor = p.purchase?.vendor?.name || "Unknown";
-//     const material = p.purchase?.material_name || "-";
-//     const total = parseFloat(p.amount);
-//     const paid = parseFloat(p.paid_amount);
-//     const balance = parseFloat(p.balance_amount);
-
-//     grandTotal += total;
-//     grandPaid += paid;
-//     grandBalance += balance;
-
-//     body.push([
-//       {
-//         content: `Vendor: ${vendor} | Material: ${material}`,
-//         colSpan: 6,
-//         styles: { fontStyle: "bold", fillColor: [230, 240, 255], fontSize: 10, textColor: [20, 40, 90] },
-//       },
-//       { content: total.toFixed(2), styles: { fontStyle: "bold", halign: "right" } },
-//       { content: paid.toFixed(2), styles: { fontStyle: "bold", halign: "right" } },
-//       {
-//         content: balance.toFixed(2),
-//         styles: { fontStyle: "bold", halign: "right", fillColor: balance === 0 ? [220, 255, 220] : [255, 230, 230] },
-//       },
-//     ]);
-
-//     if (p.logs?.length > 0) {
-//       p.logs.forEach((log, i) => {
-//         body.push([
-//           i + 1,
-//           log.paid_by || "-",
-//           log.payment_type || "-",
-//           parseFloat(log.amount).toFixed(2),
-//           new Date(log.payment_date).toLocaleDateString("en-GB"),
-//           (log.description || "-").substring(0, 40) + (log.description?.length > 40 ? "..." : ""),
-//           "", "", "",
-//         ]);
-//       });
-//     } else {
-//       body.push([{ content: "No payments yet", colSpan: 6, styles: { fontStyle: "italic", textColor: [150, 150, 150] } }, "", "", ""]);
-//     }
-
-//     body.push(["", "", "", "", "", "", "", "", ""]);
-//   });
-
-//   body.push([
-//     { content: "GRAND TOTAL", colSpan: 6, styles: { fontStyle: "bold", fillColor: [200, 230, 200], fontSize: 11 } },
-//     { content: grandTotal.toFixed(2), styles: { fontStyle: "bold", halign: "right" } },
-//     { content: grandPaid.toFixed(2), styles: { fontStyle: "bold", halign: "right" } },
-//     {
-//       content: grandBalance.toFixed(2),
-//       styles: { fontStyle: "bold", halign: "right", fillColor: grandBalance === 0 ? [180, 255, 180] : [255, 180, 180] },
-//     },
-//   ]);
-
-//   doc.autoTable({
-//     head: [["No.", "Paid By", "Type", "Amount", "Date", "Description", "Total", "Paid", "Balance"]],
-//     body,
-//     startY: 35,
-//     theme: "grid",
-//     styles: { fontSize: 8.5, cellPadding: 2.5, lineColor: [180, 180, 180], lineWidth: 0.1 },
-//     headStyles: { fillColor: [30, 100, 180], textColor: 255, fontStyle: "bold", fontSize: 9 },
-//     columnStyles: {
-//       0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 25 }, 3: { cellWidth: 28 },
-//       4: { cellWidth: 28 }, 5: { cellWidth: 85 }, 6: { cellWidth: 30, halign: "right" },
-//       7: { cellWidth: 30, halign: "right" }, 8: { cellWidth: 30, halign: "right" },
-//     },
-//     margin: { top: 35, left: 8, right: 8 },
-//   });
-
-//   doc.save(`All_Logs_${searchQuery.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.pdf`);
-// };
 
 
 
@@ -717,41 +520,43 @@ export const exportAllLogsToPDF = (payments, searchQuery = "All") => {
       separatorY
     );
 
-    /* Title */
-    const titleY = separatorY + 26;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(0);
-    doc.text(
-      "ALL VENDOR PAYMENT LOGS",
-      pageWidth / 2,
-      titleY,
-      { align: "center" }
-    );
-
-    /* Project + Date */
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(60);
-    doc.text(
-      `Project: ${searchQuery}`,
-      pageWidth / 2,
-      titleY + 18,
-      { align: "center" }
-    );
-    doc.text(
-      `Generated on: ${new Date().toLocaleString("en-GB")}`,
-      pageWidth / 2,
-      titleY + 34,
-      { align: "center" }
-    );
-
-    return titleY + 56; // SAFE start Y
+    /* Return position 2px after HR line */
+    return separatorY + 2;
   };
 
-  /* ================= HEADER CALL ================= */
+  /* ================= FIRST PAGE HEADER + TITLE ================= */
 
   let startY = drawHeaderAndBorder();
+
+  /* Title */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(0);
+  doc.text(
+    "ALL VENDOR PAYMENT LOGS",
+    pageWidth / 2,
+    startY + 24,
+    { align: "center" }
+  );
+
+  /* Project + Date */
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  doc.text(
+    `Project: ${searchQuery}`,
+    pageWidth / 2,
+    startY + 42,
+    { align: "center" }
+  );
+  doc.text(
+    `Generated on: ${new Date().toLocaleString("en-GB")}`,
+    pageWidth / 2,
+    startY + 58,
+    { align: "center" }
+  );
+
+  startY += 80;
 
   /* ================= TABLE DATA ================= */
 
@@ -846,10 +651,11 @@ export const exportAllLogsToPDF = (payments, searchQuery = "All") => {
     body,
     startY,
 
-    tableWidth: contentWidth,          // 🔒 stays inside border
+    tableWidth: contentWidth,
     margin: {
       left: contentLeft,
       right: margin + innerPadding,
+      top: margin + 140  // Reserve space for header on new pages
     },
 
     theme: "grid",
@@ -868,10 +674,36 @@ export const exportAllLogsToPDF = (payments, searchQuery = "All") => {
       fontSize: 9,
     },
 
-    didDrawPage: () => {
+    didDrawPage: (data) => {
+      // Draw header and border on every page
       drawHeaderAndBorder();
+      
+      // Page number
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(
+        `Page ${data.pageNumber}`,
+        pageWidth - margin - 10,
+        pageHeight - 15,
+        { align: "right" }
+      );
     },
   });
+
+  /* ================= FOOTER ================= */
+
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(
+      `All Vendor Payment Logs | Generated: ${new Date().toLocaleString("en-GB")}`,
+      pageWidth / 2,
+      pageHeight - 15,
+      { align: "center" }
+    );
+  }
 
   /* ================= SAVE ================= */
 
@@ -879,8 +711,6 @@ export const exportAllLogsToPDF = (payments, searchQuery = "All") => {
     `All_Logs_${searchQuery.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.pdf`
   );
 };
-
-
 
 
 
@@ -986,84 +816,196 @@ export const exportAllLogsToExcel = (payments, searchQuery) => {
 /* 3. Single Vendor Logs - PDF & Excel                                 */
 /* =================================================================== */
 
+
+
+
+
 // export const downloadPDF = (logsData) => {
-//   const doc = new jsPDF("landscape");
+//   const doc = new jsPDF("landscape", "pt", "a4");
 
-//   // Title
-//   doc.setFontSize(20);
-//   doc.setFont(undefined, 'bold');
-//   doc.text("Vendor Payment Report", 14, 18);
-  
-//   // Project name
-//   doc.setFontSize(13);
-//   doc.setFont(undefined, 'normal');
-//   doc.text(`Project: ${logsData.vendor_details?.project?.project_name || 'N/A'}`, 14, 28);
-  
-//   // Generated timestamp
-//   const timestamp = new Date().toLocaleString('en-GB', { 
-//     day: '2-digit', 
-//     month: '2-digit', 
-//     year: 'numeric',
-//     hour: '2-digit',
-//     minute: '2-digit',
-//     second: '2-digit'
-//   });
-//   doc.setFontSize(11);
-//   doc.text(`Generated: ${timestamp}`, 14, 36);
+//   /* ================= PAGE SETUP ================= */
 
-//   // Extract values - NOTE: qty and price_per_unit come from the purchase object in backend
-//   const vendorName = logsData.vendor_details?.vendor_name || 'N/A';
-//   const materialName = logsData.vendor_details?.material_name || 'N/A';
-  
-//   // Try multiple possible paths for qty and price_per_unit
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+
+//   const margin = 40;          // outer border
+//   const innerPadding = 12;    // inside border spacing
+
+//   const contentLeft = margin + innerPadding;
+//   const contentRight = pageWidth - margin - innerPadding;
+//   const contentWidth = contentRight - contentLeft;
+
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+
+//   /* ================= HEADER + BORDER ================= */
+
+//   const drawHeaderAndBorder = () => {
+//     /* Outer Border */
+//     doc.setDrawColor(80);
+//     doc.setLineWidth(0.6);
+//     doc.rect(
+//       margin,
+//       margin,
+//       pageWidth - margin * 2,
+//       pageHeight - margin * 2
+//     );
+
+//     /* Logo */
+//     const logoSize = 75;
+//     const headerTop = margin + 18;
+//     const logoX = pageWidth - margin - logoSize - 8;
+//     const logoY = headerTop;
+
+//     let logoUrl = null;
+//     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//       logoUrl = `${host}/img/${companyInfo.logo}`;
+//     }
+
+//     if (logoUrl) {
+//       try {
+//         doc.addImage(logoUrl, "PNG", logoX, logoY, logoSize, logoSize);
+//       } catch {
+//         doc.setFillColor(220);
+//         doc.rect(logoX, logoY, logoSize, logoSize, "F");
+//       }
+//     }
+
+//     /* Company Name */
+//     const headerX = margin + 14;
+//     doc.setFont("helvetica", "bold");
+//     doc.setFontSize(20);
+//     doc.setTextColor(40, 40, 60);
+//     doc.text(
+//       companyInfo.company_name || "Deshmukh Infra Soft",
+//       headerX,
+//       headerTop + 18
+//     );
+
+//     /* Company Details */
+//     doc.setFont("helvetica", "normal");
+//     doc.setFontSize(10);
+//     doc.setTextColor(70);
+
+//     let detailY = headerTop + 38;
+//     const lineHeight = 14;
+
+//     [
+//       companyInfo.land_mark || "Urali Kanchan, Pune",
+//       `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//       `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//       `GSTIN: ${companyInfo.gst_number || "Not Available"}`
+//     ].forEach((line) => {
+//       if (line) {
+//         doc.text(line, headerX, detailY);
+//         detailY += lineHeight;
+//       }
+//     });
+
+//     /* Separator */
+//     const separatorY = detailY + 8;
+//     doc.setLineWidth(1);
+//     doc.setDrawColor(0);
+//     doc.line(
+//       margin + 6,
+//       separatorY,
+//       pageWidth - margin - 6,
+//       separatorY
+//     );
+
+//     /* Report Title */
+//     const titleY = separatorY + 24;
+//     doc.setFont("helvetica", "bold");
+//     doc.setFontSize(17);
+//     doc.setTextColor(0);
+//     doc.text(
+//       "VENDOR PAYMENT REPORT",
+//       pageWidth / 2,
+//       titleY,
+//       { align: "center" }
+//     );
+
+//     /* Project + Generated Date */
+//     const timestamp = new Date().toLocaleString("en-GB");
+//     doc.setFont("helvetica", "normal");
+//     doc.setFontSize(10);
+//     doc.setTextColor(60);
+//     doc.text(
+//       `Project: ${logsData.vendor_details?.project?.project_name || "N/A"}`,
+//       pageWidth / 2,
+//       titleY + 18,
+//       { align: "center" }
+//     );
+//     doc.text(
+//       `Generated: ${timestamp}`,
+//       pageWidth / 2,
+//       titleY + 34,
+//       { align: "center" }
+//     );
+
+//     return titleY + 54; // SAFE start Y
+//   };
+
+//   /* ================= HEADER CALL ================= */
+
+//   let startY = drawHeaderAndBorder();
+
+//   /* ================= SUMMARY DATA ================= */
+
+//   const vendorName = logsData.vendor_details?.vendor_name || "N/A";
+//   const materialName = logsData.vendor_details?.material_name || "N/A";
+
 //   const qty = parseFloat(
-//     logsData.purchase?.qty || 
-//     logsData.vendor_details?.qty || 
+//     logsData.purchase?.qty ||
+//     logsData.vendor_details?.qty ||
 //     0
 //   ).toFixed(2);
-  
+
 //   const pricePerUnit = parseFloat(
-//     logsData.purchase?.price_per_unit || 
-//     logsData.vendor_details?.price_per_unit || 
+//     logsData.purchase?.price_per_unit ||
+//     logsData.vendor_details?.price_per_unit ||
 //     0
 //   ).toFixed(2);
-  
+
 //   const totalAmount = parseFloat(logsData.payment_master?.total_amount || 0).toFixed(2);
 //   const paidAmount = parseFloat(logsData.payment_master?.paid_amount || 0).toFixed(2);
 //   const balanceAmount = parseFloat(logsData.payment_master?.balance_amount || 0).toFixed(2);
 
-//   // Summary table - properly formatted
 //   const summaryData = [
-//     ['Vendor:', vendorName, 'Material:', materialName],
-//     ['Qty:', qty, 'Price/Unit:', `Rs ${pricePerUnit}`],
-//     ['Total:', `Rs ${totalAmount}`, 'Paid:', `Rs ${paidAmount}`],
-//     ['Balance:', `Rs ${balanceAmount}`, '', '']
+//     ["Vendor", vendorName, "Material", materialName],
+//     ["Qty", qty, "Price / Unit", `${pricePerUnit}`],
+//     ["Total", `${totalAmount}`, "Paid", `${paidAmount}`],
+//     ["Balance", `${balanceAmount}`, "", ""],
 //   ];
+
+//   /* ================= SUMMARY TABLE ================= */
 
 //   doc.autoTable({
 //     body: summaryData,
-//     startY: 44,
-//     theme: 'grid',
-//     styles: { 
+//     startY,
+//     tableWidth: contentWidth,
+//     margin: { left: contentLeft, right: contentLeft },
+//     theme: "grid",
+//     styles: {
 //       fontSize: 11,
-//       cellPadding: 4,
+//       cellPadding: 6,
 //       lineColor: [200, 200, 200],
 //       lineWidth: 0.1,
 //     },
 //     columnStyles: {
-//       0: { cellWidth: 35, fontStyle: 'bold', fillColor: [240, 240, 240] },
-//       1: { cellWidth: 65 },
-//       2: { cellWidth: 35, fontStyle: 'bold', fillColor: [240, 240, 240] },
-//       3: { cellWidth: 65 }
-//     }
+//       0: { fontStyle: "bold", fillColor: [240, 240, 240] },
+//       2: { fontStyle: "bold", fillColor: [240, 240, 240] },
+//     },
+//     didDrawPage: () => drawHeaderAndBorder(),
 //   });
 
-//   // Payment logs table
+//   /* ================= PAYMENT LOGS TABLE ================= */
+
 //   const tableData = logsData.payment_logs?.map((log, i) => [
 //     i + 1,
-//     log.paid_by || '-',
-//     log.payment_type || '-',
-//     `Rs ${Number(log.amount || 0).toFixed(2)}`,
+//     log.paid_by || "-",
+//     log.payment_type || "-",
+//     `${Number(log.amount || 0).toFixed(2)}`,
 //     new Date(log.payment_date).toLocaleDateString("en-GB"),
 //     log.description || "-",
 //   ]) || [];
@@ -1071,37 +1013,32 @@ export const exportAllLogsToExcel = (payments, searchQuery) => {
 //   doc.autoTable({
 //     head: [["No.", "Paid By", "Type", "Amount", "Date", "Description"]],
 //     body: tableData,
-//     startY: doc.lastAutoTable.finalY + 8,
+//     startY: doc.lastAutoTable.finalY + 10,
+//     tableWidth: contentWidth,
+//     margin: { left: contentLeft, right: contentLeft },
 //     theme: "grid",
-//     headStyles: { 
+//     headStyles: {
 //       fillColor: [52, 152, 219],
 //       textColor: 255,
+//       fontStyle: "bold",
 //       fontSize: 11,
-//       fontStyle: 'bold',
-//       halign: 'center'
-//     },
-//     bodyStyles: {
-//       fontSize: 10
+//       halign: "center",
 //     },
 //     styles: {
+//       fontSize: 10,
+//       cellPadding: 4,
 //       lineColor: [200, 200, 200],
 //       lineWidth: 0.1,
 //     },
-//     columnStyles: {
-//       0: { cellWidth: 15, halign: 'center' },
-//       1: { cellWidth: 45 },
-//       2: { cellWidth: 30, halign: 'center' },
-//       3: { cellWidth: 35, halign: 'right' },
-//       4: { cellWidth: 30, halign: 'center' },
-//       5: { cellWidth: 85 }
-//     },
 //     alternateRowStyles: { fillColor: [245, 245, 245] },
+//     didDrawPage: () => drawHeaderAndBorder(),
 //   });
+
+//   /* ================= SAVE ================= */
 
 //   const fileName = `Vendor_Payment_${vendorName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
 //   doc.save(fileName);
 // };
-
 
 
 
@@ -1199,42 +1136,44 @@ export const downloadPDF = (logsData) => {
       separatorY
     );
 
-    /* Report Title */
-    const titleY = separatorY + 24;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(17);
-    doc.setTextColor(0);
-    doc.text(
-      "VENDOR PAYMENT REPORT",
-      pageWidth / 2,
-      titleY,
-      { align: "center" }
-    );
-
-    /* Project + Generated Date */
-    const timestamp = new Date().toLocaleString("en-GB");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(60);
-    doc.text(
-      `Project: ${logsData.vendor_details?.project?.project_name || "N/A"}`,
-      pageWidth / 2,
-      titleY + 18,
-      { align: "center" }
-    );
-    doc.text(
-      `Generated: ${timestamp}`,
-      pageWidth / 2,
-      titleY + 34,
-      { align: "center" }
-    );
-
-    return titleY + 54; // SAFE start Y
+    /* Return position 2px after HR line */
+    return separatorY + 2;
   };
 
-  /* ================= HEADER CALL ================= */
+  /* ================= FIRST PAGE HEADER + TITLE ================= */
 
   let startY = drawHeaderAndBorder();
+
+  /* Report Title */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.setTextColor(0);
+  doc.text(
+    "VENDOR PAYMENT REPORT",
+    pageWidth / 2,
+    startY + 22,
+    { align: "center" }
+  );
+
+  /* Project + Generated Date */
+  const timestamp = new Date().toLocaleString("en-GB");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  doc.text(
+    `Project: ${logsData.vendor_details?.project?.project_name || "N/A"}`,
+    pageWidth / 2,
+    startY + 40,
+    { align: "center" }
+  );
+  doc.text(
+    `Generated: ${timestamp}`,
+    pageWidth / 2,
+    startY + 56,
+    { align: "center" }
+  );
+
+  startY += 76;
 
   /* ================= SUMMARY DATA ================= */
 
@@ -1270,7 +1209,11 @@ export const downloadPDF = (logsData) => {
     body: summaryData,
     startY,
     tableWidth: contentWidth,
-    margin: { left: contentLeft, right: contentLeft },
+    margin: { 
+      left: contentLeft, 
+      right: contentLeft,
+      top: margin + 145  // Reserve space for header on new pages
+    },
     theme: "grid",
     styles: {
       fontSize: 11,
@@ -1282,7 +1225,20 @@ export const downloadPDF = (logsData) => {
       0: { fontStyle: "bold", fillColor: [240, 240, 240] },
       2: { fontStyle: "bold", fillColor: [240, 240, 240] },
     },
-    didDrawPage: () => drawHeaderAndBorder(),
+    didDrawPage: (data) => {
+      // Draw header and border on every page
+      drawHeaderAndBorder();
+      
+      // Page number
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(
+        `Page ${data.pageNumber}`,
+        pageWidth - margin - 10,
+        pageHeight - 15,
+        { align: "right" }
+      );
+    },
   });
 
   /* ================= PAYMENT LOGS TABLE ================= */
@@ -1301,7 +1257,11 @@ export const downloadPDF = (logsData) => {
     body: tableData,
     startY: doc.lastAutoTable.finalY + 10,
     tableWidth: contentWidth,
-    margin: { left: contentLeft, right: contentLeft },
+    margin: { 
+      left: contentLeft, 
+      right: contentLeft,
+      top: margin + 145  // Reserve space for header on new pages
+    },
     theme: "grid",
     headStyles: {
       fillColor: [52, 152, 219],
@@ -1317,16 +1277,42 @@ export const downloadPDF = (logsData) => {
       lineWidth: 0.1,
     },
     alternateRowStyles: { fillColor: [245, 245, 245] },
-    didDrawPage: () => drawHeaderAndBorder(),
+    didDrawPage: (data) => {
+      // Draw header and border on every page
+      drawHeaderAndBorder();
+      
+      // Page number
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(
+        `Page ${data.pageNumber}`,
+        pageWidth - margin - 10,
+        pageHeight - 15,
+        { align: "right" }
+      );
+    },
   });
+
+  /* ================= FOOTER ================= */
+
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(
+      `Vendor Payment Report | Generated: ${timestamp}`,
+      pageWidth / 2,
+      pageHeight - 15,
+      { align: "center" }
+    );
+  }
 
   /* ================= SAVE ================= */
 
   const fileName = `Vendor_Payment_${vendorName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
   doc.save(fileName);
 };
-
-
 
 
 export const downloadExcel = (logsData) => {

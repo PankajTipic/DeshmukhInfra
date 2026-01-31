@@ -246,16 +246,25 @@ public function store(Request $request)
                 'order_id'    => $order->id,
                 'work_type'   => $item['work_type'] ?? '',
                 'uom'         => $item['uom'] ?? '',
-                'qty'         => $item['qty'] ?? 0,
-                'price'       => $item['price'] ?? 0,
-                'total_price' => $item['total_price'] ?? 0,
+                // 'qty'         => $item['qty'] ?? 0,
+                // 'price'       => $item['price'] ?? 0,
+                // 'total_price' => $item['total_price'] ?? 0,
+
+                'qty'                  => round((float)($item['qty'] ?? 0), 2),
+        'price'                => round((float)($item['price'] ?? 0), 2),
+        'total_price'          => round((float)($item['total_price'] ?? 0), 2),
+
                 'remark'      => $item['remark'] ?? null,
 
                 'work_sub_description' => $item['work_sub_description'] ?? null,
 
-                 'gst_percent' => $item['gst_percent'] ?? 0,
-                'cgst_amount' => $item['cgst_amount'] ?? 0,
-                'sgst_amount' => $item['sgst_amount'] ?? 0,
+                //  'gst_percent' => $item['gst_percent'] ?? 0,
+                // 'cgst_amount' => $item['cgst_amount'] ?? 0,
+                // 'sgst_amount' => $item['sgst_amount'] ?? 0,
+
+                'gst_percent'          => round((float)($item['gst_percent'] ?? 0), 2),
+        'cgst_amount'          => round((float)($item['cgst_amount'] ?? 0), 2),
+        'sgst_amount'          => round((float)($item['sgst_amount'] ?? 0), 2),
 
 
             ]);
@@ -598,14 +607,29 @@ public function update(Request $request, $id)
                     'order_id'    => $order->id,
                     'work_type'   => $item['work_type'] ?? '',
                     'uom'         => $item['uom'] ?? '',
-                    'qty'         => $item['qty'] ?? 0,
-                    'price'       => $item['price'] ?? 0,
-                    'total_price' => $item['total_price'] ?? 0,
+                    // 'qty'         => $item['qty'] ?? 0,
+                    // 'price'       => $item['price'] ?? 0,
+                    // 'total_price' => $item['total_price'] ?? 0,
+
+ 'qty'                  => round((float)($item['qty'] ?? 0), 2),
+        'price'                => round((float)($item['price'] ?? 0), 2),
+        'total_price'          => round((float)($item['total_price'] ?? 0), 2),
+
                     'remark'      => $item['remark'] ?? null,
                      'work_sub_description' => $item['work_sub_description'] ?? null,
-                    'gst_percent' => $item['gst_percent'] ?? 0,
-                    'cgst_amount' => $item['cgst_amount'] ?? 0,
-                    'sgst_amount' => $item['sgst_amount'] ?? 0,
+
+
+                    // 'gst_percent' => $item['gst_percent'] ?? 0,
+                    // 'cgst_amount' => $item['cgst_amount'] ?? 0,
+                    // 'sgst_amount' => $item['sgst_amount'] ?? 0,
+
+
+
+                    'gst_percent'          => round((float)($item['gst_percent'] ?? 0), 2),
+        'cgst_amount'          => round((float)($item['cgst_amount'] ?? 0), 2),
+        'sgst_amount'          => round((float)($item['sgst_amount'] ?? 0), 2),
+
+
                 ]);
             }
         }

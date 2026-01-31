@@ -36,7 +36,7 @@ export const exportToPDF = async (data) => {
   const companyEmail   = company.email_id    || "shreyas.gijare.21@gmail.com";
   const companyAddress = `${company.land_mark || "Urali Kanchan"}, ${company.Dist || "Pune"}`.trim();
   // const logoUrl        = company.logo; // e.g. "invoice/175228-apple-touch-icon.png" or full URL
-  const  logoUrl = `${host}/img/${company.logo}`;
+  const  logoUrl = `${host}/${company.logo}`;
   
   
 

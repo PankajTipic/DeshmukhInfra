@@ -1247,7 +1247,8 @@ public function recordPayment(Request $request, $id)
         // ────────────────────────────────────────────────
         if ($order) {
             $order->update([
-                'paidAmount' => DB::raw("paidAmount + {$newPayment}"),
+                // 'paidAmount' => DB::raw("paidAmount + {$newPayment}"),
+                'paidAmount' => ($order->paidAmount ?? 0) + $newPayment,
                 'updated_by' => $user->id,
             ]);
         }
