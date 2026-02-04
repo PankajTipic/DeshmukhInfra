@@ -274,6 +274,16 @@ export default function fetchNavItems(t1) {
             to: '/expense/expenseReport',
             className: 'ms-2',
           },
+
+
+            {
+            component: CNavItem,
+            name: "Seprate All Data",
+            to: '/seprateAllData',
+            className: 'ms-2',
+          },
+
+
         ],
       },
 
@@ -583,6 +593,49 @@ className: 'ms-2',
       },
 
         ]},
+
+
+
+
+         {
+        component: CNavGroup,
+        name: 'Purchase Vendor ',
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+        items: [
+
+{component: CNavItem,
+    name: 'Add Purches Vendor',
+   to: '/displayPurchesVendors',
+className: 'ms-2',
+},
+
+          {
+            component: CNavItem,
+            name: 'New Purchase',
+            to: '/vendorPurches',
+            className: 'ms-2',
+          },
+
+        
+          
+    {
+        component: CNavItem,
+        name: ' Make Vendor Payment',
+        to: '/vendorPurchesPayment',
+        className: 'ms-2',
+      },
+
+
+       {
+        component: CNavItem,
+        name: 'Purchase Vendor Report',
+        to: '/PurchaseVendorReport',
+        className: 'ms-2',
+      },
+
+        ],
+      },
+
      
       {
         component: CNavGroup,
@@ -671,6 +724,15 @@ className: 'ms-2',
         to: '/vendorPurchesPayment',
         className: 'ms-2',
       },
+
+
+       {
+        component: CNavItem,
+        name: 'Purchase Vendor Report',
+        to: '/PurchaseVendorReport',
+        className: 'ms-2',
+      },
+
         ],
       },
     

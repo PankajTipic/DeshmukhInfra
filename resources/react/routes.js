@@ -133,6 +133,7 @@ const NewPurchesVendor = React.lazy(()=>import('./views/pages/Oprator/NewPurches
 
 const PurchaseVendorReport = React.lazy(()=>import('./views/pages/budget/purchaseVendorReport.js'))
 const PurchaseVendorLedgerReport = React.lazy(()=>import('./views/pages/budget/purchseVendorLadgerReport.js'))
+const seprateAllData  = React.lazy(() => import('./views/pages/report/seprateAllData.js'))
  
 export default function fetchRoutes(){
   const user=getUserType();
@@ -281,7 +282,7 @@ export default function fetchRoutes(){
  { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
-
+ { path: '/seprateAllData', name: 'All Data', element: seprateAllData },
 
 
   ]
@@ -357,6 +358,9 @@ export default function fetchRoutes(){
 
 { path: '/displayPurchesVendors', name: 'Purches vendors', element: DisplayVendors },
  { path: '/NewPurchesVendor', name: 'New Purches Vendor', element: NewPurchesVendor },
+
+  { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
+ { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
   ]
   }
@@ -437,6 +441,9 @@ export default function fetchRoutes(){
 
   { path:'/project-types' , name : 'Project Types', element: ProjectTypeManager},
 
+   { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
+ { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
+
  
    ]
   }
@@ -452,6 +459,9 @@ export default function fetchRoutes(){
 
       { path: '/displayPurchesVendors', name: 'Purches vendors', element: DisplayVendors },
  { path: '/NewPurchesVendor', name: 'New Purches Vendor', element: NewPurchesVendor },
+
+  { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
+ { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
     ]}
 

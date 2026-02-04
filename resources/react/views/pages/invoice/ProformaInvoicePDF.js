@@ -512,6 +512,65 @@ const formatCurrency = (value) => {
   });
 };
 
+
+// Indian Rupees number to words (with paise support)
+const numberToWordsIndian = (num) => {
+  if (!num || isNaN(num)) return '';
+
+  const belowTwenty = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen'
+  ];
+
+  const tens = [
+    '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'
+  ];
+
+  const thousands = ['', 'Thousand', 'Lakh', 'Crore'];
+
+  function convertLessThanThousand(n) {
+    if (n === 0) return '';
+    if (n < 20) return belowTwenty[n];
+    if (n < 100) {
+      return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + belowTwenty[n % 10] : '');
+    }
+    return (
+      belowTwenty[Math.floor(n / 100)] + ' Hundred' +
+      (n % 100 ? ' ' + convertLessThanThousand(n % 100) : '')
+    );
+  }
+
+  const whole = Math.floor(num);
+  const fraction = Math.round((num - whole) * 100);
+
+  let words = '';
+  let i = 0;
+
+  let temp = whole;
+  while (temp > 0) {
+    const part = temp % 1000;
+    if (part > 0) {
+      let partWords = convertLessThanThousand(part);
+      if (i > 0) partWords += ' ' + thousands[i];
+      words = partWords + (words ? ' ' + words : '');
+    }
+    temp = Math.floor(temp / 1000);
+    i++;
+    if (i === 3) i = 1; // after thousand → lakh, then crore, etc.
+  }
+
+  if (!words) words = 'Zero';
+
+  let result = words + ' Rupees';
+
+  if (fraction > 0) {
+    result += ' and ' + convertLessThanThousand(fraction) + ' Paise';
+  }
+
+  return result + ' Only';
+};
+
 const formatScopePoints = (text = '') => {
   if (!text) return '—';
   const points = text
@@ -960,7 +1019,8 @@ export const generateProformaInvoicePDF = async (
     ['Grand Total', formatCurrency(proformaInvoice.final_amount)],
     ['Amount Paid', formatCurrency(proformaInvoice.paid_amount || 0)],
     ['Balance Amount', formatCurrency(proformaInvoice.pending_amount)],
-    ['Amount in Words: ' + (proformaInvoice.amount_in_words || '—') + ' Only', '']
+    // ['Amount in Words: ' + (proformaInvoice.amount_in_words || '—') + ' Only', '']
+    ['Amount in Words: ' + numberToWordsIndian(proformaInvoice.final_amount) , '']
   );
 
   doc.autoTable({

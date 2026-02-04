@@ -1823,7 +1823,8 @@ export const generateMultiLanguagePDF = async (
   balanceAmount,
   totalAmountWords,
   lang = 'english',
-  mode = 'save'
+  mode = 'save',
+  
 ) => {
   const user = getUserData() || {};
   const company = user.company_info || {};
@@ -1848,6 +1849,22 @@ export const generateMultiLanguagePDF = async (
     formData.payment_terms ||
     formData.terms_and_conditions
   );
+
+const getDocumentTitle = () => {
+    const type = Number(formData.invoiceType);
+    
+    switch (type) {
+      case 1:  return 'Quotation';
+      case 2:  return 'Work Order';
+     
+      default: return 'Document';           // fallback
+    }
+  };
+
+  const documentTitle = getDocumentTitle();
+
+console.log(documentTitle);
+
 
   const logoUrl = company.logo ? `${host}/img/${company.logo}` : null;
   
@@ -1931,7 +1948,7 @@ export const generateMultiLanguagePDF = async (
       doc.setFontSize(17);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(20);
-      doc.text('Quotation', pageWidth / 2, cy + 19, { align: 'center' });
+      doc.text(documentTitle, pageWidth / 2, cy + 19, { align: 'center' });
       cy += 34;
 
       // From / To / Details table

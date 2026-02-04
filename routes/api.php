@@ -165,6 +165,7 @@ Route::get('/drilling/{id}', [DrillingController::class, 'getById']);
 Route::delete('/drilling/{id}', [DrillingController::class, 'destroy']);
 Route::get('/getAllData',[OrderController::class,'index']);
 
+Route::get('/todaysData', [DrillingController::class, 'getProjectSummary']);
 
 //RulesController
 Route::get('/rules', [RulesController::class, 'index']);

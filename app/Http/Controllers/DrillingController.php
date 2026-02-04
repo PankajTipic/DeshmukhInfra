@@ -20,6 +20,14 @@ use App\Models\RawMaterialLog;
 use App\Models\UsesRawMaterial;
 use App\Models\RawMaterial;
 
+use Carbon\Carbon;
+use App\Models\Order;
+use App\Models\OrderDetail; 
+use App\Models\ProformaInvoice;
+use App\Models\ProformaInvoiceDetail;
+use App\Models\Income;
+use App\Models\IncomeSummary;
+
 
 
 class DrillingController
@@ -316,84 +324,6 @@ public function index(Request $request)
     // User-specific data (for type=2)
     // -------------------------------
 
-// public function getDataByUserId(Request $request)
-// {
-//     $companyId = auth()->user()->company_id;
-//     $userId    = auth()->id();
-
-//     $records = DrillingRecord::with([
-//             'surveyDetail',
-//             'workPointDetail',
-//             'compressorRpm', 
-//             'machineReading.operator', // ✅ include operator inside machineReading
-//             'project:id,project_name',
-//             'operator:id,name'
-//         ])
-//         ->where('company_id', $companyId)
-//         ->where('user_id', $userId)
-
-//         // ✅ Date filter
-//         ->when($request->start_date && $request->end_date, function ($query) use ($request) {
-//             $query->whereBetween('date', [$request->start_date, $request->end_date]);
-//         })
-
-//         // ✅ Project name filter
-//         ->when($request->project_name, function ($query) use ($request) {
-//             $query->whereHas('project', function ($q) use ($request) {
-//                 $q->where('project_name', 'like', '%' . $request->project_name . '%');
-//             });
-//         })
-
-//         // ✅ Point filter (workPoints + surveys + machineReading)
-//         ->when($request->max_point, function ($query) use ($request) {
-//             $query->where(function ($q) use ($request) {
-//                 $q->whereHas('workPointDetail', function ($w) use ($request) {
-//                     $w->where('work_point', '<=', $request->max_point);
-//                 })
-//                 ->orWhereHas('surveyDetail', function ($s) use ($request) {
-//                     $s->where('survey_point', '<=', $request->max_point);
-//                 })
-//                 ->orWhereHas('machineReading', function ($m) use ($request) {
-//                     $m->where('actual_machine_hr', '<=', $request->max_point);
-//                 })
-//                   ->orWhereHas('compressorRpm', function ($c) use ($request) {
-//                         $c->where('com_actul_hr', '<=', $request->max_point);
-//                     });
-//             });
-//         })
-
-//         // ✅ Relationship column match
-//         ->where(function ($query) {
-//             $query->whereHas('surveyDetail', function ($q) {
-//                 $q->whereColumn('survey_details.company_id', 'drilling_records.company_id')
-//                   ->orWhereColumn('survey_details.project_id', 'drilling_records.project_id')
-//                   ->orWhereColumn('survey_details.drilling_record_id', 'drilling_records.id');
-//             })
-//             ->orWhereHas('workPointDetail', function ($q) {
-//                 $q->whereColumn('work_point_details.company_id', 'drilling_records.company_id')
-//                   ->orWhereColumn('work_point_details.project_id', 'drilling_records.project_id')
-//                   ->orWhereColumn('work_point_details.drilling_record_id', 'drilling_records.id');
-//             })
-//             ->orWhereHas('machineReading', function ($q) {
-//                 $q->whereColumn('machine_reading.company_id', 'drilling_records.company_id')
-//                   ->orWhereColumn('machine_reading.project_id', 'drilling_records.project_id')
-//                   ->orWhereColumn('machine_reading.drilling_record_id', 'drilling_records.id');
-//             })
-//              ->orWhereHas('compressorRpm', function ($q) {
-//                 $q->whereColumn('compressor_rpm.company_id', 'drilling_records.company_id')
-//                   ->orWhereColumn('compressor_rpm.project_id', 'drilling_records.project_id')
-//                   ->orWhereColumn('compressor_rpm.drilling_record_id', 'drilling_records.id');
-//             });
-
-//         })
-//         ->orderBy('id', 'desc')
-//         ->get();
-
-//     return response()->json([
-//         'message' => 'Drilling records fetched successfully!',
-//         'data'    => $records
-//     ], 200);
-// }
 
 public function getDataByUserId(Request $request)
 {
@@ -977,6 +907,354 @@ public function destroy($id)
         ], 500);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// public function getProjectSummary(Request $request)
+// {
+//     $today = Carbon::today();
+
+//     $start = Carbon::parse($request->input('start_date', $today))->startOfDay();
+//     $end   = Carbon::parse($request->input('end_date',   $today))->endOfDay();
+
+//     $projectId   = $request->input('project_id');
+//     $projectType = $request->input('project_type');
+
+//     // ── Fetch projects that have activity in period ───────────────────────────────
+//     $projectIdsQuery = DrillingRecord::query()
+//         ->whereBetween('date', [$start, $end])
+//         ->select('project_id')
+//         ->distinct();
+
+//     if ($projectId)   $projectIdsQuery->where('project_id', $projectId);
+//     if ($projectType) $projectIdsQuery->whereHas('project', fn($q) => $q->where('type', $projectType));
+
+//     $projectIds = $projectIdsQuery->pluck('project_id')->unique();
+
+//     // Also include projects with orders or proforma in period (union)
+//     $projectIds = $projectIds->merge(
+//         Order::whereBetween('invoice_date', [$start, $end])
+//             ->when($projectId,   fn($q) => $q->where('project_id', $projectId))
+//             ->when($projectType, fn($q) => $q->whereHas('project', fn($qq) => $qq->where('type', $projectType)))
+//             ->pluck('project_id')
+//     )->merge(
+//         ProformaInvoice::whereBetween('invoice_date', [$start, $end])
+//             ->when($projectId,   fn($q) => $q->where('project_id', $projectId))
+//             ->when($projectType, fn($q) => $q->whereHas('project', fn($qq) => $qq->where('type', $projectType)))
+//             ->pluck('project_id')
+//     )->unique();
+
+//     if ($projectIds->isEmpty()) {
+//         return response()->json([
+//             'status' => 'success',
+//             'date_range' => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
+//             'filters' => compact('projectId', 'projectType'),
+//             'projects' => [],
+//             'message' => 'No activity found in selected period'
+//         ]);
+//     }
+
+//     // ── Load detailed data ────────────────────────────────────────────────────────
+//     $projects = Project::with([
+//         'drillingRecords' => fn($q) => $q
+//             ->whereBetween('date', [$start, $end])
+//             ->with([
+//                 'surveys',           // surveyDetail
+//                 'workPoints',        // workPointDetail
+//                 'compressorRpm',
+//                 'machineReading.operator'  // if you want operator name etc.
+//             ])
+//             ->orderBy('date'),
+//     ])->with([
+//         'orders' => fn($q) => $q
+//             ->whereBetween('invoice_date', [$start, $end])  // adjust date field if needed
+//             ->with('items'),
+//     ])->with([
+//         'proformaInvoices' => fn($q) => $q
+//             ->whereBetween('invoice_date', [$start, $end])
+//             ->with(['details', 'incomes'])
+//             ->orderBy('invoice_date', 'desc'),
+//     ])->whereIn('id', $projectIds)
+//       ->get();
+
+//     $result = $projects->map(function ($project) {
+//         return [
+//             'project_id'       => $project->id,
+//             'project_name'     => $project->project_name ?? $project->name ?? 'Unknown',
+//             'project_type'     => $project->project_type?->name ?? $project->type ?? null,
+
+//             // Optional summary (you can calculate if needed)
+//             'summary' => [
+//                 'drilling_days'      => $project->drillingRecords->count(),
+//                 'total_work_points'  => $project->drillingRecords->sum(fn($r) => $r->workPoints->sum('total')),
+//                 'total_survey'       => $project->drillingRecords->sum(fn($r) => $r->surveys->sum('total')),
+//                 'order_count'        => $project->orders->count(),
+//                 'proforma_count'     => $project->proformaInvoices->count(),
+//             ],
+
+//             'drilling_records'   => $project->drillingRecords->map(fn($record) => $record->toArray())->all(),
+//             'orders'             => $project->orders->map(fn($order) => $order->toArray())->all(),
+//             'proforma_invoices'  => $project->proformaInvoices->map(fn($pi) => $pi->toArray())->all(),
+//         ];
+//     })->values();
+
+//     return response()->json([
+//         'status'       => 'success',
+//         'date_range'   => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
+//         'filters'      => compact('projectId', 'projectType'),
+//         'projects'     => $result,
+//         'total_projects' => $result->count(),
+//     ]);
+// }
+
+
+
+public function getProjectSummary(Request $request)
+{
+    $today = Carbon::today();
+
+    // ============================
+    // Date Filter (Only for Drilling)
+    // ============================
+
+    $start = Carbon::parse($request->input('start_date', $today))->startOfDay();
+    $end   = Carbon::parse($request->input('end_date',   $today))->endOfDay();
+
+    // ============================
+    // Filters
+    // ============================
+
+    $projectId   = $request->input('project_id');
+    $projectType = $request->input('project_type');
+
+
+    // ====================================================
+    // Main Project Query
+    // ====================================================
+
+    $projects = Project::query()
+
+        // Project Filter
+        ->when($projectId, function ($q) use ($projectId) {
+            $q->where('id', $projectId);
+        })
+
+        // Project Type Filter
+        ->when($projectType, function ($q) use ($projectType) {
+            $q->where('type', $projectType);
+        })
+
+
+        // ===================== DRILLING (DATE WISE) =====================
+        ->with([
+            'drillingRecords' => function ($q) use ($start, $end) {
+
+                $q->whereBetween('date', [$start, $end])
+
+                  ->with([
+                      'surveys',
+                      'workPoints',
+                      'compressorRpm',
+                      'machineReading.operator'
+                  ])
+
+                  ->orderBy('date', 'asc');
+            }
+        ])
+
+
+        // ===================== ORDERS (PROJECT WISE) =====================
+        ->with([
+            'orders' => function ($q) {
+
+                $q->with('items')
+
+                  ->orderBy('invoiceDate', 'desc');
+            }
+        ])
+
+
+        // ===================== PROFORMA (PROJECT WISE) =====================
+        ->with([
+            'proformaInvoices' => function ($q) {
+
+                $q->with([
+                    'details',
+                    'incomes'
+                ])
+
+                ->orderBy('invoice_date', 'desc');
+            }
+        ])
+
+
+        // ===================== INCOME (PROJECT WISE) =====================
+        ->with([
+            'incomes' => function ($q) {
+
+                $q->orderBy('payment_date', 'desc');
+            }
+        ])
+
+
+        // ===================== INCOME SUMMARY (PROJECT WISE) =====================
+        ->with([
+            'incomeSummary'
+        ])
+
+
+        ->get();
+
+
+    // ====================================================
+    // No Data Found
+    // ====================================================
+
+    if ($projects->isEmpty()) {
+
+        return response()->json([
+
+            'status' => 'success',
+
+            'date_range' => [
+                'start' => $start->toDateString(),
+                'end'   => $end->toDateString()
+            ],
+
+            'filters' => compact('projectId', 'projectType'),
+
+            'projects' => [],
+
+            'message' => 'No data found'
+
+        ]);
+    }
+
+
+    // ====================================================
+    // Format Response
+    // ====================================================
+
+    $result = $projects->map(function ($project) {
+
+        // -------------------------------
+        // Payment Calculation
+        // -------------------------------
+
+        $totalReceived = $project->incomes->sum('amount');
+        $totalPending  = $project->incomes->sum('pending_amount');
+        $balance       = $totalPending;
+
+
+        // -------------------------------
+        // Work Calculation (From Drilling)
+        // -------------------------------
+
+        $totalWork = $project->drillingRecords
+            ->flatMap(fn($r) => $r->workPoints)
+            ->sum('total');
+
+
+        // -------------------------------
+        // Order Total
+        // -------------------------------
+
+        $totalOrderAmount = $project->orders->sum('total_amount');
+
+
+        // -------------------------------
+        // Proforma Total
+        // -------------------------------
+
+        $totalProformaAmount = $project->proformaInvoices->sum('total_amount');
+
+
+        return [
+
+            // ================= BASIC =================
+
+            'project_id'   => $project->id,
+            'project_name' => $project->project_name ?? $project->name,
+            'project_type' => $project->type ?? null,
+
+
+            // ================= SUMMARY =================
+
+            'summary' => [
+
+                'total_work_done'   => $totalWork,
+
+                'order_total'       => $totalOrderAmount,
+                'proforma_total'    => $totalProformaAmount,
+
+                'payment_received' => $totalReceived,
+                'payment_pending'  => $totalPending,
+                'balance'          => $balance,
+
+                'drilling_days'     => $project->drillingRecords->count(),
+                'order_count'       => $project->orders->count(),
+                'proforma_count'    => $project->proformaInvoices->count(),
+            ],
+
+
+            // ================= FULL DATA =================
+
+            'drilling_records'  => $project->drillingRecords,
+
+            'orders'            => $project->orders,
+
+            'proforma_invoices' => $project->proformaInvoices,
+
+            'incomes'           => $project->incomes,
+
+            'income_summary'    => $project->incomeSummary,
+        ];
+    });
+
+
+    // ====================================================
+    // Final Response
+    // ====================================================
+
+    return response()->json([
+
+        'status' => 'success',
+
+        'date_range' => [
+            'start' => $start->toDateString(),
+            'end'   => $end->toDateString()
+        ],
+
+        'filters' => compact('projectId', 'projectType'),
+
+        'total_projects' => $result->count(),
+
+        'projects' => $result
+
+    ]);
+}
+
+
+
+
+
+
+
+
 
 
 }

@@ -50,5 +50,31 @@ public function projectType()
 }
 
 
+public function drillingRecords()
+{
+    return $this->hasMany(DrillingRecord::class, 'project_id');
+}
+
+public function orders()
+{
+    return $this->hasMany(Order::class, 'project_id');
+}
+
+public function proformaInvoices()
+{
+    return $this->hasMany(ProformaInvoice::class, 'project_id');
+}
+
+public function incomes()
+{
+    return $this->hasMany(Income::class, 'project_id');
+}
+
+public function incomeSummary()
+{
+    return $this->hasMany(IncomeSummary::class, 'project_id');
+}
+
+
 
 }

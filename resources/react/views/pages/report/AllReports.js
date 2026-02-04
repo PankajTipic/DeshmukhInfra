@@ -1703,7 +1703,7 @@ function All_Reports({ companyId }) {
             projectName: log.project_name || 'Unknown Project',
             totalIncomeAmount: Number(log.totalIncomeAmount) || 0,
             taxAmount: Number(log.taxAmount) || 0,
-            projectType: log.project_type || 'N/A'
+            projectType: log.project_type_name || 'N/A'
           }));
 
           rawIncomeData = [...incomeArray];
@@ -1735,7 +1735,7 @@ function All_Reports({ companyId }) {
             expenseDate: expense.expense_date,
             totalExpense: Number(expense.total_expense) || 0,
             projectName: expense.project_name || 'Unknown Project',
-            projectType: expense.project_type || 'N/A'
+            projectType: expense.project_type_name || 'N/A'
           }));
 
           rawExpenseData = [...expenseArray];
