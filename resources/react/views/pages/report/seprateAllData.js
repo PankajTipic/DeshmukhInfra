@@ -221,34 +221,250 @@ const WorkSummaryTable = () => {
 
   
 
+// const exportToPDF = async () => {
+//   if (!projectData || projectData.length === 0) {
+//     alert("No project data available to export");
+//     return;
+//   }
+
+//   const userData  = getUserData?.() || {};
+//   const company   = userData.company_info || {};
+
+//   const companyName    = company.company_name    || "Deshmukh Infra Soft";
+//   const companyPhone   = company.phone_no        || "—";
+//   const companyEmail   = company.email_id        || "—";
+//   const companyAddress = company.address || company.land_mark || "—";
+//   let   logoUrl        = company.logo ? `${host}/${company.logo}` : null;
+
+//   const doc = new jsPDF({
+//     orientation: 'landscape',
+//     unit:        'pt',
+//     format:      'a4'
+//   });
+
+//   const pageWidth    = doc.internal.pageSize.getWidth();
+//   const pageHeight   = doc.internal.pageSize.getHeight();
+//   const margin       = 40;
+//   const contentWidth = pageWidth - margin * 2;
+
+//   // Estimated safe header height – adjust if your logo/address needs more space
+//   const headerBottomY = 160;   // ← most important tuning value
+
+//   // ─── Load logo (async) ─────────────────────────────────────────
+//   let logoBase64 = null;
+//   if (logoUrl) {
+//     try {
+//       const img = new Image();
+//       img.crossOrigin = "Anonymous";
+//       await new Promise((resolve, reject) => {
+//         img.onload  = resolve;
+//         img.onerror = reject;
+//         img.src     = logoUrl;
+//       });
+//       const canvas = document.createElement("canvas");
+//       canvas.width  = img.width;
+//       canvas.height = img.height;
+//       canvas.getContext("2d").drawImage(img, 0, 0);
+//       logoBase64 = canvas.toDataURL("image/png");
+//     } catch (err) {
+//       console.warn("Logo failed to load:", err);
+//     }
+//   }
+
+//   // ─── Draw header function ──────────────────────────────────────
+//   const drawHeader = (pageNumber, isFirst = false) => {
+//     // Page border
+//     doc.setDrawColor(60, 60, 70);
+//     doc.setLineWidth(1);
+//     doc.rect(margin - 8, margin - 8, pageWidth - (margin - 8) * 2, pageHeight - (margin - 8) * 2);
+
+//     let y = margin + 8;
+
+//     // Company name
+//     doc.setFont("helvetica", "bold");
+//     doc.setFontSize(19);
+//     doc.setTextColor(20, 40, 100);
+//     doc.text(companyName, margin + 2, y + 18);
+
+//     // Address & contact – smaller
+//     doc.setFont("helvetica", "normal");
+//     doc.setFontSize(10);
+//     doc.setTextColor(60);
+//     y += 26;
+//     doc.text(companyAddress, margin + 2, y);
+//     y += 14;
+//     doc.text(`Phone: ${companyPhone}  |  Email: ${companyEmail}`, margin + 2, y);
+
+//     // Logo area – right top
+//     const logoSize = 70;
+//     const logoX = pageWidth - margin - logoSize;
+//     const logoY = margin - 2;
+
+//     doc.setFillColor(235, 240, 255);
+//     doc.rect(logoX, logoY, logoSize, logoSize, "F");
+
+//     if (logoBase64) {
+//       doc.addImage(logoBase64, "PNG", logoX + 4, logoY + 4, logoSize - 8, logoSize - 8);
+//     } else {
+//       doc.setFontSize(11);
+//       doc.setTextColor(120);
+//       doc.text("LOGO", logoX + logoSize/2, logoY + logoSize/2 + 4, { align: "center" });
+//     }
+
+//     y += 38;
+
+//     // Blue separator line
+//     doc.setLineWidth(1);
+//     doc.setDrawColor(100, 140, 220);
+//     doc.line(margin, y, pageWidth - margin, y);
+//     y += 18;
+
+//     // Title – centered
+//     doc.setFontSize(17);
+//     doc.setFont("helvetica", "bold");
+//     doc.setTextColor(30);
+//     doc.text(
+//       isFirst ? "WORK SUMMARY" : "WORK SUMMARY (continued)",
+//       pageWidth / 2,
+//       y + 6,
+//       { align: "center" }
+//     );
+//     y += 26;
+
+//     // Generated & page info – top right
+//     // doc.setFontSize(9.5);
+//     // doc.setTextColor(80);
+//     // const today = new Date().toLocaleDateString("en-IN", {
+//     //   day: "2-digit", month: "short", year: "numeric"
+//     // });
+//     // doc.text(`Generated: ${today}`, pageWidth - margin - 4, margin + 22, { align: "right" });
+//     // doc.text(`Page ${pageNumber}`,    pageWidth - margin - 4, margin + 38, { align: "right" });
+//   };
+
+//   // ─── Table definition ──────────────────────────────────────────
+//   const tableColumn = [
+//     "Project Name",
+//     "Date",
+//     "Work Type",
+//     "Qty",
+//     "Rate",
+//     "Total"
+//   ];
+
+//   const tableRows = [];
+//   projectData.forEach(proj => {
+//     (proj.workEntries || []).forEach(entry => {
+//       tableRows.push([
+//         proj.project_name        || "—",
+//         formatDateDDMMYYYY?.(entry.date)  || "—",
+//         entry.workType           || "—",
+//         formatNumber?.(entry.qty)         || "0",
+//         formatNumber?.(entry.rate)        || "0.00",
+//         formatNumber?.(entry.total)       || "0.00",
+//       ]);
+//     });
+//   });
+
+//   if (tableRows.length === 0) {
+//     tableRows.push(["No entries found", "—", "—", "—", "—", "—"]);
+//   }
+
+//   // First page: draw header manually before table
+//   drawHeader(1, true);
+
+//   // ─── Generate table ────────────────────────────────────────────
+//   doc.autoTable({
+//     startY: headerBottomY,           // ← start exactly after header
+//     head: [tableColumn],
+//     body: tableRows,
+
+//     theme: 'grid',
+
+//     margin: { left: margin, right: margin },
+
+//     styles: {
+//       fontSize:    9.5,
+//       cellPadding: 5.5,
+//       overflow:    'linebreak',
+//       lineColor:   [80, 80, 90],
+//       lineWidth:   0.4,
+//       textColor:   [30, 30, 40],
+//     },
+
+//     headStyles: {
+//       fillColor:   [210, 230, 255],
+//       textColor:   [0, 0, 0],
+//       fontStyle:   'bold',
+//       halign:      'center',
+//       lineWidth:   0.6,
+//     },
+
+//     columnStyles: {
+//       0: { cellWidth: 210, halign: 'left'  }, // Project Name
+//       1: { cellWidth:  78, halign: 'center' }, // Date
+//       2: { cellWidth: 220, halign: 'left'  }, // Work Type
+//       3: { cellWidth:  65, halign: 'right' }, // Qty
+//       4: { cellWidth:  75, halign: 'right' }, // Rate
+//       5: { cellWidth:  95, halign: 'right', fontStyle: 'bold' }, // Total
+//     },
+
+//     didDrawPage: (data) => {
+//       const currentPage = doc.getCurrentPageInfo().pageNumber;
+
+//       // Draw header on every page (including continued pages)
+//       drawHeader(currentPage, currentPage === 1);
+
+//       // Footer note
+//       doc.setFontSize(8);
+//       doc.setTextColor(100);
+//       doc.text(
+//         "Computer generated document • For internal use",
+//         pageWidth / 2,
+//         pageHeight - 18,
+//         { align: "center" }
+//       );
+//     },
+
+//     showHead:       'everyPage',
+//     rowPageBreak:   'avoid',
+//   });
+
+//   // Save
+//   const filename = `Work_Summary_${new Date().toISOString().slice(0,10)}.pdf`;
+//   doc.save(filename);
+// };
+
+
+
 const exportToPDF = async () => {
   if (!projectData || projectData.length === 0) {
     alert("No project data available to export");
     return;
   }
 
-  const userData  = getUserData?.() || {};
-  const company   = userData.company_info || {};
-
-  const companyName    = company.company_name    || "Deshmukh Infra Soft";
-  const companyPhone   = company.phone_no        || "—";
-  const companyEmail   = company.email_id        || "—";
+  const userData = getUserData?.() || {};
+  const company = userData.company_info || {};
+  const companyName = company.company_name || "Deshmukh Infra Soft";
+  const companyPhone = company.phone_no || "—";
+  const companyEmail = company.email_id || "—";
   const companyAddress = company.address || company.land_mark || "—";
-  let   logoUrl        = company.logo ? `${host}/${company.logo}` : null;
+  let logoUrl = company.logo ? `${host}/img/${company.logo}` : null;
+  console.log(logoUrl);
+  
 
   const doc = new jsPDF({
     orientation: 'landscape',
-    unit:        'pt',
-    format:      'a4'
+    unit: 'pt',
+    format: 'a4'
   });
 
-  const pageWidth    = doc.internal.pageSize.getWidth();
-  const pageHeight   = doc.internal.pageSize.getHeight();
-  const margin       = 40;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
   const contentWidth = pageWidth - margin * 2;
 
   // Estimated safe header height – adjust if your logo/address needs more space
-  const headerBottomY = 160;   // ← most important tuning value
+  const headerBottomY = 160; // ← most important tuning value
 
   // ─── Load logo (async) ─────────────────────────────────────────
   let logoBase64 = null;
@@ -257,12 +473,12 @@ const exportToPDF = async () => {
       const img = new Image();
       img.crossOrigin = "Anonymous";
       await new Promise((resolve, reject) => {
-        img.onload  = resolve;
+        img.onload = resolve;
         img.onerror = reject;
-        img.src     = logoUrl;
+        img.src = logoUrl;
       });
       const canvas = document.createElement("canvas");
-      canvas.width  = img.width;
+      canvas.width = img.width;
       canvas.height = img.height;
       canvas.getContext("2d").drawImage(img, 0, 0);
       logoBase64 = canvas.toDataURL("image/png");
@@ -290,19 +506,17 @@ const exportToPDF = async () => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(60);
-    y += 26;
+    y += 32;
     doc.text(companyAddress, margin + 2, y);
     y += 14;
-    doc.text(`Phone: ${companyPhone}  |  Email: ${companyEmail}`, margin + 2, y);
+    doc.text(`Phone: ${companyPhone} | Email: ${companyEmail}`, margin + 2, y);
 
     // Logo area – right top
     const logoSize = 70;
     const logoX = pageWidth - margin - logoSize;
     const logoY = margin - 2;
-
     doc.setFillColor(235, 240, 255);
     doc.rect(logoX, logoY, logoSize, logoSize, "F");
-
     if (logoBase64) {
       doc.addImage(logoBase64, "PNG", logoX + 4, logoY + 4, logoSize - 8, logoSize - 8);
     } else {
@@ -317,6 +531,7 @@ const exportToPDF = async () => {
     doc.setLineWidth(1);
     doc.setDrawColor(100, 140, 220);
     doc.line(margin, y, pageWidth - margin, y);
+
     y += 18;
 
     // Title – centered
@@ -329,16 +544,17 @@ const exportToPDF = async () => {
       y + 6,
       { align: "center" }
     );
+
     y += 26;
 
     // Generated & page info – top right
     // doc.setFontSize(9.5);
     // doc.setTextColor(80);
     // const today = new Date().toLocaleDateString("en-IN", {
-    //   day: "2-digit", month: "short", year: "numeric"
+    // day: "2-digit", month: "short", year: "numeric"
     // });
     // doc.text(`Generated: ${today}`, pageWidth - margin - 4, margin + 22, { align: "right" });
-    // doc.text(`Page ${pageNumber}`,    pageWidth - margin - 4, margin + 38, { align: "right" });
+    // doc.text(`Page ${pageNumber}`, pageWidth - margin - 4, margin + 38, { align: "right" });
   };
 
   // ─── Table definition ──────────────────────────────────────────
@@ -355,12 +571,12 @@ const exportToPDF = async () => {
   projectData.forEach(proj => {
     (proj.workEntries || []).forEach(entry => {
       tableRows.push([
-        proj.project_name        || "—",
-        formatDateDDMMYYYY?.(entry.date)  || "—",
-        entry.workType           || "—",
-        formatNumber?.(entry.qty)         || "0",
-        formatNumber?.(entry.rate)        || "0.00",
-        formatNumber?.(entry.total)       || "0.00",
+        proj.project_name || "—",
+        formatDateDDMMYYYY?.(entry.date) || "—",
+        entry.workType || "—",
+        formatNumber?.(entry.qty) ?? "—",
+        formatNumber?.(entry.rate) ?? "—",
+        formatNumber?.(entry.total) || "0.00",
       ]);
     });
   });
@@ -369,51 +585,41 @@ const exportToPDF = async () => {
     tableRows.push(["No entries found", "—", "—", "—", "—", "—"]);
   }
 
-  // First page: draw header manually before table
-  drawHeader(1, true);
-
   // ─── Generate table ────────────────────────────────────────────
   doc.autoTable({
-    startY: headerBottomY,           // ← start exactly after header
+    startY: headerBottomY,
     head: [tableColumn],
     body: tableRows,
-
     theme: 'grid',
-
-    margin: { left: margin, right: margin },
-
+    margin: { top: headerBottomY, left: margin, right: margin },
     styles: {
-      fontSize:    9.5,
+      fontSize: 9.5,
       cellPadding: 5.5,
-      overflow:    'linebreak',
-      lineColor:   [80, 80, 90],
-      lineWidth:   0.4,
-      textColor:   [30, 30, 40],
+      overflow: 'linebreak',
+      lineColor: [80, 80, 90],
+      lineWidth: 0.4,
+      textColor: [30, 30, 40],
     },
-
     headStyles: {
-      fillColor:   [210, 230, 255],
-      textColor:   [0, 0, 0],
-      fontStyle:   'bold',
-      halign:      'center',
-      lineWidth:   0.6,
+      fillColor: [210, 230, 255],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      halign: 'center',
+      lineWidth: 0.6,
     },
-
     columnStyles: {
-      0: { cellWidth: 210, halign: 'left'  }, // Project Name
-      1: { cellWidth:  78, halign: 'center' }, // Date
-      2: { cellWidth: 220, halign: 'left'  }, // Work Type
-      3: { cellWidth:  65, halign: 'right' }, // Qty
-      4: { cellWidth:  75, halign: 'right' }, // Rate
-      5: { cellWidth:  95, halign: 'right', fontStyle: 'bold' }, // Total
+      0: { cellWidth: 210, halign: 'left' }, // Project Name
+      1: { cellWidth: 78, halign: 'center' }, // Date
+      2: { cellWidth: 220, halign: 'left' }, // Work Type
+      3: { cellWidth: 65, halign: 'right' }, // Qty
+      4: { cellWidth: 75, halign: 'right' }, // Rate
+      5: { cellWidth: 95, halign: 'right', fontStyle: 'bold' }, // Total
     },
-
-    didDrawPage: (data) => {
+    willDrawPage: (data) => {
       const currentPage = doc.getCurrentPageInfo().pageNumber;
-
-      // Draw header on every page (including continued pages)
       drawHeader(currentPage, currentPage === 1);
-
+    },
+    didDrawPage: (data) => {
       // Footer note
       doc.setFontSize(8);
       doc.setTextColor(100);
@@ -424,19 +630,14 @@ const exportToPDF = async () => {
         { align: "center" }
       );
     },
-
-    showHead:       'everyPage',
-    rowPageBreak:   'avoid',
+    showHead: 'everyPage',
+    rowPageBreak: 'avoid',
   });
 
   // Save
   const filename = `Work_Summary_${new Date().toISOString().slice(0,10)}.pdf`;
   doc.save(filename);
 };
-
-
-
-
 
 
 

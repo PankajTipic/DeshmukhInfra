@@ -196,309 +196,397 @@ useEffect(() => {
 
 
   // PDF Export Function with Payment Date
-  // const handlePDFExport = () => {
-  //   const doc = new jsPDF('landscape', 'pt', 'a4');
-  //   const pageWidth = doc.internal.pageSize.getWidth();
-  //   const today = new Date().toLocaleDateString('en-GB');
-    
-  //   // Title
-  //   doc.setFontSize(18);
-  //   doc.setFont('helvetica', 'bold');
-  //   doc.text('INCOME REPORT', pageWidth / 2, 40, { align: 'center' });
-    
-  //   // Period and Generated Date
-  //   doc.setFontSize(10);
-  //   doc.setFont('helvetica', 'normal');
-  //   doc.text(`Generated on: ${today}`, pageWidth / 2, 60, { align: 'center' });
-  //   doc.text('(Based on Payment Date)', pageWidth / 2, 75, { align: 'center' });
-    
-  //   // Grand Total Header
-  //   doc.setFillColor(0, 109, 118);
-  //   doc.rect(40, 90, pageWidth - 80, 30, 'F');
-  //   doc.setTextColor(255, 255, 255);
-  //   doc.setFontSize(11);
-  //   doc.setFont('helvetica', 'bold');
-  //   const gstAmount = parseFloat(summary.total_amount) * (gst / (100 + gst));
-  //   const basicAmount = parseFloat(summary.total_amount) - gstAmount;
-  //   doc.text(
-  //     `Grand Total: Amount: Rs ${formatIndianNumber(basicAmount)} | GST: Rs ${formatIndianNumber(gstAmount)} | Total With GST: Rs ${formatIndianNumber(parseFloat(summary.total_amount))} | Pending: Rs ${formatIndianNumber(parseFloat(summary.pending_amount))}`,
-  //     pageWidth / 2,
-  //     108,
-  //     { align: 'center' }
-  //   );
-    
-  //   let yPosition = 140;
-    
-  //   // Group incomes by project
-  //   const groupedIncomes = incomes.reduce((acc, income) => {
-  //     const projectName = income.project_name || 'N/A';
-  //     if (!acc[projectName]) {
-  //       acc[projectName] = [];
-  //     }
-  //     acc[projectName].push(income);
-  //     return acc;
-  //   }, {});
-    
-  //   // Generate table for each project
-  //   Object.keys(groupedIncomes).forEach((projectName, index) => {
-  //     const projectIncomes = groupedIncomes[projectName];
-      
-  //     // Add new page if not enough space
-  //     if (yPosition > 500) {
-  //       doc.addPage();
-  //       yPosition = 40;
-  //     }
-      
-  //     // Project Header
-  //     doc.setFillColor(0, 172, 153);
-  //     doc.rect(40, yPosition, pageWidth - 80, 25, 'F');
-  //     doc.setTextColor(255, 255, 255);
-  //     doc.setFontSize(12);
-  //     doc.setFont('helvetica', 'bold');
-  //     doc.text(`Project: ${projectName}`, 50, yPosition + 17);
-      
-  //     yPosition += 35;
-      
-  //     // Table data with Payment Date
-  //     const tableData = projectIncomes.map((income, idx) => {
-  //       // Use payment_date if available, fallback to invoice_date
-  //       const paymentDate = income.payment_date || income.invoice_date;
-        
-  //       return [
-  //         idx + 1,
-  //         formatDate(income.po_date),
-  //         income.po_no,
-  //         income.invoice_no,
-  //         formatDate(income.invoice_date),
-  //         formatDate(paymentDate), // Payment Date column
-  //         formatIndianNumber(parseFloat(income.basic_amount)),
-  //         formatIndianNumber(parseFloat(income.gst_amount)),
-  //         formatIndianNumber(parseFloat(income.billing_amount)),
-  //         formatIndianNumber(parseFloat(income.received_amount)),
-  //         formatIndianNumber(parseFloat(income.pending_amount)),
-  //         income.received_by || '-',
-  //         income.payment_type.toUpperCase(),
-  //         income.remark || '-',
-  //         income.receivers_bank || '-'
-  //       ];
-  //     });
-      
-  //     // Calculate totals for this project
-  //     const projectTotal = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.billing_amount), 0);
-  //     const projectReceived = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.received_amount), 0);
-  //     const projectPending = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.pending_amount), 0);
-  //     const projectBasic = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.basic_amount), 0);
-  //     const projectGST = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.gst_amount), 0);
-      
-  //     tableData.push([
-  //       { content: 'Total:', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
-  //       formatIndianNumber(projectBasic),
-  //       formatIndianNumber(projectGST),
-  //       formatIndianNumber(projectTotal),
-  //       formatIndianNumber(projectReceived),
-  //       formatIndianNumber(projectPending),
-  //       '', '', '', ''
-  //     ]);
-      
-  //     doc.autoTable({
-  //       startY: yPosition,
-  //       head: [[
-  //         'Sr', 'PO Date', 'PO No', 'Invoice No', 'Invoice Date', 'Payment Date',
-  //         'Base Amount', 'GST Rs', 'Total', 'Received', 'Pending',
-  //         'Sent By', 'Payment Type', 'Txn ID', 'Bank'
-  //       ]],
-  //       body: tableData,
-  //       theme: 'striped',
-  //       headStyles: {
-  //         fillColor: [210, 224, 170],
-  //         textColor: 'black',
-  //         fontSize: 7,
-  //         fontStyle: 'bold',
-  //         halign: 'center'
-  //       },
-  //       styles: {
-  //         fontSize: 6,
-  //         cellPadding: 2,
-  //         halign: 'right'
-  //       },
-  //       columnStyles: {
-  //         0: { halign: 'center', cellWidth: 20 },
-  //         1: { cellWidth: 50 },
-  //         2: { cellWidth: 45 },
-  //         3: { cellWidth: 50 },
-  //         4: { cellWidth: 50 },
-  //         5: { cellWidth: 50, halign: 'center' }, // Payment Date
-  //         6: { cellWidth: 55 },
-  //         7: { cellWidth: 45 },
-  //         8: { cellWidth: 55 },
-  //         9: { cellWidth: 55 },
-  //         10: { cellWidth: 55 },
-  //         11: { cellWidth: 45 },
-  //         12: { cellWidth: 45 },
-  //         13: { cellWidth: 45 },
-  //         14: { cellWidth: 50 }
-  //       },
-  //       margin: { left: 40, right: 40 },
-  //       didDrawPage: (data) => {
-  //         // Footer
-  //         doc.setFontSize(8);
-  //         doc.setTextColor(128);
-  //         doc.text(
-  //           `Page ${doc.internal.getNumberOfPages()}`,
-  //           pageWidth / 2,
-  //           doc.internal.pageSize.getHeight() - 20,
-  //           { align: 'center' }
-  //         );
-  //       }
-  //     });
-      
-  //     yPosition = doc.lastAutoTable.finalY + 20;
-  //   });
-    
-  //   doc.save(`Income_Report_${today.replace(/\//g, '-')}.pdf`);
-  // };
+
 
 
 
 
 
 // PDF Export Function with Payment Date + Professional Header
+// const handlePDFExport = () => {
+//   const doc = new jsPDF('landscape', 'pt', 'a4');
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+//   const margin = 40; // pt units (≈14mm)
+
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+
+//   // ───────────────────────────────────────────────
+//   // PAGE BORDER
+//   // ───────────────────────────────────────────────
+//   doc.setDrawColor(80, 80, 80);
+//   doc.setLineWidth(0.8);
+//   doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+//   // ───────────────────────────────────────────────
+//   // LOGO (top-right)
+//   // ───────────────────────────────────────────────
+//   const logoSize = 60; // pt (~21mm)
+//   const logoX = pageWidth - margin - logoSize - 10;
+//   const logoY = margin + 12;
+
+//   let logoUrl = null;
+//   if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//     logoUrl = `${host}/img/${companyInfo.logo}`;
+//   }
+
+//   if (logoUrl) {
+//     try {
+//       doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+//     } catch (err) {
+//       console.warn("Logo failed to load:", err);
+//       // fallback placeholder
+//       doc.setFillColor(220, 220, 240);
+//       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//       doc.setFontSize(10);
+//       doc.setTextColor(100);
+//       doc.text("LOGO", logoX + 12, logoY + 35);
+//     }
+//   } else {
+//     // placeholder if no logo
+//     doc.setFillColor(220, 220, 240);
+//     doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//     doc.setFontSize(10);
+//     doc.setTextColor(100);
+//     doc.text("LOGO", logoX + 12, logoY + 35);
+//   }
+
+//   // ───────────────────────────────────────────────
+//   // COMPANY NAME & DETAILS (top-left, close to border)
+//   // ───────────────────────────────────────────────
+//   const textX = margin + 12; // ~4mm from left border
+//   let textY = margin + 28;   // starting y position
+
+//   // Company Name
+//   doc.setFontSize(20);
+//   doc.setFont("helvetica", "bold");
+//   doc.setTextColor(40, 40, 60);
+//   doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
+
+//   textY += 22;
+
+//   // Details - smaller font, compact
+//   doc.setFontSize(11);
+//   doc.setFont("helvetica", "normal");
+//   doc.setTextColor(60);
+
+//   const details = [
+//     companyInfo.land_mark || "Urali Kanchan, Pune",
+//     `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//     `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//     `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+//   ];
+
+//   details.forEach((line) => {
+//     if (line && line.trim()) {
+//       doc.text(line, textX, textY);
+//       textY += 14; // tight spacing
+//     }
+//   });
+
+//   // ───────────────────────────────────────────────
+//   // HORIZONTAL SEPARATOR
+//   // ───────────────────────────────────────────────
+//   doc.setLineWidth(1.2);
+//   doc.setDrawColor(0, 0, 0);
+//   doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
+
+//   // ───────────────────────────────────────────────
+//   // TITLE
+//   // ───────────────────────────────────────────────
+//   doc.setFontSize(18);
+//   doc.setFont("helvetica", "bold");
+//   doc.setTextColor(0);
+//   doc.text(
+//     "INCOME REPORT",
+//     pageWidth / 2,
+//     textY + 34,
+//     { align: "center" }
+//   );
+
+//   // Generated date & note (below title)
+//   doc.setFontSize(10);
+//   doc.setFont("helvetica", "normal");
+//   const today = new Date().toLocaleDateString('en-GB');
+//   doc.text(
+//     `Generated on: ${today} (Based on Payment Date)`,
+//     pageWidth / 2,
+//     textY + 52,
+//     { align: "center" }
+//   );
+
+//   // ───────────────────────────────────────────────
+//   // GRAND TOTAL SUMMARY (your original styling)
+//   // ───────────────────────────────────────────────
+//   const gstAmount = parseFloat(summary.total_amount) * (gst / (100 + gst));
+//   const basicAmount = parseFloat(summary.total_amount) - gstAmount;
+
+//   doc.setFillColor(0, 109, 118);
+//   doc.rect(margin + 10, textY + 65, pageWidth - margin * 2 - 20, 34, 'F');
+//   doc.setTextColor(255, 255, 255);
+//   doc.setFontSize(11);
+//   doc.setFont("helvetica", "bold");
+//   doc.text(
+//     `Grand Total: Amount: Rs ${formatIndianNumber(basicAmount)} | GST: Rs ${formatIndianNumber(gstAmount)} | Total With GST: Rs ${formatIndianNumber(parseFloat(summary.total_amount))} | Pending: Rs ${formatIndianNumber(parseFloat(summary.pending_amount))}`,
+//     pageWidth / 2,
+//     textY + 88,
+//     { align: "center" }
+//   );
+
+//   // ───────────────────────────────────────────────
+//   // Your original table logic starts from here
+//   // ───────────────────────────────────────────────
+//   let yPosition = textY + 120; // start tables after header
+
+//   // Group incomes by project
+//   const groupedIncomes = incomes.reduce((acc, income) => {
+//     const projectName = income.project_name || 'N/A';
+//     if (!acc[projectName]) acc[projectName] = [];
+//     acc[projectName].push(income);
+//     return acc;
+//   }, {});
+
+//   Object.keys(groupedIncomes).forEach((projectName, index) => {
+//     const projectIncomes = groupedIncomes[projectName];
+
+//     // Add new page if needed
+//     if (yPosition > pageHeight - 120) {
+//       doc.addPage();
+//       yPosition = margin + 40;
+//     }
+
+//     // Project Header
+//     doc.setFillColor(0, 172, 153);
+//     doc.rect(margin + 10, yPosition, pageWidth - margin * 2 - 20, 28, 'F');
+//     doc.setTextColor(255, 255, 255);
+//     doc.setFontSize(13);
+//     doc.setFont("helvetica", "bold");
+//     doc.text(`Project: ${projectName}`, margin + 20, yPosition + 19);
+
+//     yPosition += 38;
+
+//     // Table data with Payment Date
+//     const tableData = projectIncomes.map((income, idx) => {
+//       const paymentDate = income.payment_date || income.invoice_date;
+//       return [
+//         idx + 1,
+//         formatDate(income.po_date),
+//         income.po_no,
+//         income.invoice_no,
+//         formatDate(income.invoice_date),
+//         formatDate(paymentDate),
+//         formatIndianNumber(parseFloat(income.basic_amount)),
+//         formatIndianNumber(parseFloat(income.gst_amount)),
+//         formatIndianNumber(parseFloat(income.billing_amount)),
+//         formatIndianNumber(parseFloat(income.received_amount)),
+//         formatIndianNumber(parseFloat(income.pending_amount)),
+//         income.received_by || '-',
+//         income.payment_type.toUpperCase(),
+//         income.remark || '-',
+//         income.receivers_bank || '-'
+//       ];
+//     });
+
+//     // Project totals
+//     const projectTotal   = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.billing_amount), 0);
+//     const projectReceived = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.received_amount), 0);
+//     const projectPending  = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.pending_amount), 0);
+//     const projectBasic    = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.basic_amount), 0);
+//     const projectGST      = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.gst_amount), 0);
+
+//     tableData.push([
+//       { content: 'Total:', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
+//       formatIndianNumber(projectBasic),
+//       formatIndianNumber(projectGST),
+//       formatIndianNumber(projectTotal),
+//       formatIndianNumber(projectReceived),
+//       formatIndianNumber(projectPending),
+//       '', '', '', ''
+//     ]);
+
+//     doc.autoTable({
+//       startY: yPosition,
+//       head: [[
+//         'Sr', 'PO Date', 'PO No', 'Invoice No', 'Invoice Date', 'Payment Date',
+//         'Base Amount', 'GST Rs', 'Total', 'Received', 'Pending',
+//         'Sent By', 'Payment Type', 'Txn ID', 'Bank'
+//       ]],
+//       body: tableData,
+//       theme: 'striped',
+//       headStyles: {
+//         fillColor: [210, 224, 170],
+//         textColor: 'black',
+//         fontSize: 7,
+//         fontStyle: 'bold',
+//         halign: 'center'
+//       },
+//       styles: {
+//         fontSize: 6,
+//         cellPadding: 2,
+//         halign: 'right'
+//       },
+//       columnStyles: {
+//         0: { halign: 'center', cellWidth: 20 },
+//         1: { cellWidth: 50 },
+//         2: { cellWidth: 45 },
+//         3: { cellWidth: 50 },
+//         4: { cellWidth: 50 },
+//         5: { cellWidth: 50, halign: 'center' },
+//         6: { cellWidth: 55 },
+//         7: { cellWidth: 45 },
+//         8: { cellWidth: 55 },
+//         9: { cellWidth: 55 },
+//         10: { cellWidth: 55 },
+//         11: { cellWidth: 45 },
+//         12: { cellWidth: 45 },
+//         13: { cellWidth: 45 },
+//         14: { cellWidth: 50 }
+//       },
+//       margin: { left: margin + 10, right: margin + 10 },
+//       didDrawPage: (data) => {
+//         doc.setFontSize(8);
+//         doc.setTextColor(128);
+//         doc.text(
+//           `Page ${doc.internal.getNumberOfPages()}`,
+//           pageWidth / 2,
+//           pageHeight - 20,
+//           { align: 'center' }
+//         );
+//       }
+//     });
+
+//     yPosition = doc.lastAutoTable.finalY + 25;
+//   });
+
+//   doc.save(`Income_Report_${today.replace(/\//g, '-')}.pdf`);
+// };
+
+
+
+
+
 const handlePDFExport = () => {
   const doc = new jsPDF('landscape', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 40; // pt units (≈14mm)
-
   const user = getUserData();
   const companyInfo = user?.company_info || {};
-
   // ───────────────────────────────────────────────
-  // PAGE BORDER
+  // DRAW HEADER FUNCTION
   // ───────────────────────────────────────────────
-  doc.setDrawColor(80, 80, 80);
-  doc.setLineWidth(0.8);
-  doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
-
-  // ───────────────────────────────────────────────
-  // LOGO (top-right)
-  // ───────────────────────────────────────────────
-  const logoSize = 60; // pt (~21mm)
-  const logoX = pageWidth - margin - logoSize - 10;
-  const logoY = margin + 12;
-
-  let logoUrl = null;
-  if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-    logoUrl = `${host}/img/${companyInfo.logo}`;
-  }
-
-  if (logoUrl) {
-    try {
-      doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
-    } catch (err) {
-      console.warn("Logo failed to load:", err);
-      // fallback placeholder
+  const drawHeader = (isFirst) => {
+    // Page border
+    doc.setDrawColor(80, 80, 80);
+    doc.setLineWidth(0.8);
+    doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+    // Logo (top-right)
+    const logoSize = 60; // pt (~21mm)
+    const logoX = pageWidth - margin - logoSize - 10;
+    const logoY = margin + 12;
+    let logoUrl = null;
+    if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+      logoUrl = `${host}/img/${companyInfo.logo}`;
+    }
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+      } catch (err) {
+        console.warn("Logo failed to load:", err);
+        // fallback placeholder
+        doc.setFillColor(220, 220, 240);
+        doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("LOGO", logoX + 12, logoY + 35);
+      }
+    } else {
+      // placeholder if no logo
       doc.setFillColor(220, 220, 240);
       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text("LOGO", logoX + 12, logoY + 35);
     }
-  } else {
-    // placeholder if no logo
-    doc.setFillColor(220, 220, 240);
-    doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text("LOGO", logoX + 12, logoY + 35);
-  }
-
-  // ───────────────────────────────────────────────
-  // COMPANY NAME & DETAILS (top-left, close to border)
-  // ───────────────────────────────────────────────
-  const textX = margin + 12; // ~4mm from left border
-  let textY = margin + 28;   // starting y position
-
-  // Company Name
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(40, 40, 60);
-  doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
-
-  textY += 22;
-
-  // Details - smaller font, compact
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(60);
-
-  const details = [
-    companyInfo.land_mark || "Urali Kanchan, Pune",
-    `Phone: ${companyInfo.phone_no || "9173635656"}`,
-    `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-    `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-  ];
-
-  details.forEach((line) => {
-    if (line && line.trim()) {
-      doc.text(line, textX, textY);
-      textY += 14; // tight spacing
+    // Company name & details (top-left, close to border)
+    const textX = margin + 12; // ~4mm from left border
+    let textY = margin + 28; // starting y position
+    // Company Name
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(40, 40, 60);
+    doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
+    textY += 22;
+    // Details - smaller font, compact
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    const details = [
+      companyInfo.land_mark || "Urali Kanchan, Pune",
+      `Phone: ${companyInfo.phone_no || "9173635656"}`,
+      `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+      `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+    ];
+    details.forEach((line) => {
+      if (line && line.trim()) {
+        doc.text(line, textX, textY);
+        textY += 14; // tight spacing
+      }
+    });
+    // Horizontal separator
+    doc.setLineWidth(1.2);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
+    // Title
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    let titleText = "INCOME REPORT";
+    // if (!isFirst) titleText += " (continued)";
+    doc.text(
+      titleText,
+      pageWidth / 2,
+      textY + 34,
+      { align: "center" }
+    );
+    let currentY = textY + 50; // after title + space (increased for more padding)
+    if (isFirst) {
+      // Generated date & note (below title)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const today = new Date().toLocaleDateString('en-GB');
+      doc.text(
+        `Generated on: ${today} (Based on Payment Date)`,
+        pageWidth / 2,
+        textY + 52,
+        { align: "center" }
+      );
+      currentY = textY + 58;
+      // Grand total summary
+      const gstAmount = parseFloat(summary.total_amount) * (gst / (100 + gst));
+      const basicAmount = parseFloat(summary.total_amount) - gstAmount;
+      doc.setFillColor(0, 109, 118);
+      doc.rect(margin + 10, textY + 65, pageWidth - margin * 2 - 20, 34, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        `Grand Total: Amount: Rs ${formatIndianNumber(basicAmount)} | GST: Rs ${formatIndianNumber(gstAmount)} | Total With GST: Rs ${formatIndianNumber(parseFloat(summary.total_amount))} | Pending: Rs ${formatIndianNumber(parseFloat(summary.pending_amount))}`,
+        pageWidth / 2,
+        textY + 88,
+        { align: "center" }
+      );
+      currentY = textY + 110; // after grand total + space
     }
-  });
-
-  // ───────────────────────────────────────────────
-  // HORIZONTAL SEPARATOR
-  // ───────────────────────────────────────────────
-  doc.setLineWidth(1.2);
-  doc.setDrawColor(0, 0, 0);
-  doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
-
-  // ───────────────────────────────────────────────
-  // TITLE
-  // ───────────────────────────────────────────────
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0);
-  doc.text(
-    "INCOME REPORT",
-    pageWidth / 2,
-    textY + 34,
-    { align: "center" }
-  );
-
-  // Generated date & note (below title)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  const today = new Date().toLocaleDateString('en-GB');
-  doc.text(
-    `Generated on: ${today} (Based on Payment Date)`,
-    pageWidth / 2,
-    textY + 52,
-    { align: "center" }
-  );
-
-  // ───────────────────────────────────────────────
-  // GRAND TOTAL SUMMARY (your original styling)
-  // ───────────────────────────────────────────────
-  const gstAmount = parseFloat(summary.total_amount) * (gst / (100 + gst));
-  const basicAmount = parseFloat(summary.total_amount) - gstAmount;
-
-  doc.setFillColor(0, 109, 118);
-  doc.rect(margin + 10, textY + 65, pageWidth - margin * 2 - 20, 34, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `Grand Total: Amount: Rs ${formatIndianNumber(basicAmount)} | GST: Rs ${formatIndianNumber(gstAmount)} | Total With GST: Rs ${formatIndianNumber(parseFloat(summary.total_amount))} | Pending: Rs ${formatIndianNumber(parseFloat(summary.pending_amount))}`,
-    pageWidth / 2,
-    textY + 88,
-    { align: "center" }
-  );
-
-  // ───────────────────────────────────────────────
-  // Your original table logic starts from here
-  // ───────────────────────────────────────────────
-  let yPosition = textY + 120; // start tables after header
-
+    return currentY;
+  };
+  // Calculate short header height
+  doc.addPage();
+  const shortHeaderY = drawHeader(false);
+  doc.deletePage(2); // remove temp page
+  // Draw initial header on page 1
+  let yPosition = drawHeader(true);
   // Group incomes by project
   const groupedIncomes = incomes.reduce((acc, income) => {
     const projectName = income.project_name || 'N/A';
@@ -506,16 +594,13 @@ const handlePDFExport = () => {
     acc[projectName].push(income);
     return acc;
   }, {});
-
   Object.keys(groupedIncomes).forEach((projectName, index) => {
     const projectIncomes = groupedIncomes[projectName];
-
-    // Add new page if needed
-    if (yPosition > pageHeight - 120) {
+    // Check space for project header + at least table head + one row (~100pt)
+    if (yPosition + 100 > pageHeight - margin - 30) {
       doc.addPage();
-      yPosition = margin + 40;
+      yPosition = drawHeader(false);
     }
-
     // Project Header
     doc.setFillColor(0, 172, 153);
     doc.rect(margin + 10, yPosition, pageWidth - margin * 2 - 20, 28, 'F');
@@ -523,9 +608,7 @@ const handlePDFExport = () => {
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.text(`Project: ${projectName}`, margin + 20, yPosition + 19);
-
     yPosition += 38;
-
     // Table data with Payment Date
     const tableData = projectIncomes.map((income, idx) => {
       const paymentDate = income.payment_date || income.invoice_date;
@@ -547,14 +630,12 @@ const handlePDFExport = () => {
         income.receivers_bank || '-'
       ];
     });
-
     // Project totals
-    const projectTotal   = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.billing_amount), 0);
+    const projectTotal = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.billing_amount), 0);
     const projectReceived = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.received_amount), 0);
-    const projectPending  = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.pending_amount), 0);
-    const projectBasic    = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.basic_amount), 0);
-    const projectGST      = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.gst_amount), 0);
-
+    const projectPending = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.pending_amount), 0);
+    const projectBasic = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.basic_amount), 0);
+    const projectGST = projectIncomes.reduce((sum, inc) => sum + parseFloat(inc.gst_amount), 0);
     tableData.push([
       { content: 'Total:', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
       formatIndianNumber(projectBasic),
@@ -564,7 +645,6 @@ const handlePDFExport = () => {
       formatIndianNumber(projectPending),
       '', '', '', ''
     ]);
-
     doc.autoTable({
       startY: yPosition,
       head: [[
@@ -603,24 +683,29 @@ const handlePDFExport = () => {
         13: { cellWidth: 45 },
         14: { cellWidth: 50 }
       },
-      margin: { left: margin + 10, right: margin + 10 },
+      margin: { top: shortHeaderY, left: margin + 10, right: margin + 10 },
+      addPageContent: (data) => {
+        drawHeader(false);
+      },
       didDrawPage: (data) => {
         doc.setFontSize(8);
         doc.setTextColor(128);
         doc.text(
-          `Page ${doc.internal.getNumberOfPages()}`,
+          `Page ${doc.getCurrentPageInfo().pageNumber}`,
           pageWidth / 2,
           pageHeight - 20,
           { align: 'center' }
         );
-      }
+      },
+      showHead: 'everyPage',
+      rowPageBreak: 'avoid',
     });
-
     yPosition = doc.lastAutoTable.finalY + 25;
   });
-
-  doc.save(`Income_Report_${today.replace(/\//g, '-')}.pdf`);
+  const today = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+  doc.save(`Income_Report_${today}.pdf`);
 };
+
 
 
 

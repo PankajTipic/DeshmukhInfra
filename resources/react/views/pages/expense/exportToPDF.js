@@ -1,5 +1,8 @@
+
 // import jsPDF from 'jspdf';
 // import 'jspdf-autotable';
+// import { host } from '../../../util/constants';
+// import { getUserData } from '../../../util/session';
 
 // export const exportToPDF = (
 //   state,
@@ -22,27 +25,108 @@
 //   const pageHeight = doc.internal.pageSize.getHeight();
 //   const margin = 40;
 
-//   // Helper function to add header on each page
-//   const addHeader = (pageNum) => {
+//   // User & company data
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+
+//   // Approximate header height (adjust if needed after testing)
+//   const headerHeight = 110; // pt (≈38-40mm)
+
+//   // ───────────────────────────────────────────────
+//   // Function to draw full header + border on current page
+//   // ───────────────────────────────────────────────
+//   const drawHeaderAndBorder = () => {
+//     // 1. Outer border
+//     doc.setDrawColor(80, 80, 80);
+//     doc.setLineWidth(1);
+//     doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+//     // 2. Logo (top-right)
+//     const logoSize = 70; // pt (~25mm)
+//     const logoX = pageWidth - margin - logoSize - 15;
+//     const logoY = margin + 15;
+
+//     let logoUrl = null;
+//     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//       logoUrl = `${host}/img/${companyInfo.logo}`;
+//     }
+
+//     if (logoUrl) {
+//       try {
+//         doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+//       } catch (err) {
+//         console.warn("Logo failed to load:", err);
+//         doc.setFillColor(220, 220, 240);
+//         doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//         doc.setFontSize(12);
+//         doc.setTextColor(100);
+//         doc.text("LOGO", logoX + 15, logoY + 40);
+//       }
+//     } else {
+//       doc.setFillColor(220, 220, 240);
+//       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//       doc.setFontSize(12);
+//       doc.setTextColor(100);
+//       doc.text("LOGO", logoX + 15, logoY + 40);
+//     }
+
+//     // 3. Company name & details (top-left)
+//     const textX = margin + 15;
+//     let textY = margin + 30;
+
+//     doc.setFontSize(20);
+//     doc.setFont(undefined, 'bold');
+//     doc.setTextColor(40, 40, 60);
+//     doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
+
+//     textY += 22;
+
+//     doc.setFontSize(11);
+//     doc.setFont(undefined, 'normal');
+//     doc.setTextColor(60);
+
+//     const details = [
+//       companyInfo.land_mark || "Urali Kanchan, Pune",
+//       `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//       `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//       `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+//     ];
+
+//     details.forEach(line => {
+//       if (line && line.trim()) {
+//         doc.text(line, textX, textY);
+//         textY += 15;
+//       }
+//     });
+
+//     // 4. Horizontal separator
+//     doc.setLineWidth(1.5);
+//     doc.setDrawColor(0, 0, 0);
+//     doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
+
+//     // 5. Title
 //     doc.setFontSize(18);
 //     doc.setFont(undefined, 'bold');
-//     doc.text('EXPENSE REPORT', pageWidth / 2, 30, { align: 'center' });
-    
+//     doc.setTextColor(0);
+//     doc.text('EXPENSE REPORT', pageWidth / 2, textY + 35, { align: 'center' });
+
+//     // 6. Period & Generated date
 //     doc.setFontSize(10);
 //     doc.setFont(undefined, 'normal');
+//     doc.setTextColor(70);
 //     const startDate = state.start_date || 'All';
 //     const endDate = state.end_date || 'All';
 //     const generatedDate = new Date().toLocaleDateString('en-GB');
-//     doc.text(`Period: ${startDate} to ${endDate}`, pageWidth / 2, 48, { align: 'center' });
-//     doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, 62, { align: 'center' });
-    
-//     doc.setLineWidth(1);
-//     doc.line(margin, 70, pageWidth - margin, 70);
-    
-//     return 80;
-//   };
 
-//   let yPosition = addHeader(1);
+//     doc.text(`Period: ${startDate} to ${endDate}`, pageWidth / 2, textY + 55, { align: 'center' });
+//     doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 70, { align: 'center' });
+
+//     // Return content start Y (below header)
+//     return textY + 90;
+//   }
+
+//   // Draw header on first page
+//   let yPosition = drawHeaderAndBorder();
 //   let currentPage = 1;
 
 //   const selectedProject = projects.find(p => p.id === parseInt(state.project_id));
@@ -53,7 +137,7 @@
 //   if (yPosition > pageHeight - 100) {
 //     doc.addPage();
 //     currentPage++;
-//     yPosition = addHeader(currentPage);
+//     yPosition = drawHeaderAndBorder();
 //   }
 
 //   doc.setFillColor(231, 76, 60);
@@ -67,46 +151,42 @@
 //   const grandText = `Grand Total of Expenses :   Amount: Rs ${formatIndianNumber(totalExpense)} | GST: Rs ${formatIndianNumber(totalGst)} | CGST: Rs ${formatIndianNumber(totalCgstAmount)} | SGST: Rs ${formatIndianNumber(totalSgstAmount)} | IGST: Rs ${formatIndianNumber(totalIgstAmount)}`;
 //   doc.text(grandText, pageWidth / 2, yPosition + 23, { align: 'center' });
 
-//   yPosition += 45;
+//   yPosition += 50;
 
-//   // Group expenses by project if project filter is applied, otherwise show all
+//   // Group expenses
 //   let groupedExpenses = {};
   
 //   if (selectedProject) {
 //     groupedExpenses[selectedProject.project_name] = sortedFilteredExpenses;
 //   } else {
-//     // Group by project
 //     sortedFilteredExpenses.forEach(exp => {
 //       const projectName = exp.project?.project_name || 'No Project';
-//       if (!groupedExpenses[projectName]) {
-//         groupedExpenses[projectName] = [];
-//       }
+//       if (!groupedExpenses[projectName]) groupedExpenses[projectName] = [];
 //       groupedExpenses[projectName].push(exp);
 //     });
 //   }
 
-//   // Process each project group
-//   Object.keys(groupedExpenses).forEach((projectName, groupIndex) => {
+//   // Process each group
+//   Object.keys(groupedExpenses).forEach((projectName) => {
 //     const projectExpenses = groupedExpenses[projectName];
-    
-//     // Check if we need a new page
-//     if (yPosition > pageHeight - 200) {
+
+//     if (yPosition > pageHeight - 250) { // more space buffer for table
 //       doc.addPage();
 //       currentPage++;
-//       yPosition = addHeader(currentPage);
+//       yPosition = drawHeaderAndBorder();
 //     }
-    
+
 //     // Project header
 //     doc.setFillColor(41, 128, 185);
-//     doc.rect(margin, yPosition, pageWidth - margin * 2, 20, 'F');
-//     doc.setFontSize(11);
+//     doc.rect(margin, yPosition, pageWidth - margin * 2, 25, 'F');
+//     doc.setFontSize(12);
 //     doc.setFont(undefined, 'bold');
 //     doc.setTextColor(255, 255, 255);
-//     doc.text(`Project: ${projectName}`, margin + 10, yPosition + 14);
-    
-//     yPosition += 25;
+//     doc.text(`Project: ${projectName}`, margin + 15, yPosition + 18);
 
-//     // Table columns
+//     yPosition += 35;
+
+//     // Table
 //     const tableColumn = [
 //       'Sr', 'Date', 'Expense Type', 'Category', 'Qty', 'Price', 
 //       'Base Amount', 'GST Rs', 'CGST Rs', 'SGST Rs', 'IGST Rs', 'Total',
@@ -136,7 +216,7 @@
 //       exp.name || '-'
 //     ]);
 
-//     // Calculate project totals
+//     // Project totals
 //     const projectTotal = projectExpenses.reduce((sum, exp) => sum + parseFloat(exp.total_price || 0), 0);
 //     const projectQty = projectExpenses.reduce((sum, exp) => sum + parseFloat(exp.qty || 0), 0);
 //     const projectBase = projectExpenses.reduce((sum, exp) => sum + ((exp.qty || 0) * (exp.price || 0)), 0);
@@ -145,7 +225,6 @@
 //     const projectSgst = projectExpenses.reduce((sum, exp) => sum + parseFloat(exp.sgst || 0), 0);
 //     const projectIgst = projectExpenses.reduce((sum, exp) => sum + parseFloat(exp.igst || 0), 0);
 
-//     // Add footer row for project totals
 //     tableRows.push([
 //       { content: 'Total:', colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } },
 //       projectQty,
@@ -188,7 +267,12 @@
 //       tableWidth: pageWidth - margin * 2,
 //       alternateRowStyles: { fillColor: [249, 249, 249] },
 //       didDrawPage: (data) => {
-//         // Add page number
+//         // Redraw full header + border on new pages created by table
+//         if (data.pageNumber > currentPage) {
+//           currentPage = data.pageNumber;
+//           drawHeaderAndBorder();
+//         }
+//         // Page number
 //         doc.setFontSize(8);
 //         doc.setTextColor(128, 128, 128);
 //         doc.text(
@@ -200,23 +284,39 @@
 //       }
 //     });
 
-//     yPosition = doc.lastAutoTable.finalY + 20;
+//     yPosition = doc.lastAutoTable.finalY + 25;
 //   });
 
-//   // Add footer on last page
-//   doc.setFontSize(8);
-//   doc.setTextColor(128, 128, 128);
-//   doc.text(
-//     `Expense Report | Period: ${state.start_date || 'All'} to ${state.end_date || 'All'} | Generated: ${new Date().toLocaleDateString('en-GB')}`,
-//     pageWidth / 2,
-//     pageHeight - 20,
-//     { align: 'center' }
-//   );
+//   // Final footer text
+//   const totalPages = doc.internal.getNumberOfPages();
+//   for (let i = 1; i <= totalPages; i++) {
+//     doc.setPage(i);
+//     doc.setFontSize(8);
+//     doc.setTextColor(128, 128, 128);
+//     doc.text(
+//       `Expense Report | Period: ${state.start_date || 'All'} to ${state.end_date || 'All'} | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+//       pageWidth / 2,
+//       pageHeight - 35,
+//       { align: 'center' }
+//     );
+//   }
 
 //   const fileName = `Expense_Report_${state.start_date || 'All'}_to_${state.end_date || 'All'}_${new Date().toISOString().split('T')[0]}.pdf`;
 //   doc.save(fileName);
 //   showToast('success', 'PDF file downloaded successfully!');
 // };
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -253,14 +353,18 @@ export const exportToPDF = (
   // User & company data
   const user = getUserData();
   const companyInfo = user?.company_info || {};
+  const totalGst = totalCgstAmount + totalSgstAmount + totalIgstAmount;
+  const selectedProject = projects.find(p => p.id === parseInt(state.project_id));
 
-  // Approximate header height (adjust if needed after testing)
-  const headerHeight = 110; // pt (≈38-40mm)
+  // Track page numbers
+  let pageNumber = 0;
+  let headerHeight = 0;
 
-  // ───────────────────────────────────────────────
-  // Function to draw full header + border on current page
-  // ───────────────────────────────────────────────
-  const drawHeaderAndBorder = () => {
+
+  // ─────────────────────────────────────────────────
+  // Function to draw header + border on current page
+  // ─────────────────────────────────────────────────
+  const drawHeaderAndBorder = (isFirstPage) => {
     // 1. Outer border
     doc.setDrawColor(80, 80, 80);
     doc.setLineWidth(1);
@@ -270,8 +374,8 @@ export const exportToPDF = (
     const logoSize = 70; // pt (~25mm)
     const logoX = pageWidth - margin - logoSize - 15;
     const logoY = margin + 15;
-
     let logoUrl = null;
+
     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
       logoUrl = `${host}/img/${companyInfo.logo}`;
     }
@@ -305,7 +409,6 @@ export const exportToPDF = (
     doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
 
     textY += 22;
-
     doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(60);
@@ -330,57 +433,76 @@ export const exportToPDF = (
     doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
 
     // 5. Title
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0);
-    doc.text('EXPENSE REPORT', pageWidth / 2, textY + 35, { align: 'center' });
+    // doc.setFontSize(18);
+    // doc.setFont(undefined, 'bold');
+    // doc.setTextColor(0);
+    // let titleText = 'EXPENSE REPORT';
+    // // if (!isFirstPage) titleText += ' (continued)';
+    // doc.text(titleText, pageWidth / 2, textY + 35, { align: 'center' });
 
-    // 6. Period & Generated date
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(70);
-    const startDate = state.start_date || 'All';
-    const endDate = state.end_date || 'All';
-    const generatedDate = new Date().toLocaleDateString('en-GB');
+    // 5. Title (ONLY on First Page)
+if (isFirstPage) {
+  doc.setFontSize(18);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0);
 
-    doc.text(`Period: ${startDate} to ${endDate}`, pageWidth / 2, textY + 55, { align: 'center' });
-    doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 70, { align: 'center' });
+  doc.text(
+    'EXPENSE REPORT',
+    pageWidth / 2,
+    textY + 35,
+    { align: 'center' }
+  );
+}
+
 
     // Return content start Y (below header)
-    return textY + 90;
-  }
+    let contentStartY = textY + 50;
+
+    // Period & Generated date (ONLY on first page)
+    if (isFirstPage) {
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(70);
+
+      const startDate = state.start_date || 'All';
+      const endDate = state.end_date || 'All';
+      const generatedDate = new Date().toLocaleDateString('en-GB');
+
+      doc.text(`Period: ${startDate} to ${endDate}`, pageWidth / 2, textY + 55, { align: 'center' });
+      doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 70, { align: 'center' });
+
+      contentStartY = textY + 90;
+    }
+
+    // Grand Total at the top (ONLY on first page)
+    if (isFirstPage) {
+      doc.setFillColor(231, 76, 60);
+      doc.setDrawColor(192, 57, 43);
+      doc.setLineWidth(2);
+      doc.rect(margin, contentStartY, pageWidth - margin * 2, 35, 'FD');
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(255, 255, 255);
+
+      const grandText = `Grand Total of Expenses : Amount: Rs ${formatIndianNumber(totalExpense)} | GST: Rs ${formatIndianNumber(totalGst)} | CGST: Rs ${formatIndianNumber(totalCgstAmount)} | SGST: Rs ${formatIndianNumber(totalSgstAmount)} | IGST: Rs ${formatIndianNumber(totalIgstAmount)}`;
+      doc.text(grandText, pageWidth / 2, contentStartY + 23, { align: 'center' });
+
+      contentStartY += 50;
+    }
+
+    return contentStartY;
+  };
 
   // Draw header on first page
-  let yPosition = drawHeaderAndBorder();
-  let currentPage = 1;
+  // let yPosition = drawHeaderAndBorder(true);
+  let yPosition = drawHeaderAndBorder(true);
+headerHeight = yPosition;
 
-  const selectedProject = projects.find(p => p.id === parseInt(state.project_id));
-  const selectedExpenseType = expenseTypes.find(et => et.id === parseInt(state.expense_type_id));
-  const totalGst = totalCgstAmount + totalSgstAmount + totalIgstAmount;
-
-  // Grand Total at the top
-  if (yPosition > pageHeight - 100) {
-    doc.addPage();
-    currentPage++;
-    yPosition = drawHeaderAndBorder();
-  }
-
-  doc.setFillColor(231, 76, 60);
-  doc.setDrawColor(192, 57, 43);
-  doc.setLineWidth(2);
-  doc.rect(margin, yPosition, pageWidth - margin * 2, 35, 'FD');
-  
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(255, 255, 255);
-  const grandText = `Grand Total of Expenses :   Amount: Rs ${formatIndianNumber(totalExpense)} | GST: Rs ${formatIndianNumber(totalGst)} | CGST: Rs ${formatIndianNumber(totalCgstAmount)} | SGST: Rs ${formatIndianNumber(totalSgstAmount)} | IGST: Rs ${formatIndianNumber(totalIgstAmount)}`;
-  doc.text(grandText, pageWidth / 2, yPosition + 23, { align: 'center' });
-
-  yPosition += 50;
+  pageNumber = 1;
 
   // Group expenses
   let groupedExpenses = {};
-  
   if (selectedProject) {
     groupedExpenses[selectedProject.project_name] = sortedFilteredExpenses;
   } else {
@@ -395,12 +517,6 @@ export const exportToPDF = (
   Object.keys(groupedExpenses).forEach((projectName) => {
     const projectExpenses = groupedExpenses[projectName];
 
-    if (yPosition > pageHeight - 250) { // more space buffer for table
-      doc.addPage();
-      currentPage++;
-      yPosition = drawHeaderAndBorder();
-    }
-
     // Project header
     doc.setFillColor(41, 128, 185);
     doc.rect(margin, yPosition, pageWidth - margin * 2, 25, 'F');
@@ -413,9 +529,10 @@ export const exportToPDF = (
 
     // Table
     const tableColumn = [
-      'Sr', 'Date', 'Expense Type', 'Category', 'Qty', 'Price', 
-      'Base Amount', 'GST Rs', 'CGST Rs', 'SGST Rs', 'IGST Rs', 'Total',
-      'Payment By', 'Payment Type', 'Contact', 'Bank', 'Account', 'IFSC', 'Txn ID', 'About'
+      'Sr', 'Date', 'Expense Type', 'Category', 'Qty', 'Price',
+      'Base Amount', 'GST Rs', 'CGST Rs', 'SGST Rs', 'IGST Rs',
+      'Total', 'Payment By', 'Payment Type', 'Contact', 'Bank',
+      'Account', 'IFSC', 'Txn ID', 'About'
     ];
 
     const tableRows = projectExpenses.map((exp, i) => [
@@ -468,17 +585,17 @@ export const exportToPDF = (
       body: tableRows,
       startY: yPosition,
       theme: 'grid',
-      styles: { 
-        fontSize: 7, 
+      styles: {
+        fontSize: 7,
         cellPadding: 3,
-        halign: 'center', 
+        halign: 'center',
         valign: 'middle',
         lineWidth: 0.5,
         lineColor: [200, 200, 200]
       },
-      headStyles: { 
-        fillColor: [52, 73, 94], 
-        textColor: 255, 
+      headStyles: {
+        fillColor: [52, 73, 94],
+        textColor: 255,
         fontStyle: 'bold',
         fontSize: 7,
         halign: 'center'
@@ -488,31 +605,83 @@ export const exportToPDF = (
         textColor: [0, 0, 0],
         fontStyle: 'bold'
       },
-      margin: { left: margin, right: margin },
+      // margin: { 
+      //   left: margin, 
+      //   right: margin,
+      //   top: 180, // Reserve space for header on new pages
+      //   bottom: 60 // Reserve space for footer
+      // },
+
+margin: { 
+  left: margin,
+  right: margin,
+  top: 180,   // fixed header space
+  bottom: 60
+},
+
+
       tableWidth: pageWidth - margin * 2,
       alternateRowStyles: { fillColor: [249, 249, 249] },
+
+
+
+
       didDrawPage: (data) => {
-        // Redraw full header + border on new pages created by table
-        if (data.pageNumber > currentPage) {
-          currentPage = data.pageNumber;
-          drawHeaderAndBorder();
+        const currentPageNum = doc.internal.getCurrentPageInfo().pageNumber;
+        
+        // Draw header on new pages (not page 1)
+        if (currentPageNum > pageNumber) {
+          pageNumber = currentPageNum;
+          drawHeaderAndBorder(false);
         }
+
         // Page number
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
         doc.text(
-          `Page ${currentPage}`,
+          `Page ${currentPageNum}`,
           pageWidth / 2,
           pageHeight - 20,
           { align: 'center' }
         );
-      }
+      },
+
+
+// didDrawPage: (data) => {
+//   const currentPageNum = doc.internal.getCurrentPageInfo().pageNumber;
+
+//   // Draw header on every new page
+//   const startY = drawHeaderAndBorder(currentPageNum === 1);
+
+//   // Update cursor position so table starts BELOW header
+//   data.cursor.y = startY;
+
+//   // Save for next pages
+//   headerHeight = startY;
+
+//   // Page Number
+//   doc.setFontSize(8);
+//   doc.setTextColor(128, 128, 128);
+
+//   doc.text(
+//     `Page ${currentPageNum}`,
+//     pageWidth / 2,
+//     pageHeight - 20,
+//     { align: 'center' }
+//   );
+// },
+
+
+
+      
+      showHead: 'everyPage',
+      rowPageBreak: 'avoid',
     });
 
     yPosition = doc.lastAutoTable.finalY + 25;
   });
 
-  // Final footer text
+  // Final footer text on all pages
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);

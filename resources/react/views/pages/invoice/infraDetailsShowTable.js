@@ -268,126 +268,245 @@ function InfraDetailsShowTable() {
 
 
 
-  // const downloadPDF = () => {
-  //   const doc = new jsPDF('l', 'mm', 'a4')
-  //   doc.setFontSize(16)
-  //   doc.setFont(undefined, 'bold')
-  //   doc.text('Work Log Report', doc.internal.pageSize.getWidth() / 2, 10, { align: 'center' })
 
-  //   let startY = 20
 
-  //   // Add filter info if applied
-  //   if (startDate || endDate || projectName) {
-  //     doc.setFontSize(10)
-  //     doc.setFont(undefined, 'normal')
-  //     doc.text('Applied Filters:', 14, startY)
-  //     startY += 5
-      
-  //     if (startDate && endDate) {
-  //       doc.text(`Date Range: ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`, 14, startY)
-  //       startY += 5
-  //     }
-  //     if (projectName) {
-  //       doc.text(`Project: ${projectName}`, 14, startY)
-  //       startY += 5
-  //     }
-  //     startY += 3
-  //   }
+// const downloadPDF = () => {
+//   const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
+//   // Get user data once
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+//   // ───────────────────────────────────────────────
+//   // COMPANY HEADER & STYLING
+//   // ───────────────────────────────────────────────
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+//   const margin = 12;
 
-  //   const tableColumn = [
-  //     'Sr.No.',
-  //     'Date',
-  //     'Site',
-  //     'Operator',
-  //     'Machine Start',
-  //     'Machine End',
-  //     'Machine Hr',
-  //     'Comp Start',
-  //     'Comp End',
-  //     'Comp Hr',
-  //     'Work Type',
-  //     'Point',
-  //     'Rate',
-  //     'Work Total',
-  //     'Survey Type',
-  //     'Point',
-  //     'Rate',
-  //     'Survey Total',
-  //     'Grand Total',
-  //   ]
+//   const headerTop = margin + 6; // logo & company name same distance from top border
 
-  //   const tableRows = rows.map(row => [
-  //     row.srNo,
-  //     new Date(row.date).toLocaleDateString(),
-  //     row.site,
-  //     row.operator,
-  //     row.machineStart,
-  //     row.machineEnd,
-  //     row.machineHr,
-  //     row.compressorStart,
-  //     row.compressorEnd,
-  //     row.compressorHr,
-  //     row.workType,
-  //     row.workPoint,
-  //     row.workRate,
-  //     row.workTotal,
-  //     row.surveyType,
-  //     row.surveyPoint,
-  //     row.surveyRate,
-  //     row.surveyTotal,
-  //     row.rowTotal,
-  //   ])
+//   // Outer page border (light gray)
+//   doc.setDrawColor(80, 80, 80);
+//   doc.setLineWidth(0.4);
+//   doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+//   // ───────────────────────────────────────────────
+//   // Company logo – REAL IMAGE
+//   // ───────────────────────────────────────────────
+//   // const logoX = margin + 4;
+//   // const logoY = margin + 15;
+//   // const logoSize = 20; // Adjusted for better proportion
 
-  //   // Add totals row
-  //   tableRows.push([
-  //     '', '', '', '', '', '', '', '', '', '', 
-  //     'TOTAL',
-  //     tableTotals.workPoint.toFixed(2),
-  //     tableTotals.workRate.toFixed(2),
-  //     tableTotals.workTotal.toFixed(2),
-  //     '',
-  //     tableTotals.surveyPoint.toFixed(2),
-  //     tableTotals.surveyRate.toFixed(2),
-  //     tableTotals.surveyTotal.toFixed(2),
-  //     tableTotals.grandTotal.toFixed(2),
-  //   ])
+// const logoSize = 26; // logo size 
+// const logoX = pageWidth - margin - logoSize - 6; // right aligned
+// // const logoY = margin + 6; // top 
+// const logoY = headerTop;
 
-  //   doc.autoTable({
-  //     head: [tableColumn],
-  //     body: tableRows,
-  //     startY: startY,
-  //     theme: 'grid',
-  //     styles: {
-  //       fontSize: 7,
-  //       cellPadding: 2,
-  //       overflow: 'linebreak',
-  //       halign: 'center',
-  //       valign: 'middle',
-  //     },
-  //     headStyles: {
-  //       fillColor: [41, 128, 185],
-  //       textColor: 255,
-  //       fontSize: 7,
-  //       fontStyle: 'bold',
-  //     },
-  //     footStyles: {
-  //       fillColor: [220, 220, 220],
-  //       textColor: 0,
-  //       fontStyle: 'bold',
-  //     },
-  //     tableWidth: 'auto',
-  //     pageBreak: 'auto',
-  //     didParseCell: function(data) {
-  //       // Make totals row bold
-  //       if (data.row.index === tableRows.length - 1) {
-  //         data.cell.styles.fontStyle = 'bold'
-  //         data.cell.styles.fillColor = [240, 240, 240]
-  //       }
-  //     }
-  //   })
 
-  //   doc.save('WorkLogReport.pdf')
-  // }
+
+//   // Construct full logo URL
+//   let logoUrl = null;
+//   if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//     logoUrl = `${host}/img/${companyInfo.logo}`;
+//   }
+//   if (logoUrl) {
+//     try {
+//       // Try to load the real logo
+//       doc.addImage(
+//         logoUrl,
+//         'PNG', // assuming PNG — change to 'JPEG' if needed
+//         logoX,
+//         logoY,
+//         logoSize,
+//         logoSize
+//       );
+//     } catch (err) {
+//       console.warn("Failed to load logo:", err);
+//       // Fallback to placeholder if image fails
+//       doc.setFillColor(220, 220, 240);
+//       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//       doc.setFontSize(9);
+//       doc.setTextColor(100);
+//       doc.text("LOGO", logoX + 6, logoY + 13);
+//     }
+//   } else {
+//     // No logo → show placeholder
+//     doc.setFillColor(220, 220, 240);
+//     doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//     doc.setFontSize(9);
+//     doc.setTextColor(100);
+//     doc.text("LOGO", logoX + 6, logoY + 13);
+//   }
+//   // ───────────────────────────────────────────────
+//   // Company name & details - right of logo
+//   // ───────────────────────────────────────────────
+//   doc.setFontSize(18);
+//   doc.setFont("helvetica", "bold");
+//   doc.setTextColor(40, 40, 60);
+
+// const headerX = margin + 8;
+
+// doc.setFontSize(18);
+// doc.setFont("helvetica", "bold");
+// doc.text(
+//   companyInfo.company_name || "Deshmukh Infra Soft",
+//   headerX,
+//   // logoY + 12
+//    headerTop + 8
+// );
+
+
+//   // doc.text(
+//   //   companyInfo.company_name || "Deshmukh Infra Soft",
+//   //   logoX + logoSize + 10,
+//   //   logoY + 12
+//   // );
+//   doc.setFontSize(10);
+//   doc.setFont("helvetica", "normal");
+//   doc.setTextColor(70);
+//   // let detailY = logoY + 18; // Optimized spacing after company name
+//   let detailY = headerTop + 14;
+
+//   const lineHeight = 5; // Reduced for space optimization
+//   const companyDetails = [
+//     companyInfo.land_mark || "Urali Kanchan, Pune",
+//     `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//     `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//     `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+//   ];
+//   // companyDetails.forEach(line => {
+//   //   if (line && line.trim() !== "") {
+//   //     doc.text(line, logoX + logoSize + 10, detailY);
+//   //     detailY += lineHeight;
+//   //   }
+//   // });
+//   companyDetails.forEach(line => {
+//   if (line && line.trim() !== "") {
+//     doc.text(line, headerX, detailY); // LEFT aligned
+//     detailY += lineHeight;
+//   }
+// });
+
+//   // Horizontal separator line after header
+//   doc.setLineWidth(0.6);
+//   doc.setDrawColor(0, 0, 0);
+//   // doc.line(margin + 6, detailY + 2, pageWidth - margin - 6, detailY + 2);
+//   doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
+
+//   // Title
+//   doc.setFontSize(16);
+//   doc.setFont("helvetica", "bold");
+//   doc.setTextColor(0);
+//   doc.text(
+//     "Work Log Report",
+//     pageWidth / 2,
+//     detailY + 10,
+//     { align: "center" }
+//   );
+//   // ───────────────────────────────────────────────
+//   // FILTER INFORMATION (if any)
+//   // ───────────────────────────────────────────────
+//   let startY = detailY + 18;
+//   if (startDate || endDate || projectName) {
+//     doc.setFontSize(10);
+//     doc.setFont("helvetica", "normal");
+//     doc.setTextColor(60);
+//     doc.text("Applied Filters:", margin + 8, startY);
+//     startY += 6;
+//     if (startDate && endDate) {
+//       const range = `${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`;
+//       doc.text(`Date Range: ${range}`, margin + 8, startY);
+//       startY += 5.5;
+//     }
+//     if (projectName) {
+//       doc.text(`Project: ${projectName}`, margin + 8, startY);
+//       startY += 5.5;
+//     }
+//     startY += 6; // extra spacing before table
+//   }
+//   // ───────────────────────────────────────────────
+//   // TABLE (unchanged from your version)
+//   // ───────────────────────────────────────────────
+//   const tableColumn = [
+//     'Sr.No.', 'Date', 'Site', 'Operator', 'Machine Start', 'Machine End',
+//     'Machine Hr', 'Comp Start', 'Comp End', 'Comp Hr', 'Work Type',
+//     'Point', 'Rate', 'Work Total', 'Survey Type', 'Point', 'Rate',
+//     'Survey Total', 'Grand Total'
+//   ];
+//   const tableRows = rows.map(row => [
+//     row.srNo,
+//     new Date(row.date).toLocaleDateString("en-GB"),
+//     row.site,
+//     row.operator,
+//     row.machineStart,
+//     row.machineEnd,
+//     row.machineHr,
+//     row.compressorStart,
+//     row.compressorEnd,
+//     row.compressorHr,
+//     row.workType,
+//     row.workPoint,
+//     row.workRate,
+//     row.workTotal,
+//     row.surveyType,
+//     row.surveyPoint,
+//     row.surveyRate,
+//     row.surveyTotal,
+//     row.rowTotal,
+//   ]);
+//   tableRows.push([
+//     '', '', '', '', '', '', '', '', '', '',
+//     'TOTAL',
+//     tableTotals.workPoint.toFixed(2),
+//     tableTotals.workRate.toFixed(2),
+//     tableTotals.workTotal.toFixed(2),
+//     '',
+//     tableTotals.surveyPoint.toFixed(2),
+//     tableTotals.surveyRate.toFixed(2),
+//     tableTotals.surveyTotal.toFixed(2),
+//     tableTotals.grandTotal.toFixed(2),
+//   ]);
+//   doc.autoTable({
+//     head: [tableColumn],
+//     body: tableRows,
+//     startY: startY,
+//     theme: 'grid',
+//     margin: { left: margin + 6, right: margin + 6 },
+//     styles: {
+//       fontSize: 8,
+//       cellPadding: 2.2,
+//       overflow: 'linebreak',
+//       halign: 'center',
+//       valign: 'middle',
+//       lineColor: [44, 62, 80],
+//       lineWidth: 0.3,
+//     },
+//     headStyles: {
+//       fillColor: [52, 73, 94],
+//       textColor: 255,
+//       fontSize: 8.5,
+//       fontStyle: 'bold',
+//     },
+//     alternateRowStyles: {
+//       fillColor: [245, 247, 250],
+//     },
+//     footStyles: {
+//       fillColor: [220, 220, 220],
+//       textColor: 0,
+//       fontStyle: 'bold',
+//       fontSize: 8.5,
+//     },
+//     didParseCell: (data) => {
+//       if (data.row.index === tableRows.length - 1) {
+//         data.cell.styles.fontStyle = 'bold';
+//         data.cell.styles.fillColor = [235, 235, 235];
+//       }
+//       if (["Work Total", "Survey Total", "Grand Total"].includes(data.column.dataKey)) {
+//         data.cell.styles.textColor = [0, 128, 0];
+//       }
+//     },
+//   });
+//   doc.save('WorkLogReport.pdf');
+// };
+
 
 const downloadPDF = () => {
   const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
@@ -401,129 +520,120 @@ const downloadPDF = () => {
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 12;
 
-  const headerTop = margin + 6; // logo & company name same distance from top border
-
-  // Outer page border (light gray)
-  doc.setDrawColor(80, 80, 80);
-  doc.setLineWidth(0.4);
-  doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
   // ───────────────────────────────────────────────
-  // Company logo – REAL IMAGE
+  // Draw header function
   // ───────────────────────────────────────────────
-  // const logoX = margin + 4;
-  // const logoY = margin + 15;
-  // const logoSize = 20; // Adjusted for better proportion
+  const drawHeader = (isFirst) => {
+    const headerTop = margin + 6; // logo & company name same distance from top border
 
-const logoSize = 26; // logo size 
-const logoX = pageWidth - margin - logoSize - 6; // right aligned
-// const logoY = margin + 6; // top 
-const logoY = headerTop;
+    // Outer page border (light gray)
+    doc.setDrawColor(80, 80, 80);
+    doc.setLineWidth(0.4);
+    doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
+    // ───────────────────────────────────────────────
+    // Company logo – REAL IMAGE
+    // ───────────────────────────────────────────────
+    const logoSize = 26; // logo size 
+    const logoX = pageWidth - margin - logoSize - 6; // right aligned
+    const logoY = headerTop;
 
-
-  // Construct full logo URL
-  let logoUrl = null;
-  if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-    logoUrl = `${host}/img/${companyInfo.logo}`;
-  }
-  if (logoUrl) {
-    try {
-      // Try to load the real logo
-      doc.addImage(
-        logoUrl,
-        'PNG', // assuming PNG — change to 'JPEG' if needed
-        logoX,
-        logoY,
-        logoSize,
-        logoSize
-      );
-    } catch (err) {
-      console.warn("Failed to load logo:", err);
-      // Fallback to placeholder if image fails
+    // Construct full logo URL
+    let logoUrl = null;
+    if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+      logoUrl = `${host}/img/${companyInfo.logo}`;
+    }
+    if (logoUrl) {
+      try {
+        // Try to load the real logo
+        doc.addImage(
+          logoUrl,
+          'PNG', // assuming PNG — change to 'JPEG' if needed
+          logoX,
+          logoY,
+          logoSize,
+          logoSize
+        );
+      } catch (err) {
+        console.warn("Failed to load logo:", err);
+        // Fallback to placeholder if image fails
+        doc.setFillColor(220, 220, 240);
+        doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text("LOGO", logoX + 6, logoY + 13);
+      }
+    } else {
+      // No logo → show placeholder
       doc.setFillColor(220, 220, 240);
       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
       doc.setFontSize(9);
       doc.setTextColor(100);
       doc.text("LOGO", logoX + 6, logoY + 13);
     }
-  } else {
-    // No logo → show placeholder
-    doc.setFillColor(220, 220, 240);
-    doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text("LOGO", logoX + 6, logoY + 13);
-  }
+
+    // ───────────────────────────────────────────────
+    // Company name & details - left aligned
+    // ───────────────────────────────────────────────
+    const headerX = margin + 8;
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(40, 40, 60);
+    doc.text(
+      companyInfo.company_name || "Deshmukh Infra Soft",
+      headerX,
+      headerTop + 8
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(70);
+    let detailY = headerTop + 14;
+
+    const lineHeight = 5; // Reduced for space optimization
+    const companyDetails = [
+      companyInfo.land_mark || "Urali Kanchan, Pune",
+      `Phone: ${companyInfo.phone_no || "9173635656"}`,
+      `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+      `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+    ];
+    companyDetails.forEach(line => {
+      if (line && line.trim() !== "") {
+        doc.text(line, headerX, detailY);
+        detailY += lineHeight;
+      }
+    });
+
+    // Horizontal separator line after header
+    doc.setLineWidth(0.6);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    let titleText = "Work Log Report";
+    // if (!isFirst) titleText += " (continued)";
+    doc.text(
+      titleText,
+      pageWidth / 2,
+      detailY + 10,
+      { align: "center" }
+    );
+
+    // Return the Y position after the title + space
+    return detailY + 18;
+  };
+
+  // Draw header for the first page
+  const headerBottomY = drawHeader(true);
+
   // ───────────────────────────────────────────────
-  // Company name & details - right of logo
+  // FILTER INFORMATION (if any) - only on first page
   // ───────────────────────────────────────────────
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(40, 40, 60);
-
-const headerX = margin + 8;
-
-doc.setFontSize(18);
-doc.setFont("helvetica", "bold");
-doc.text(
-  companyInfo.company_name || "Deshmukh Infra Soft",
-  headerX,
-  // logoY + 12
-   headerTop + 8
-);
-
-
-  // doc.text(
-  //   companyInfo.company_name || "Deshmukh Infra Soft",
-  //   logoX + logoSize + 10,
-  //   logoY + 12
-  // );
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(70);
-  // let detailY = logoY + 18; // Optimized spacing after company name
-  let detailY = headerTop + 14;
-
-  const lineHeight = 5; // Reduced for space optimization
-  const companyDetails = [
-    companyInfo.land_mark || "Urali Kanchan, Pune",
-    `Phone: ${companyInfo.phone_no || "9173635656"}`,
-    `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-    `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-  ];
-  // companyDetails.forEach(line => {
-  //   if (line && line.trim() !== "") {
-  //     doc.text(line, logoX + logoSize + 10, detailY);
-  //     detailY += lineHeight;
-  //   }
-  // });
-  companyDetails.forEach(line => {
-  if (line && line.trim() !== "") {
-    doc.text(line, headerX, detailY); // LEFT aligned
-    detailY += lineHeight;
-  }
-});
-
-  // Horizontal separator line after header
-  doc.setLineWidth(0.6);
-  doc.setDrawColor(0, 0, 0);
-  // doc.line(margin + 6, detailY + 2, pageWidth - margin - 6, detailY + 2);
-  doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
-
-  // Title
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0);
-  doc.text(
-    "Work Log Report",
-    pageWidth / 2,
-    detailY + 10,
-    { align: "center" }
-  );
-  // ───────────────────────────────────────────────
-  // FILTER INFORMATION (if any)
-  // ───────────────────────────────────────────────
-  let startY = detailY + 18;
+  let startY = headerBottomY;
   if (startDate || endDate || projectName) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -541,8 +651,9 @@ doc.text(
     }
     startY += 6; // extra spacing before table
   }
+
   // ───────────────────────────────────────────────
-  // TABLE (unchanged from your version)
+  // TABLE
   // ───────────────────────────────────────────────
   const tableColumn = [
     'Sr.No.', 'Date', 'Site', 'Operator', 'Machine Start', 'Machine End',
@@ -588,7 +699,7 @@ doc.text(
     body: tableRows,
     startY: startY,
     theme: 'grid',
-    margin: { left: margin + 6, right: margin + 6 },
+    margin: { top: headerBottomY, left: margin + 6, right: margin + 6, bottom: margin },
     styles: {
       fontSize: 8,
       cellPadding: 2.2,
@@ -622,12 +733,17 @@ doc.text(
         data.cell.styles.textColor = [0, 128, 0];
       }
     },
+    addPageContent: (data) => {
+      drawHeader(false);
+    },
+    didDrawPage: (data) => {
+      // No footer in this report
+    },
+    showHead: 'everyPage',
+    rowPageBreak: 'avoid',
   });
   doc.save('WorkLogReport.pdf');
 };
-
-
-
 
 
 

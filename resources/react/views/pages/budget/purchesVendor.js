@@ -187,223 +187,503 @@ const formatDate = (date) => {
 };
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   // ───────────────────────────────────────────────
   // DOWNLOAD PDF - With repeating header + border on every page
   // ───────────────────────────────────────────────
-  const downloadPDF = () => {
-    const doc = new jsPDF('landscape', 'pt', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 40;
+  // const downloadPDF = () => {
+  //   const doc = new jsPDF('landscape', 'pt', 'a4');
+  //   const pageWidth = doc.internal.pageSize.getWidth();
+  //   const pageHeight = doc.internal.pageSize.getHeight();
+  //   const margin = 40;
 
-    const user = getUserData();
-    const companyInfo = user?.company_info || {};
+  //   const user = getUserData();
+  //   const companyInfo = user?.company_info || {};
 
-    // Approximate header height (tune after testing)
-    const headerHeight = 110; // pt
+  //   // Approximate header height (tune after testing)
+  //   const headerHeight = 110; // pt
 
-    // Function to draw full header + border (called on every page)
-    const drawHeaderAndBorder = () => {
-      // 1. Outer border
-      doc.setDrawColor(80, 80, 80);
-      doc.setLineWidth(1);
-      doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+  //   // Function to draw full header + border (called on every page)
+  //   const drawHeaderAndBorder = () => {
+  //     // 1. Outer border
+  //     doc.setDrawColor(80, 80, 80);
+  //     doc.setLineWidth(1);
+  //     doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
-      // 2. Logo (top-right)
-      const logoSize = 70; // pt (~25mm)
-      const logoX = pageWidth - margin - logoSize - 15;
-      const logoY = margin + 15;
+  //     // 2. Logo (top-right)
+  //     const logoSize = 70; // pt (~25mm)
+  //     const logoX = pageWidth - margin - logoSize - 15;
+  //     const logoY = margin + 15;
 
-      let logoUrl = null;
-      if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-        logoUrl = `${host}/img/${companyInfo.logo}`;
-      }
+  //     let logoUrl = null;
+  //     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+  //       logoUrl = `${host}/img/${companyInfo.logo}`;
+  //     }
 
-      if (logoUrl) {
-        try {
-          doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
-        } catch (err) {
-          console.warn("Logo failed to load:", err);
-          doc.setFillColor(220, 220, 240);
-          doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-          doc.setFontSize(12);
-          doc.setTextColor(100);
-          doc.text("LOGO", logoX + 15, logoY + 40);
-        }
-      } else {
-        doc.setFillColor(220, 220, 240);
-        doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(100);
-        doc.text("LOGO", logoX + 15, logoY + 40);
-      }
+  //     if (logoUrl) {
+  //       try {
+  //         doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+  //       } catch (err) {
+  //         console.warn("Logo failed to load:", err);
+  //         doc.setFillColor(220, 220, 240);
+  //         doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+  //         doc.setFontSize(12);
+  //         doc.setTextColor(100);
+  //         doc.text("LOGO", logoX + 15, logoY + 40);
+  //       }
+  //     } else {
+  //       doc.setFillColor(220, 220, 240);
+  //       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+  //       doc.setFontSize(12);
+  //       doc.setTextColor(100);
+  //       doc.text("LOGO", logoX + 15, logoY + 40);
+  //     }
 
-      // 3. Company name & details (top-left)
-      const textX = margin + 15;
-      let textY = margin + 30;
+  //     // 3. Company name & details (top-left)
+  //     const textX = margin + 15;
+  //     let textY = margin + 30;
 
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(40, 40, 60);
-      doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
+  //     doc.setFontSize(20);
+  //     doc.setFont("helvetica", "bold");
+  //     doc.setTextColor(40, 40, 60);
+  //     doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
 
-      textY += 22;
+  //     textY += 22;
 
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(60);
+  //     doc.setFontSize(11);
+  //     doc.setFont("helvetica", "normal");
+  //     doc.setTextColor(60);
 
-      const details = [
-        companyInfo.land_mark || "Urali Kanchan, Pune",
-        `Phone: ${companyInfo.phone_no || "9173635656"}`,
-        `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-        `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-      ];
+  //     const details = [
+  //       companyInfo.land_mark || "Urali Kanchan, Pune",
+  //       `Phone: ${companyInfo.phone_no || "9173635656"}`,
+  //       `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+  //       `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+  //     ];
 
-      details.forEach(line => {
-        if (line && line.trim()) {
-          doc.text(line, textX, textY);
-          textY += 15;
-        }
-      });
+  //     details.forEach(line => {
+  //       if (line && line.trim()) {
+  //         doc.text(line, textX, textY);
+  //         textY += 15;
+  //       }
+  //     });
 
-      // 4. Horizontal separator
-      doc.setLineWidth(1.5);
-      doc.setDrawColor(0, 0, 0);
-      doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
+  //     // 4. Horizontal separator
+  //     doc.setLineWidth(1.5);
+  //     doc.setDrawColor(0, 0, 0);
+  //     doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
 
-      // 5. Title
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text('PURCHASE REPORT', pageWidth / 2, textY + 35, { align: 'center' });
+  //     // 5. Title
+  //     doc.setFontSize(18);
+  //     doc.setFont("helvetica", "bold");
+  //     doc.setTextColor(0);
+  //     doc.text('PURCHASE REPORT', pageWidth / 2, textY + 35, { align: 'center' });
 
-      // 6. Generated date
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(70);
-      const generatedDate = new Date().toLocaleDateString('en-GB');
-      doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 55, { align: 'center' });
+  //     // 6. Generated date
+  //     doc.setFontSize(10);
+  //     doc.setFont("helvetica", "normal");
+  //     doc.setTextColor(70);
+  //     const generatedDate = new Date().toLocaleDateString('en-GB');
+  //     doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 55, { align: 'center' });
 
-      // Return next content Y
-      return textY + 70;
+  //     // Return next content Y
+  //     return textY + 70;
+  //   }
+
+  //   // Draw header on first page
+  //   let yPosition = drawHeaderAndBorder();
+  //   let currentPage = 1;
+
+  //   // Grand Total summary
+  //   if (yPosition > pageHeight - 100) {
+  //     doc.addPage();
+  //     currentPage++;
+  //     yPosition = drawHeaderAndBorder();
+  //   }
+
+  //   const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  //   const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  //   const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
+
+  //   doc.setFillColor(231, 76, 60);
+  //   doc.setDrawColor(192, 57, 43);
+  //   doc.setLineWidth(2);
+  //   doc.rect(margin, yPosition, pageWidth - margin * 2, 35, 'FD');
+
+  //   doc.setFontSize(10);
+  //   doc.setFont("helvetica", "bold");
+  //   doc.setTextColor(255, 255, 255);
+  //   const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
+  //   doc.text(grandText, pageWidth / 2, yPosition + 23, { align: 'center' });
+
+  //   yPosition += 50;
+
+  //   // Table columns
+  //   const tableColumn = [
+  //     "Sr No", "Project", "Vendor", "Material",
+  //     "Price/Unit", "Qty", "Total", "Date", "About"
+  //   ];
+
+  //   const tableRows = filteredData.map((p, index) => [
+  //     index + 1,
+  //     p.project?.project_name || "—",
+  //     p.vendor?.name || "—",
+  //     p.material_name,
+  //     formatIndianNumber(parseFloat(p.price_per_unit || 0)),
+  //     p.qty || "—",
+  //     formatIndianNumber(parseFloat(p.total || 0)),
+  //     formatDate(p.date),
+  //     p.about || "—"
+  //   ]);
+
+  //   // Total row
+  //   tableRows.push([
+  //     { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
+  //     formatIndianNumber(totalPricePerUnit),
+  //     totalQty,
+  //     formatIndianNumber(totalAmount),
+  //     "",
+  //     ""
+  //   ]);
+
+  //   doc.autoTable({
+  //     head: [tableColumn],
+  //     body: tableRows,
+  //     startY: yPosition,
+  //     theme: "grid",
+  //     headStyles: {
+  //       fillColor: [30, 115, 120],
+  //       textColor: 255,
+  //       fontSize: 10,
+  //       halign: "center",
+  //     },
+  //     bodyStyles: {
+  //       fontSize: 9,
+  //       halign: "center",
+  //     },
+  //     styles: {
+  //       lineWidth: 0.25,
+  //       lineColor: [120, 120, 120],
+  //     },
+  //     alternateRowStyles: {
+  //       fillColor: [245, 245, 245],
+  //     },
+  //     margin: { left: margin, right: margin },
+  //     didDrawPage: (data) => {
+  //       // Redraw full header + border when table creates new page
+  //       if (data.pageNumber > currentPage) {
+  //         currentPage = data.pageNumber;
+  //         drawHeaderAndBorder();
+  //       }
+  //       // Page number
+  //       doc.setFontSize(8);
+  //       doc.setTextColor(128, 128, 128);
+  //       doc.text(
+  //         `Page ${currentPage}`,
+  //         pageWidth / 2,
+  //         pageHeight - 20,
+  //         { align: 'center' }
+  //       );
+  //     },
+  //   });
+
+  //   // Final footer text on all pages
+  //   const totalPages = doc.internal.getNumberOfPages();
+  //   for (let i = 1; i <= totalPages; i++) {
+  //     doc.setPage(i);
+  //     doc.setFontSize(8);
+  //     doc.setTextColor(128, 128, 128);
+  //     doc.text(
+  //       `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+  //       pageWidth / 2,
+  //       pageHeight - 35,
+  //       { align: 'center' }
+  //     );
+  //   }
+
+  //   const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+  //   doc.save(fileName);
+  //   showToast('success', 'PDF file downloaded successfully!');
+  // };
+
+
+const downloadPDF = () => {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+
+  const user = getUserData();
+  const companyInfo = user?.company_info || {};
+
+  // ────────────────────────────────────────────────
+  // Draw header + border (called on EVERY page)
+  // ────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// Draw header + border (called on EVERY page)
+// ────────────────────────────────────────────────
+const drawHeader = (isFirstPage = false) => {
+  // 1. Outer border
+  doc.setDrawColor(80, 80, 80);
+  doc.setLineWidth(1);
+  doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+  // 2. Logo (top-right)
+  const logoSize = 70;
+  const logoX = pageWidth - margin - logoSize - 15;
+  const logoY = margin + 15;
+
+  let logoUrl = null;
+  if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+    logoUrl = `${host}/img/${companyInfo.logo}`;
+  }
+
+  if (logoUrl) {
+    try {
+      doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+    } catch (err) {
+      console.warn("Logo failed to load:", err);
+      fallbackLogoPlaceholder();
     }
+  } else {
+    fallbackLogoPlaceholder();
+  }
 
-    // Draw header on first page
-    let yPosition = drawHeaderAndBorder();
-    let currentPage = 1;
+  function fallbackLogoPlaceholder() {
+    doc.setFillColor(220, 220, 240);
+    doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text("LOGO", logoX + 15, logoY + 40);
+  }
 
-    // Grand Total summary
-    if (yPosition > pageHeight - 100) {
-      doc.addPage();
-      currentPage++;
-      yPosition = drawHeaderAndBorder();
+  // 3. Company name & details (top-left)
+  const textX = margin + 15;
+  let y = margin + 30;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(40, 40, 60);
+  doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, y);
+
+  y += 22;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(60);
+
+  const details = [
+    companyInfo.land_mark || "Urali Kanchan, Pune",
+    `Phone: ${companyInfo.phone_no || "9173635656"}`,
+    `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+    `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+  ];
+
+  details.forEach(line => {
+    if (line?.trim()) {
+      doc.text(line, textX, y);
+      y += 15;
     }
+  });
 
-    const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-    const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
-    const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
+  // 4. Separator line (HR)
+// 4. Separator line
+doc.setLineWidth(1.5);
+doc.setDrawColor(0, 0, 0);
 
-    doc.setFillColor(231, 76, 60);
-    doc.setDrawColor(192, 57, 43);
-    doc.setLineWidth(2);
-    doc.rect(margin, yPosition, pageWidth - margin * 2, 35, 'FD');
+const lineY = y + 10;
+
+doc.line(
+  margin + 10,
+  lineY,
+  pageWidth - margin - 10,
+  lineY
+);
+
+// ✅ Only 3px gap after HR line
+let nextY = lineY + 3;
+
+
+  // ─── Changed part ───────────────────────────────────────
+  // Previously: let nextY = y + 25;
+  // Now: explicit 3 px gap after the line → total space after line = 3 + extra breathing room
+  // let nextY = lineY + 13;   // = lineY + 10 (old) + 3 px gap
+  // You can increase to 15–18 if you want slightly more breathing room
+  // ─────────────────────────────────────────────────────────
+
+  // Title + Generated date → only first page
+  if (isFirstPage) {
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    doc.text('PURCHASE REPORT', pageWidth / 2, nextY + 15, { align: 'center' });
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
-    doc.text(grandText, pageWidth / 2, yPosition + 23, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(70);
+    const generatedDate = new Date().toLocaleDateString('en-GB');
+    doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, nextY + 35, { align: 'center' });
 
-    yPosition += 50;
+    nextY += 55;   // space after generated date
+  }
 
-    // Table columns
-    const tableColumn = [
-      "Sr No", "Project", "Vendor", "Material",
-      "Price/Unit", "Qty", "Total", "Date", "About"
-    ];
+  return nextY;
+};
 
-    const tableRows = filteredData.map((p, index) => [
-      index + 1,
-      p.project?.project_name || "—",
-      p.vendor?.name || "—",
-      p.material_name,
-      formatIndianNumber(parseFloat(p.price_per_unit || 0)),
-      p.qty || "—",
-      formatIndianNumber(parseFloat(p.total || 0)),
-      formatDate(p.date),
-      p.about || "—"
-    ]);
+  // ────────────────────────────────────────────────
+  // Grand Total summary (only first page)
+  // ────────────────────────────────────────────────
+  const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
 
-    // Total row
-    tableRows.push([
-      { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
-      formatIndianNumber(totalPricePerUnit),
-      totalQty,
-      formatIndianNumber(totalAmount),
-      "",
-      ""
-    ]);
+  // Start first page
+  let startY = drawHeader(true);
 
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: yPosition,
-      theme: "grid",
-      headStyles: {
-        fillColor: [30, 115, 120],
-        textColor: 255,
-        fontSize: 10,
-        halign: "center",
-      },
-      bodyStyles: {
-        fontSize: 9,
-        halign: "center",
-      },
-      styles: {
-        lineWidth: 0.25,
-        lineColor: [120, 120, 120],
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      margin: { left: margin, right: margin },
-      didDrawPage: (data) => {
-        // Redraw full header + border when table creates new page
-        if (data.pageNumber > currentPage) {
-          currentPage = data.pageNumber;
-          drawHeaderAndBorder();
-        }
-        // Page number
-        doc.setFontSize(8);
-        doc.setTextColor(128, 128, 128);
-        doc.text(
-          `Page ${currentPage}`,
-          pageWidth / 2,
-          pageHeight - 20,
-          { align: 'center' }
-        );
-      },
-    });
+  if (startY > pageHeight - 180) {
+    doc.addPage();
+    startY = drawHeader(false);
+  }
 
-    // Final footer text on all pages
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
+  // Grand total box
+  doc.setFillColor(231, 76, 60);
+  doc.setDrawColor(192, 57, 43);
+  doc.setLineWidth(2);
+  doc.rect(margin, startY, pageWidth - margin * 2, 35, 'FD');
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
+  doc.text(grandText, pageWidth / 2, startY + 23, { align: 'center' });
+
+  startY += 50;
+
+  // ────────────────────────────────────────────────
+  // Table setup
+  // ────────────────────────────────────────────────
+  const tableColumn = [
+    "Sr No", "Project", "Vendor", "Material",
+    "Price/Unit", "Qty", "Total", "Date", "About"
+  ];
+
+  const tableRows = filteredData.map((p, index) => [
+    index + 1,
+    p.project?.project_name || "—",
+    p.vendor?.name || "—",
+    p.material_name,
+    formatIndianNumber(parseFloat(p.price_per_unit || 0)),
+    p.qty || "—",
+    formatIndianNumber(parseFloat(p.total || 0)),
+    formatDate(p.date),
+    p.about || "—"
+  ]);
+
+  // Add total row
+  tableRows.push([
+    { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
+    formatIndianNumber(totalPricePerUnit),
+    totalQty,
+    formatIndianNumber(totalAmount),
+    "",
+    ""
+  ]);
+
+  doc.autoTable({
+    head: [tableColumn],
+    body: tableRows,
+    startY: startY,
+    theme: "grid",
+    showHead: 'everyPage',           // ← important
+    margin: { left: margin, right: margin, top: 170, bottom: 80 },
+    // margin: { left: margin, right: margin, bottom: 60 },
+
+    headStyles: {
+      fillColor: [30, 115, 120],
+      textColor: 255,
+      fontSize: 10,
+      halign: "center",
+    },
+    bodyStyles: {
+      fontSize: 9,
+      halign: "center",
+      valign: "middle",
+      cellPadding: 4,
+    },
+    styles: {
+      lineWidth: 0.25,
+      lineColor: [120, 120, 120],
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+    rowPageBreak: 'avoid',
+    didDrawPage: (data) => {
+      const isFirst = data.pageNumber === 1;
+
+      // Draw header on current page
+      drawHeader(isFirst);
+
+      // Page number (bottom center)
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+        `Page ${data.pageNumber}`,
         pageWidth / 2,
-        pageHeight - 35,
+        pageHeight - 20,
         { align: 'center' }
       );
-    }
+    },
+  });
 
-    const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-    showToast('success', 'PDF file downloaded successfully!');
-  };
+  // ────────────────────────────────────────────────
+  // Final footer text on ALL pages
+  // ────────────────────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+      pageWidth / 2,
+      pageHeight - 35,
+      { align: 'center' }
+    );
+  }
+
+  const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+  showToast('success', 'PDF file downloaded successfully!');
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ───────────────────────────────────────────────
   // EXCEL DOWNLOAD (unchanged - already good)
