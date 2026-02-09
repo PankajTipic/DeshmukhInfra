@@ -1144,6 +1144,38 @@ export const exportDateWisePDF = async (ledgerData, appliedStartDate = "", appli
     return;
   }
 
+
+
+    const loadImageToBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+      if (!url || typeof url !== 'string' || url.trim() === '') {
+        reject(new Error("No valid logo URL"));
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = (err) => reject(err);
+      img.src = url;  
+    });
+  };
+
+  const formatAmount = (val) => {
+    const num = Number(val) || 0;
+    return num.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+
+
   const doc = new jsPDF('portrait', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1174,33 +1206,6 @@ export const exportDateWisePDF = async (ledgerData, appliedStartDate = "", appli
     }
   }
 
-  const loadImageToBase64 = (url) => {
-    return new Promise((resolve, reject) => {
-      if (!url || typeof url !== 'string' || url.trim() === '') {
-        reject(new Error("No valid logo URL"));
-        return;
-      }
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext("2d").drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = (err) => reject(err);
-      img.src = url;
-    });
-  };
-
-  const formatAmount = (val) => {
-    const num = Number(val) || 0;
-    return num.toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
 
   // ─────────────────────────────────────────────
   // HEADER + BORDER (every page) — matched to second example style
