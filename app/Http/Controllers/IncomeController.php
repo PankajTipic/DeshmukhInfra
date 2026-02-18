@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use App\Models\ProformaInvoice; 
 use App\Models\Order;
 use App\Models\ProformaInvoiceDetail;
+use App\Models\AdvancedPayment;
 
 class IncomeController extends Controller
 {
@@ -147,158 +148,190 @@ class IncomeController extends Controller
 
 
 
+
+
+
 // public function update(Request $request, $id)
 // {
 //     return DB::transaction(function () use ($request, $id) {
 
 //         $income = Income::findOrFail($id);
 
-//         // Validate fields
+//         $isLinkedToProforma = (bool) $income->proforma_invoice_id;
+//         $isLinkedToOrder    = (bool) $income->order_id;
+
+//         // Removed: no longer block decreasing received_amount
+//         // You can still add other protections if needed (e.g. only admin can decrease, or log changes)
+
+//         // ── Validation ────────────────────────────────────────────────────────────────
 //         $validated = $request->validate([
-//             'project_id'      => 'sometimes|integer',
-//             'order_id'        => 'sometimes|nullable|integer',
-//             'po_no'           => 'sometimes|string',
-//             'po_date'         => 'sometimes|date',
-//             'invoice_no'      => 'sometimes|string',
-//             'invoice_date'    => 'sometimes|date',
-//             'basic_amount'    => 'sometimes|numeric',
-//             'gst_amount'      => 'sometimes|numeric',
-//             'billing_amount'  => 'sometimes|numeric',
-//             'received_amount' => 'sometimes|numeric',
-//             'received_by'     => 'sometimes|string',
-//             'senders_bank'    => 'sometimes|string',
-//             'payment_type'    => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-//             'receivers_bank'  => 'sometimes|string',
-//             'pending_amount'  => 'sometimes|numeric',
-//             'remark'          => 'nullable|string',
-//             'payment_date'    => 'sometimes|nullable|date',
+//             'project_id'          => 'sometimes|integer|exists:projects,id',
+//             'order_id'            => 'sometimes|nullable|integer|exists:orders,id',
+//             'proforma_invoice_id' => 'sometimes|nullable|integer|exists:proforma_invoices,id',
+//             'po_no'               => 'sometimes|string|max:100',
+//             'po_date'             => 'sometimes|nullable|date',
+//             'invoice_no'          => 'sometimes|string|max:100',
+//             'invoice_date'        => 'sometimes|nullable|date',
+//             'received_amount'     => 'sometimes|numeric|min:0',
+//             'received_by'         => 'sometimes|string|max:255',
+//             'senders_bank'        => 'sometimes|string|max:255',
+//             'receivers_bank'      => 'sometimes|string|max:255',
+//             'payment_type'        => 'sometimes|in:imps,rtgs,upi,cash,cheque',
+//             'remark'              => 'nullable|string|max:1000',
+//             'payment_date'        => 'sometimes|nullable|date',
 //         ]);
 
-//         $validated['company_id'] = $income->company_id;
+//         $validated['company_id'] = $income->company_id; // immutable
 
-//         // ---------------- OLD VALUES ----------------
-//         $old_company = $income->company_id;
-//         $old_project = $income->project_id;
+//         // ── Remember old values for summary rebuild ───────────────────────────────────
+//         $oldPaymentDate = $income->payment_date
+//             ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
+//             : Carbon::parse($income->created_at)->startOfDay()->toDateString();
 
-//         $old_date = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::parse($income->created_at)->toDateString();
-
-//         // Update income
-//         $income->update($validated);
-
-//         // ---------------- NEW VALUES ----------------
-//         $new_company = $income->company_id;
-//         $new_project = $income->project_id;
-
-//         $new_date = $income->payment_date
-//             ? Carbon::parse($income->payment_date)->toDateString()
-//             : Carbon::today()->toDateString();
-
-//         /*
-//         |--------------------------------------------------------------------------
-//         | PERFECT FIX: ALWAYS REBUILD SUMMARY FOR OLD + NEW DATE
-//         |--------------------------------------------------------------------------
-//         */
-
-//         $rebuildTargets = [
-//             [$old_company, $old_project, $old_date],
-//             [$new_company, $new_project, $new_date],
+//         $old = [
+//             'company_id' => $income->company_id,
+//             'project_id' => $income->project_id,
+//             'date'       => $oldPaymentDate,
+//             'received'   => $income->received_amount,
+//             'gst'        => $income->gst_amount ?? 0,
 //         ];
 
-//         foreach ($rebuildTargets as [$companyId, $projectId, $date]) {
+//         // ── If linked to proforma → always recalculate GST split proportionally ───────
+//         $proformaId = $validated['proforma_invoice_id'] ?? $income->proforma_invoice_id;
 
-//             // Remove old summary for this date/project/company
+//         if ($isLinkedToProforma && $proformaId) {
+//             $proforma = ProformaInvoice::find($proformaId);
+//             if (!$proforma) {
+//                 throw new \Exception("Proforma invoice not found");
+//             }
+
+//             $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->get();
+//             if ($details->isEmpty()) {
+//                 throw new \Exception("Proforma details not found");
+//             }
+
+//             $totalCgst    = round($details->sum('cgst_amount'), 2);
+//             $totalSgst    = round($details->sum('sgst_amount'), 2);
+//             $totalGst     = round($totalCgst + $totalSgst, 2);
+//             $invoiceTotal = round($proforma->final_amount, 2);
+
+//             if ($invoiceTotal <= 0) {
+//                 throw new \Exception("Invalid proforma total");
+//             }
+
+//             // Use new received amount if provided, otherwise keep old
+//             $received = isset($validated['received_amount'])
+//                 ? round($validated['received_amount'], 2)
+//                 : $income->received_amount;
+
+//             // If received_amount becomes 0 or very small → ratio becomes small → GST becomes small
+//             $ratio = $invoiceTotal > 0 ? $received / $invoiceTotal : 0;
+
+//             $validated['basic_amount']    = round($received - ($totalGst * $ratio), 2);
+//             $validated['gst_amount']      = round($totalGst * $ratio, 2);
+//             $validated['cgst_amount']     = round($totalCgst * $ratio, 2);
+//             $validated['sgst_amount']     = round($totalSgst * $ratio, 2);
+//             $validated['igst_amount']     = 0;
+//             $validated['billing_amount']  = $received;
+//             $validated['received_amount'] = $received;
+//             $validated['pending_amount']  = 0;
+//         }
+
+//         // ── Perform update ────────────────────────────────────────────────────────────
+//         $income->update($validated);
+
+//         // ── New values for summary rebuild ────────────────────────────────────────────
+//         $newPaymentDate = $income->payment_date
+//             ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
+//             : Carbon::today()->startOfDay()->toDateString();
+
+//         $new = [
+//             'company_id' => $income->company_id,
+//             'project_id' => $income->project_id,
+//             'date'       => $newPaymentDate,
+//             'received'   => $income->received_amount,
+//             'gst'        => $income->gst_amount ?? 0,
+//         ];
+
+//         // ── Rebuild IncomeSummary for affected dates ──────────────────────────────────
+//         $datesToRebuild = array_unique([
+//             [$old['company_id'], $old['project_id'], $old['date']],
+//             [$new['company_id'], $new['project_id'], $new['date']],
+//         ], SORT_REGULAR);
+
+//         foreach ($datesToRebuild as [$companyId, $projectId, $date]) {
 //             IncomeSummary::where('company_id', $companyId)
 //                 ->where('project_id', $projectId)
 //                 ->whereDate('date', $date)
 //                 ->delete();
 
-//             // Get fresh totals
 //             $totals = Income::where('company_id', $companyId)
 //                 ->where('project_id', $projectId)
 //                 ->whereDate('payment_date', $date)
 //                 ->selectRaw('
-//                     SUM(received_amount) as total_received,
-//                     SUM(pending_amount) as total_pending,
-//                     COUNT(*) as total_invoices
+//                     SUM(received_amount) AS total_received,
+//                     SUM(pending_amount)  AS total_pending,
+//                     SUM(gst_amount)      AS total_gst,
+//                     COUNT(*)             AS invoice_count
 //                 ')
 //                 ->first();
 
-//             // Only insert if data exists
-//             if ($totals && $totals->total_invoices > 0) {
+//             if ($totals && $totals->invoice_count > 0) {
 //                 IncomeSummary::create([
 //                     'company_id'     => $companyId,
 //                     'project_id'     => $projectId,
 //                     'date'           => $date,
-//                     'total_amount'   => $totals->total_received,  // RECEIVED ONLY
-//                     'pending_amount' => $totals->total_pending,
-//                     'invoice_count'  => $totals->total_invoices,
+//                     'total_amount'   => round($totals->total_received ?? 0, 2),
+//                     'pending_amount' => round($totals->total_pending ?? 0, 2),
+//                     'tax_amount'     => round($totals->total_gst ?? 0, 2),
+//                     'invoice_count'  => (int) $totals->invoice_count,
 //                 ]);
 //             }
 //         }
 
-//         /*
-//         |--------------------------------------------------------------------------
-//         | UPDATE ORDER TABLE
-//         |--------------------------------------------------------------------------
-//         */
-//         if ($income->order_id) {
-
-//             $order = Order::find($income->order_id);
-
-//             if ($order) {
-
-//                 $totalPaid = Income::where('order_id', $income->order_id)
-//                     ->sum('received_amount');
-
-//                 $order->paidAmount = $totalPaid;
-
-//                 if ($totalPaid >= $order->finalAmount) {
-//                     $order->orderStatus = 1;  // Fully Paid
-//                 } elseif ($totalPaid > 0) {
-//                     $order->orderStatus = 2;  // Partial Paid
-//                 } else {
-//                     $order->orderStatus = 3;  // Pending
-//                 }
-
-//                 $order->save();
-//             }
-//         }
-
-//         /*
-//         |--------------------------------------------------------------------------
-//         | UPDATE PROFORMA INVOICE
-//         |--------------------------------------------------------------------------
-//         */
+//         // ── Refresh linked Proforma totals ────────────────────────────────────────────
 //         if ($income->proforma_invoice_id) {
-
 //             $proforma = ProformaInvoice::find($income->proforma_invoice_id);
-
 //             if ($proforma) {
-
 //                 $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
 //                     ->sum('received_amount');
 
-//                 $proforma->paid_amount    = $totalReceived;
-//                 $proforma->pending_amount = $proforma->final_amount - $totalReceived;
+//                 $proforma->paid_amount    = round($totalReceived, 2);
+//                 $proforma->pending_amount = round(max(0, $proforma->final_amount - $totalReceived), 2);
 
-//                 if ($proforma->pending_amount <= 0) {
-//                     $proforma->payment_status = "paid";
-//                 } elseif ($proforma->paid_amount > 0) {
-//                     $proforma->payment_status = "partial";
-//                 } else {
-//                     $proforma->payment_status = "pending";
-//                 }
+//                 $proforma->payment_status = match (true) {
+//                     $proforma->pending_amount <= 0 => 'paid',
+//                     $proforma->paid_amount > 0     => 'partial',
+//                     default                        => 'pending',
+//                 };
 
 //                 $proforma->save();
 //             }
 //         }
 
+//         // ── Refresh linked Order totals ───────────────────────────────────────────────
+//         if ($income->order_id) {
+//             $order = Order::find($income->order_id);
+//             if ($order) {
+//                 $totalPaid = Income::where('order_id', $income->order_id)
+//                     ->sum('received_amount');
+
+//                 $order->paidAmount = round($totalPaid, 2);
+
+//                 $order->orderStatus = match (true) {
+//                     $totalPaid >= ($order->finalAmount ?? 0) => 1, // fully paid
+//                     $totalPaid > 0                           => 2, // partial
+//                     default                                  => 3, // pending
+//                 };
+
+//                 $order->save();
+//             }
+//         }
+
 //         return response()->json([
 //             'success' => true,
-//             'message' => 'Income updated successfully',
-//             'data' => $income
+//             'message' => 'Income record updated successfully',
+//             'data'    => $income->fresh()->load(['order', 'proformaInvoice'])
 //         ]);
 //     });
 // }
@@ -306,190 +339,294 @@ class IncomeController extends Controller
 
 public function update(Request $request, $id)
 {
-    return DB::transaction(function () use ($request, $id) {
+    $user = Auth::user();
 
-        $income = Income::findOrFail($id);
+    $validated = $request->validate([
+        'tally_invoice_number' => 'nullable|string|max:255',
+        'invoice_date'         => 'sometimes|date',
+        'delivery_date'        => 'nullable|date',
+        'items'                => 'nullable|array',
+        'items.*.work_type'    => 'nullable|string',
+        'items.*.uom'          => 'nullable|string',
+        'items.*.qty'          => 'nullable|numeric|min:0',
+        'items.*.price'        => 'nullable|numeric|min:0',
+        'items.*.total_price'  => 'nullable|numeric|min:0',
+        'items.*.remark'       => 'nullable|string',
+        'items.*.work_sub_description' => 'nullable|string',
+        'items.*.gst_percent'  => 'nullable|numeric|min:0',
+        'items.*.cgst_amount'  => 'nullable|numeric|min:0',
+        'items.*.sgst_amount'  => 'nullable|numeric|min:0',
+        'discount'             => 'nullable|numeric|min:0',
+        'gst_percentage'       => 'sometimes|numeric|min:0|max:100',
+        'cgst_percentage'      => 'sometimes|numeric|min:0|max:50',
+        'sgst_percentage'      => 'sometimes|numeric|min:0|max:50',
+        'igst_percentage'      => 'sometimes|numeric|min:0|max:100',
+        'rule_ids'             => 'nullable|array',
+        'rule_ids.*'           => 'exists:rules,id',
+        'notes'                => 'nullable|string',
+        'status'               => 'sometimes|in:draft,sent,approved,cancelled',
+        'payment_terms'        => 'nullable|string',
+        'terms_conditions'     => 'nullable|string',
 
-        $isLinkedToProforma = (bool) $income->proforma_invoice_id;
-        $isLinkedToOrder    = (bool) $income->order_id;
+        // Multiple advance payments support (same as store)
+        'advance_payments'                  => 'nullable|array',
+        'advance_payments.*.received_amount' => 'required_with:advance_payments|numeric|min:0.01',
+        'advance_payments.*.payment_date'    => 'nullable|date',
+        'advance_payments.*.received_from'   => 'nullable|string|max:255',
+        'advance_payments.*.payment_type'    => 'nullable|string|max:100|in:imps,rtgs,upi,cash,cheque,debit_note',
+        'advance_payments.*.senders_bank'    => 'nullable|string|max:255',
+        'advance_payments.*.receivers_bank'  => 'nullable|string|max:255',
+        'advance_payments.*.remark'          => 'nullable|string|max:500',
+        'advance_payments.*.transaction_number' => 'nullable|string|max:100',
+    ]);
 
-        // Removed: no longer block decreasing received_amount
-        // You can still add other protections if needed (e.g. only admin can decrease, or log changes)
+    DB::beginTransaction();
 
-        // ── Validation ────────────────────────────────────────────────────────────────
-        $validated = $request->validate([
-            'project_id'          => 'sometimes|integer|exists:projects,id',
-            'order_id'            => 'sometimes|nullable|integer|exists:orders,id',
-            'proforma_invoice_id' => 'sometimes|nullable|integer|exists:proforma_invoices,id',
-            'po_no'               => 'sometimes|string|max:100',
-            'po_date'             => 'sometimes|nullable|date',
-            'invoice_no'          => 'sometimes|string|max:100',
-            'invoice_date'        => 'sometimes|nullable|date',
-            'received_amount'     => 'sometimes|numeric|min:0',
-            'received_by'         => 'sometimes|string|max:255',
-            'senders_bank'        => 'sometimes|string|max:255',
-            'receivers_bank'      => 'sometimes|string|max:255',
-            'payment_type'        => 'sometimes|in:imps,rtgs,upi,cash,cheque',
-            'remark'              => 'nullable|string|max:1000',
-            'payment_date'        => 'sometimes|nullable|date',
-        ]);
+    try {
+        $proformaInvoice = ProformaInvoice::findOrFail($id);
 
-        $validated['company_id'] = $income->company_id; // immutable
-
-        // ── Remember old values for summary rebuild ───────────────────────────────────
-        $oldPaymentDate = $income->payment_date
-            ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
-            : Carbon::parse($income->created_at)->startOfDay()->toDateString();
-
-        $old = [
-            'company_id' => $income->company_id,
-            'project_id' => $income->project_id,
-            'date'       => $oldPaymentDate,
-            'received'   => $income->received_amount,
-            'gst'        => $income->gst_amount ?? 0,
-        ];
-
-        // ── If linked to proforma → always recalculate GST split proportionally ───────
-        $proformaId = $validated['proforma_invoice_id'] ?? $income->proforma_invoice_id;
-
-        if ($isLinkedToProforma && $proformaId) {
-            $proforma = ProformaInvoice::find($proformaId);
-            if (!$proforma) {
-                throw new \Exception("Proforma invoice not found");
-            }
-
-            $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->get();
-            if ($details->isEmpty()) {
-                throw new \Exception("Proforma details not found");
-            }
-
-            $totalCgst    = round($details->sum('cgst_amount'), 2);
-            $totalSgst    = round($details->sum('sgst_amount'), 2);
-            $totalGst     = round($totalCgst + $totalSgst, 2);
-            $invoiceTotal = round($proforma->final_amount, 2);
-
-            if ($invoiceTotal <= 0) {
-                throw new \Exception("Invalid proforma total");
-            }
-
-            // Use new received amount if provided, otherwise keep old
-            $received = isset($validated['received_amount'])
-                ? round($validated['received_amount'], 2)
-                : $income->received_amount;
-
-            // If received_amount becomes 0 or very small → ratio becomes small → GST becomes small
-            $ratio = $invoiceTotal > 0 ? $received / $invoiceTotal : 0;
-
-            $validated['basic_amount']    = round($received - ($totalGst * $ratio), 2);
-            $validated['gst_amount']      = round($totalGst * $ratio, 2);
-            $validated['cgst_amount']     = round($totalCgst * $ratio, 2);
-            $validated['sgst_amount']     = round($totalSgst * $ratio, 2);
-            $validated['igst_amount']     = 0;
-            $validated['billing_amount']  = $received;
-            $validated['received_amount'] = $received;
-            $validated['pending_amount']  = 0;
+        if ($proformaInvoice->company_id !== $user->company_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
         }
 
-        // ── Perform update ────────────────────────────────────────────────────────────
-        $income->update($validated);
+        // ──────────────────────────────────────────────────────────────
+        // STEP 1 — ITEM VALIDATION (unchanged)
+        // ──────────────────────────────────────────────────────────────
+        if (isset($validated['items'])) {
+            $itemValidationErrors = $this->validateProformaItemsAgainstWorkOrder(
+                $proformaInvoice->work_order_id,
+                $validated['items'],
+                $id
+            );
+            if (!empty($itemValidationErrors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "❌ Item-wise Validation Failed:\n\n" . implode("\n\n", $itemValidationErrors),
+                    'errors' => $itemValidationErrors
+                ], 400);
+            }
+        }
 
-        // ── New values for summary rebuild ────────────────────────────────────────────
-        $newPaymentDate = $income->payment_date
-            ? Carbon::parse($income->payment_date)->startOfDay()->toDateString()
-            : Carbon::today()->startOfDay()->toDateString();
+        // ──────────────────────────────────────────────────────────────
+        // STEP 2 — TOTAL RECALCULATION (unchanged)
+        // ──────────────────────────────────────────────────────────────
+        if (isset($validated['items'])) {
+            $subtotal      = collect($validated['items'])->sum('total_price');
+            $discount      = $validated['discount'] ?? $proformaInvoice->discount;
+            $taxableAmount = $subtotal - $discount;
 
-        $new = [
-            'company_id' => $income->company_id,
-            'project_id' => $income->project_id,
-            'date'       => $newPaymentDate,
-            'received'   => $income->received_amount,
-            'gst'        => $income->gst_amount ?? 0,
-        ];
+            if ($taxableAmount < 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Discount cannot be greater than subtotal."
+                ], 400);
+            }
 
-        // ── Rebuild IncomeSummary for affected dates ──────────────────────────────────
-        $datesToRebuild = array_unique([
-            [$old['company_id'], $old['project_id'], $old['date']],
-            [$new['company_id'], $new['project_id'], $new['date']],
-        ], SORT_REGULAR);
+            $cgstPercentage = $validated['cgst_percentage'] ?? $proformaInvoice->cgst_percentage;
+            $sgstPercentage = $validated['sgst_percentage'] ?? $proformaInvoice->sgst_percentage;
+            $igstPercentage = $validated['igst_percentage'] ?? $proformaInvoice->igst_percentage;
 
-        foreach ($datesToRebuild as [$companyId, $projectId, $date]) {
-            IncomeSummary::where('company_id', $companyId)
-                ->where('project_id', $projectId)
-                ->whereDate('date', $date)
-                ->delete();
+            $cgstAmount = $taxableAmount * ($cgstPercentage / 100);
+            $sgstAmount = $taxableAmount * ($sgstPercentage / 100);
+            $igstAmount = $taxableAmount * ($igstPercentage / 100);
+            $gstAmount  = $cgstAmount + $sgstAmount + $igstAmount;
 
-            $totals = Income::where('company_id', $companyId)
-                ->where('project_id', $projectId)
-                ->whereDate('payment_date', $date)
-                ->selectRaw('
-                    SUM(received_amount) AS total_received,
-                    SUM(pending_amount)  AS total_pending,
-                    SUM(gst_amount)      AS total_gst,
-                    COUNT(*)             AS invoice_count
-                ')
-                ->first();
+            $finalAmount   = $taxableAmount + $gstAmount;
+            $pendingAmount = $finalAmount - $proformaInvoice->paid_amount;
 
-            if ($totals && $totals->invoice_count > 0) {
-                IncomeSummary::create([
-                    'company_id'     => $companyId,
-                    'project_id'     => $projectId,
-                    'date'           => $date,
-                    'total_amount'   => round($totals->total_received ?? 0, 2),
-                    'pending_amount' => round($totals->total_pending ?? 0, 2),
-                    'tax_amount'     => round($totals->total_gst ?? 0, 2),
-                    'invoice_count'  => (int) $totals->invoice_count,
+            $validated = array_merge($validated, [
+                'subtotal'        => round($subtotal, 2),
+                'taxable_amount'  => round($taxableAmount, 2),
+                'gst_amount'      => round($gstAmount, 2),
+                'cgst_amount'     => round($cgstAmount, 2),
+                'sgst_amount'     => round($sgstAmount, 2),
+                'igst_amount'     => round($igstAmount, 2),
+                'final_amount'    => round($finalAmount, 2),
+                'pending_amount'  => round($pendingAmount, 2),
+            ]);
+
+            // Replace details
+            ProformaInvoiceDetail::where('proforma_invoice_id', $id)->delete();
+
+            foreach ($validated['items'] as $item) {
+                ProformaInvoiceDetail::create([
+                    'proforma_invoice_id'  => $id,
+                    'work_type'            => $item['work_type'],
+                    'uom'                  => $item['uom'] ?? null,
+                    'qty'                  => $item['qty'],
+                    'price'                => $item['price'],
+                    'total_price'          => round($item['total_price'], 2),
+                    'remark'               => $item['remark'] ?? null,
+                    'work_sub_description' => $item['work_sub_description'] ?? null,
+                    'gst_percent'          => $item['gst_percent'] ?? 0,
+                    'cgst_amount'          => round($item['cgst_amount'] ?? 0, 2),
+                    'sgst_amount'          => round($item['sgst_amount'] ?? 0, 2),
                 ]);
             }
         }
 
-        // ── Refresh linked Proforma totals ────────────────────────────────────────────
-        if ($income->proforma_invoice_id) {
-            $proforma = ProformaInvoice::find($income->proforma_invoice_id);
-            if ($proforma) {
-                $totalReceived = Income::where('proforma_invoice_id', $income->proforma_invoice_id)
-                    ->sum('received_amount');
+        // ──────────────────────────────────────────────────────────────
+        // STEP 3 — ADVANCE PAYMENTS (multiple) — aligned with store method
+        // ──────────────────────────────────────────────────────────────
+        $advancePaymentsData = $request->input('advance_payments', []);
 
-                $proforma->paid_amount    = round($totalReceived, 2);
-                $proforma->pending_amount = round(max(0, $proforma->final_amount - $totalReceived), 2);
+        if (!empty($advancePaymentsData)) {
+            // Replace all previous advance payments (common pattern for full update)
+            AdvancedPayment::where('proforma_id', $id)->delete();
 
-                $proforma->payment_status = match (true) {
-                    $proforma->pending_amount <= 0 => 'paid',
-                    $proforma->paid_amount > 0     => 'partial',
-                    default                        => 'pending',
-                };
+            $totalNewAdvance = 0;
 
-                $proforma->save();
+            // Pre-fetch current details for proportional GST split
+            $details    = ProformaInvoiceDetail::where('proforma_invoice_id', $id)->get();
+            $totalCGST  = $details->sum('cgst_amount');
+            $totalSGST  = $details->sum('sgst_amount');
+            $invoiceGST = round($totalCGST + $totalSGST, 2);
+            $invoiceBasic = round($proformaInvoice->taxable_amount, 2); // updated if items changed
+            $invoiceTotal = round($proformaInvoice->final_amount, 2);   // updated if items changed
+
+            $poNumber = $proformaInvoice->workOrder->po_number ?? 'N/A';
+
+            foreach ($advancePaymentsData as $paymentInput) {
+                $advanceAmount = round($paymentInput['received_amount'], 2);
+                if ($advanceAmount <= 0) continue;
+
+                $totalNewAdvance += $advanceAmount;
+
+                // Prevent total paid from exceeding final amount
+                if ($totalNewAdvance + $proformaInvoice->paid_amount > $invoiceTotal) {
+                    throw new \Exception("Total advance payments would exceed invoice final amount");
+                }
+
+                // Proportional split (same as store)
+                $ratio = $advanceAmount / $invoiceTotal;
+
+                $basicAmount   = round($invoiceBasic * $ratio, 2);
+                $gstAmount     = round($invoiceGST   * $ratio, 2);
+                $cgstAmount    = round($totalCGST    * $ratio, 2);
+                $sgstAmount    = round($totalSGST    * $ratio, 2);
+                $igstAmount    = 0;
+
+                $basicPortion = $advanceAmount - $gstAmount;
+
+                // Create Income record
+                Income::create([
+                    'project_id'          => $proformaInvoice->project_id,
+                    'order_id'            => $proformaInvoice->work_order_id,
+                    'proforma_invoice_id' => $proformaInvoice->id,
+                    'company_id'          => $user->company_id,
+
+                    'po_no'               => $poNumber,
+                    'po_date'             => $proformaInvoice->invoice_date,
+                    'invoice_no'          => $proformaInvoice->proforma_invoice_number,
+                    'invoice_date'        => $proformaInvoice->invoice_date,
+
+                    'basic_amount'        => $basicPortion,
+                    'gst_amount'          => $gstAmount,
+                    'cgst_amount'         => $cgstAmount,
+                    'sgst_amount'         => $sgstAmount,
+                    'igst_amount'         => $igstAmount,
+
+                    'billing_amount'      => $advanceAmount,
+                    'received_amount'     => $advanceAmount,
+                    'pending_amount'      => 0.00,
+
+                    'received_by'         => $paymentInput['received_from'] ?? 'Advance',
+                    'payment_type'        => $paymentInput['payment_type'] ?? 'cash',
+                    'senders_bank'        => $paymentInput['senders_bank'] ?? null,
+                    'receivers_bank'      => $paymentInput['receivers_bank'] ?? null,
+
+                    'remark'              => $paymentInput['remark']
+                        ?? "Advance payment update for PI #{$proformaInvoice->proforma_invoice_number}",
+
+                    'payment_date'        => $paymentInput['payment_date'] ?? now()->toDateString(),
+                ]);
+
+                // Store in AdvancedPayment (audit/reference table)
+                AdvancedPayment::create([
+                    'order_id'           => $proformaInvoice->work_order_id,
+                    'project_id'         => $proformaInvoice->project_id,
+                    'proforma_id'        => $proformaInvoice->id,
+                    'advanced_amount'    => $advanceAmount,
+                    'payment_date'       => $paymentInput['payment_date'] ?? now()->toDateString(),
+                    'received_from'      => $paymentInput['received_from'] ?? null,
+                    'payment_type'       => $paymentInput['payment_type'] ?? null,
+                    'senders_bank'       => $paymentInput['senders_bank'] ?? null,
+                    'receivers_bank'     => $paymentInput['receivers_bank'] ?? null,
+                    'transaction_number' => $paymentInput['transaction_number'] ?? null,
+                    'remark'             => $paymentInput['remark'] ?? null,
+                    'created_by'         => $user->id,
+                    'updated_by'         => $user->id,
+                ]);
+
+                // Update IncomeSummary (daily)
+                $today = Carbon::today()->toDateString();
+                $summary = IncomeSummary::firstOrNew([
+                    'company_id' => $user->company_id,
+                    'project_id' => $proformaInvoice->project_id,
+                    'date'       => $today,
+                ]);
+
+                if ($summary->exists) {
+                    $summary->invoice_count += 1;
+                    $summary->total_amount  += $advanceAmount;
+                    $summary->tax_amount    += $gstAmount;
+                } else {
+                    $summary->invoice_count  = 1;
+                    $summary->total_amount   = $advanceAmount;
+                    $summary->pending_amount = 0;
+                    $summary->tax_amount     = $gstAmount;
+                }
+                $summary->save();
             }
+
+            // Final update of proforma paid/pending/status
+            $newPaid    = round($proformaInvoice->paid_amount + $totalNewAdvance, 2);
+            $newPending = round($invoiceTotal - $newPaid, 2);
+            $status     = ($newPending <= 0) ? 'paid' : 'partial';
+
+            $proformaInvoice->update([
+                'paid_amount'     => $newPaid,
+                'pending_amount'  => max(0, $newPending),
+                'payment_status'  => $status,
+                'updated_by'      => $user->id,
+            ]);
+
+            // Also update order paidAmount
+            $workOrder = $proformaInvoice->workOrder;
+            $workOrder->update([
+                'paidAmount' => ($workOrder->paidAmount ?? 0) + $totalNewAdvance,
+                'updated_by' => $user->id,
+            ]);
         }
 
-        // ── Refresh linked Order totals ───────────────────────────────────────────────
-        if ($income->order_id) {
-            $order = Order::find($income->order_id);
-            if ($order) {
-                $totalPaid = Income::where('order_id', $income->order_id)
-                    ->sum('received_amount');
+        // ──────────────────────────────────────────────────────────────
+        // FINAL UPDATE (unchanged)
+        // ──────────────────────────────────────────────────────────────
+        unset($validated['items'], $validated['rule_ids']);
+        $validated['updated_by'] = $user->id;
 
-                $order->paidAmount = round($totalPaid, 2);
+        $proformaInvoice->update($validated);
 
-                $order->orderStatus = match (true) {
-                    $totalPaid >= ($order->finalAmount ?? 0) => 1, // fully paid
-                    $totalPaid > 0                           => 2, // partial
-                    default                                  => 3, // pending
-                };
-
-                $order->save();
-            }
-        }
+        DB::commit();
 
         return response()->json([
             'success' => true,
-            'message' => 'Income record updated successfully',
-            'data'    => $income->fresh()->load(['order', 'proformaInvoice'])
-        ]);
-    });
+            'message' => 'Proforma invoice updated successfully',
+            'data'    => $proformaInvoice->fresh()
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update proforma invoice',
+            'error'   => $e->getMessage()
+        ], 500);
+    }
 }
-
-
 
 
 

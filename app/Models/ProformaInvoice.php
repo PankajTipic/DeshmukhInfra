@@ -158,4 +158,11 @@ class ProformaInvoice extends Model
     {
         return $query->where('payment_status', 'paid');
     }
+
+
+    public function advances()
+{
+    return $this->hasMany(AdvancedPayment::class, 'proforma_id', 'id');
+}
+
 }

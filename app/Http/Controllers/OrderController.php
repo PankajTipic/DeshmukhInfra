@@ -135,7 +135,9 @@ if (!empty($projectTypeId)) {
 
 
 
-public function show($id)
+
+
+    public function show($id)
 {
     // Load order exactly like before
     $order = Order::with(
@@ -157,7 +159,8 @@ public function show($id)
         $order->proformas = ProformaInvoice::with([
                 'details',        // proforma items
                 'rules.rule',     // rules
-                'incomes'         // payments
+                'incomes', 
+                'advances'         // payments
             ])
             ->where('work_order_id', $order->id)
             ->orderBy('invoice_date', 'desc')

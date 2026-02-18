@@ -290,14 +290,14 @@ const RecordPaymentModal = ({
   const paidAmount = orderData.paidAmount || parseFloat(orderData.received_amount || 0) || 0
   const remainingAmount = isEdit ? 0 : (totalAmount - paidAmount)
 
-  return (
+  return ( 
     <CModal 
       visible={visible} 
       onClose={onClose}
       size="lg"
       backdrop="static"
       keyboard={false}
-    >
+    > 
       <CModalHeader>
         <CModalTitle>
           <CIcon icon={isEdit ? cilPencil : cilCreditCard} className="me-2" />

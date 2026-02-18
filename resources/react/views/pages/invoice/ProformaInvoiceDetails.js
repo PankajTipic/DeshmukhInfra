@@ -482,27 +482,111 @@ const ProformaInvoiceDetails = () => {
             </div>
           )}
 
+
+
+
+
+
+
+{/* Advance Payments Received */}
+{proformaInvoice.advances && proformaInvoice.advances.length > 0 && (
+  <div className="row section mb-4">
+    <div className="col-md-12">
+      <h6 className="fw-semibold text-primary border-bottom border-primary pb-2 mb-3">
+        Advance Payments Received
+      </h6>
+      
+      <table className="table table-bordered border-black">
+        <thead className="table-primary">
+          <tr>
+            <th>Sr.</th>
+            <th>Payment Date</th>
+            <th>Remark / TxID</th>
+            <th>Received From</th>
+            <th>Payment Type</th>
+            <th>Sender's Bank</th>
+            <th>Receiver's Bank</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {proformaInvoice.advances.map((adv, index) => (
+            <tr key={adv.id}>
+              <td>{index + 1}</td>
+              <td>
+                {adv.payment_date
+                  ? new Date(adv.payment_date).toLocaleDateString('en-IN')
+                  : '-'}
+              </td>
+              <td>{adv.remark || adv.transaction_number || '-'}</td>
+              
+              <td>{adv.received_from || '-'}</td>
+              <td>{adv.payment_type || '-'}</td>
+              <td>{adv.senders_bank || '-'}</td>
+              <td>{adv.receivers_bank || '-'}</td>
+              <td className="text-end fw-bold">
+                ₹{parseFloat(adv.advanced_amount || 0).toFixed(2)}
+              </td>
+            </tr>
+          ))}
+          
+          {/* Total Advances Row */}
+          <tr className="table-warning fw-bold">
+            <td colSpan="7" className="text-end">Total Advance Received:</td>
+            <td className="text-end">
+              ₹{proformaInvoice.advances
+                .reduce((sum, adv) => sum + parseFloat(adv.advanced_amount || 0), 0)
+                .toFixed(2)}
+            </td>
+            {/* <td colSpan=""></td> */}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
+
+
+
+
+
           {/* Final Amount */}
-          <div className="row section mb-4">
+          {/* <div className="row section mb-4">
             <div className="col-md-12">
               <table className="table table-bordered border-black">
                 <tbody>
                   <tr>
                     <td><strong>Grand Total:</strong></td>
-                    <td className="text-center">
-                      <strong>₹{parseFloat(proformaInvoice.final_amount).toFixed(2)}</strong>
-                    </td>
+                    <td className="text-center">₹{parseFloat(proformaInvoice.final_amount).toFixed(2)}</td>
                   </tr>
+                  
                 </tbody>
               </table>
             </div>
-          </div>
+          </div> */}
+
+
+
+
+
+
+
+
+
+
 
           {/* Payment Summary */}
           <div className="row section mb-4">
             <div className="col-md-12">
               <table className="table table-bordered border-black">
                 <tbody>
+
+ <tr>
+                    <td><strong>Grand Total:</strong></td>
+                    <td className="text-center">₹{parseFloat(proformaInvoice.final_amount).toFixed(2)}</td>
+                  </tr>
+
                   <tr>
                     <td><strong>Amount Paid:</strong></td>
                     <td className="text-center">₹{parseFloat(proformaInvoice.paid_amount).toFixed(2)}</td>
