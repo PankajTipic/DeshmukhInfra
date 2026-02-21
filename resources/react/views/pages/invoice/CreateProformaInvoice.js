@@ -2952,7 +2952,7 @@ const CreateProformaInvoice = () => {
           sub_descriptions: item.work_sub_description
             ? item.work_sub_description.split('\n').map(l => l.trim()).filter(Boolean)
             : [],
-          gst_percent: parseFloat(item.gst_percent) || 18,
+          gst_percent: parseFloat(item.gst_percent) || 0,
           cgst_amount: parseFloat(item.cgst_amount) || 0,
           sgst_amount: parseFloat(item.sgst_amount) || 0,
         }
@@ -3055,9 +3055,9 @@ const CreateProformaInvoice = () => {
       total_price: 0,
       remark: '',
       sub_descriptions: [],
-      gst_percent: 18,
-      cgst_amount: 9,
-      sgst_amount: 9,
+      gst_percent: '',
+      cgst_amount: '',
+      sgst_amount: '',
     }
     setWorks([...works, newRow])
     setNewSubDescs([...newSubDescs, ''])

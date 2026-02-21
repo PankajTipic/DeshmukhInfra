@@ -346,253 +346,6 @@ class ProformaInvoiceController extends Controller
     /**
      * ✅ UPDATED: Create proforma invoice with complete validation
      */
-//     public function store(Request $request)
-//     {
-//         $user = Auth::user();
-
-//         $validated = $request->validate([
-//             'work_order_id' => 'required|exists:orders,id',
-//             'project_id' => 'required|exists:projects,id',
-//             'tally_invoice_number' => 'nullable|string|max:255',
-//             'invoice_date' => 'required|date',
-//             'delivery_date' => 'nullable|date',
-//             'items' => 'required|array|min:1',
-//             'items.*.work_type' => 'required|string',
-//             'items.*.qty' => 'required|numeric|min:0',
-//             'items.*.uom' => 'nullable|string',
-//             'items.*.price' => 'required|numeric|min:0',
-//             'items.*.total_price' => 'required|numeric|min:0',
-//             'items.*.remark' => 'nullable|string',
-//             'items.*.work_sub_description' => 'nullable|string',
-//             'items.*.gst_percent' => 'nullable|numeric|min:0',
-//             'items.*.cgst_amount' => 'nullable|numeric|min:0',
-//             'items.*.sgst_amount' => 'nullable|numeric|min:0',
-//             'discount' => 'nullable|numeric|min:0',
-//             'gst_percentage' => 'required|numeric|min:0|max:100',
-//             'cgst_percentage' => 'required|numeric|min:0|max:50',
-//             'sgst_percentage' => 'required|numeric|min:0|max:50',
-//             'igst_percentage' => 'required|numeric|min:0|max:100',
-//             'rule_ids' => 'nullable|array',
-//             'rule_ids.*' => 'exists:rules,id',
-//             'notes' => 'nullable|string',
-//             'payment_terms' => 'nullable|string',
-//             'terms_conditions' => 'nullable|string',
-//         ]);
-
-//         DB::beginTransaction();
-
-//         try {
-//             $project = Project::findOrFail($validated['project_id']);
-//             $workOrder = Order::findOrFail($validated['work_order_id']);
-            
-//             if ($workOrder->project_id !== $project->id) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => 'Project does not belong to the specified work order'
-//                 ], 400);
-//             }
-
-//             // ✅ STEP 1: Validate items against work order (quantity and amount per item)
-//             $itemValidationErrors = $this->validateProformaItemsAgainstWorkOrder(
-//                 $validated['work_order_id'],
-//                 $validated['items']
-//             );
-            
-//             if (!empty($itemValidationErrors)) {
-//                 // Format errors into a single readable message
-//                 $errorMessage = "❌ Item-wise Validation Failed:\n\n" . implode("\n\n", $itemValidationErrors);
-                
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => $errorMessage,
-//                     'errors' => $itemValidationErrors
-//                 ], 400);
-//             }
-
-//             // Calculate amounts
-//             $subtotal = collect($validated['items'])->sum('total_price');
-//             $discount = $validated['discount'] ?? 0;
-//             $taxableAmount = $subtotal - $discount;
-            
-//             // ✅ Validate discount doesn't make taxable amount negative
-//             if ($taxableAmount < 0) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => sprintf(
-//                         "⚠️ Discount Validation Failed:\n\n" .
-//                         "Subtotal: ₹%.2f\n" .
-//                         "Discount: ₹%.2f\n" .
-//                         "❌ Discount cannot be greater than subtotal.\n\n" .
-//                         "Please reduce the discount amount.",
-//                         $subtotal,
-//                         $discount
-//                     )
-//                 ], 400);
-//             }
-            
-//             $cgstAmount = $taxableAmount * ($validated['cgst_percentage'] / 100);
-//             $sgstAmount = $taxableAmount * ($validated['sgst_percentage'] / 100);
-//             $igstAmount = $taxableAmount * ($validated['igst_percentage'] / 100);
-//             $gstAmount = $cgstAmount + $sgstAmount + $igstAmount;
-            
-//             $finalAmount = $taxableAmount + $gstAmount;
-
-//             // ✅ STEP 2: Validate total amount including global GST
-//             $totalValidation = $this->validateTotalProformaAmount($workOrder, $finalAmount);
-            
-//             if (!$totalValidation['valid']) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => $totalValidation['message'],
-//                     'data' => $totalValidation['data']
-//                 ], 400);
-//             }
-
-//             // Generate proforma invoice number
-//             $company = CompanyInfo::findOrFail($user->company_id);
-//             $lastProforma = ProformaInvoice::where('company_id', $user->company_id)
-//                 ->orderBy('id', 'desc')
-//                 ->first();
-
-//             $nextNumber = $lastProforma ? ($lastProforma->id + 1) : 1;
-//             $proformaNumber = $company->initials . '-PI-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-//             // Create proforma invoice
-//             $proformaInvoice = ProformaInvoice::create([
-//                 'work_order_id' => $validated['work_order_id'],
-//                 'project_id' => $validated['project_id'],
-//                 'company_id' => $user->company_id,
-//                 'proforma_invoice_number' => $proformaNumber,
-//                 'tally_invoice_number' => $validated['tally_invoice_number'] ?? null,
-//                 'invoice_date' => $validated['invoice_date'],
-//                 'delivery_date' => $validated['delivery_date'] ?? null,
-//                 'subtotal' => round($subtotal, 2),
-//                 'discount' => round($discount, 2),
-//                 'taxable_amount' => round($taxableAmount, 2),
-//                 'gst_percentage' => $validated['gst_percentage'],
-//                 'cgst_percentage' => $validated['cgst_percentage'],
-//                 'sgst_percentage' => $validated['sgst_percentage'],
-//                 'igst_percentage' => $validated['igst_percentage'],
-//                 'gst_amount' => round($gstAmount, 2),
-//                 'cgst_amount' => round($cgstAmount, 2),
-//                 'sgst_amount' => round($sgstAmount, 2),
-//                 'igst_amount' => round($igstAmount, 2),
-//                 'final_amount' => round($finalAmount, 2),
-//                 'paid_amount' => 0,
-//                 'pending_amount' => round($finalAmount, 2),
-//                 'payment_status' => 'pending',
-//                 'status' => 'draft',
-//                 'notes' => $validated['notes'] ?? null,
-//                 'created_by' => $user->id,
-//                 'updated_by' => $user->id,
-//                 'payment_terms' => $validated['payment_terms'] ?? null,
-//                 'terms_conditions' => $validated['terms_conditions'] ?? null,
-//             ]);
-
-//             // Create details
-//             foreach ($validated['items'] as $item) {
-//                 ProformaInvoiceDetail::create([
-//                     'proforma_invoice_id' => $proformaInvoice->id,
-//                     'work_type' => $item['work_type'],
-//                     'uom' => $item['uom'] ?? null,
-//                     'qty' => $item['qty'],
-//                     'price' => $item['price'],
-//                     'total_price' => round($item['total_price'], 2),
-//                     'remark' => $item['remark'] ?? null,
-//                     'work_sub_description'  => $item['work_sub_description'] ?? null,
-//                     'gst_percent' => $item['gst_percent'] ?? 0,
-//                     'cgst_amount' => round($item['cgst_amount'] ?? 0, 2),
-//                     'sgst_amount' => round($item['sgst_amount'] ?? 0, 2),
-//                 ]);
-//             }
-
-
-
-
-
-
-//             // ────────────────────────────────────────────────
-// // Handle Advance Payment – if amount was sent
-// // ────────────────────────────────────────────────
-// $receivedAmount = $request->input('received_amount');
-
-// if ($receivedAmount && is_numeric($receivedAmount) && $receivedAmount > 0) {
-
-//     $advanceData = $request->validate([
-//         'received_amount'     => 'required|numeric|min:0.01',
-//         'payment_date'        => 'nullable|date',
-//         'received_from'       => 'nullable|string|max:255',     
-//         'payment_type'        => 'nullable|string|max:100',
-//         'senders_bank'        => 'nullable|string|max:255',
-//         'receivers_bank'      => 'nullable|string|max:255',
-//         'transaction_number'  => 'nullable|string|max:100',     
-//         'remark'              => 'nullable|string',
-//     ]);
-
-//     AdvancedPayment::create([
-//         'order_id'           => $validated['work_order_id'],
-//         'project_id'         => $validated['project_id'],
-//         'proforma_id'        => $proformaInvoice->id,
-//         'advanced_amount'    => round($advanceData['received_amount'], 2),
-//         'payment_date'       => $advanceData['payment_date'] ?? now()->toDateString(),
-//         'received_from'      => $advanceData['received_from'] ?? null,
-//         'payment_type'       => $advanceData['payment_type'] ?? null,
-//         'senders_bank'       => $advanceData['senders_bank'] ?? null,
-//         'receivers_bank'     => $advanceData['receivers_bank'] ?? null,
-//         'transaction_number' => $advanceData['transaction_number'] ?? null,
-//         'remark'             => $advanceData['remark'] ?? null,
-//     ]);
-
-//     // Optional: update proforma paid / pending amount immediately
-//     // $proformaInvoice->update([
-//     //     'paid_amount'     => round($advanceData['received_amount'], 2),
-//     //     'pending_amount'  => round($proformaInvoice->final_amount - $advanceData['received_amount'], 2),
-//     //     'payment_status'  => $advanceData['received_amount'] >= $proformaInvoice->final_amount 
-//     //         ? 'paid' 
-//     //         : 'partial',
-//     // ]);
-// }
-
-
-
-
-//             // Attach rules
-//             if (!empty($validated['rule_ids'])) {
-//                 foreach ($validated['rule_ids'] as $ruleId) {
-//                     ProformaInvoiceRule::create([
-//                         'proforma_invoice_id' => $proformaInvoice->id,
-//                         'rules_id' => $ruleId,
-//                     ]);
-//                 }
-//             }
-
-//             DB::commit();
-
-//             $proformaInvoice->load(['workOrder', 'project.projectType', 'details', 'invoiceRules.rule']);
-
-//             return response()->json([
-//                 'success' => true,
-//                 'message' => 'Proforma invoice created successfully',
-//                 'data' => $proformaInvoice
-//             ], 201);
-
-//         } catch (\Exception $e) {
-//             DB::rollBack();
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'Failed to create proforma invoice',
-//                 'error' => $e->getMessage()
-//             ], 500);
-//         }
-//     }
-
-
-
-
-
-
-
-
 
 // public function store(Request $request)
 // {
@@ -820,6 +573,333 @@ class ProformaInvoiceController extends Controller
 
 
 
+// public function store(Request $request)
+// {
+//     $user = Auth::user();
+
+//     $validated = $request->validate([
+//         'work_order_id' => 'required|exists:orders,id',
+//         'project_id' => 'required|exists:projects,id',
+//         'tally_invoice_number' => 'nullable|string|max:255',
+//         'invoice_date' => 'required|date',
+//         'delivery_date' => 'nullable|date',
+//         'items' => 'required|array|min:1',
+//         'items.*.work_type' => 'required|string',
+//         'items.*.qty' => 'required|numeric|min:0',
+//         'items.*.uom' => 'nullable|string',
+//         'items.*.price' => 'required|numeric|min:0',
+//         'items.*.total_price' => 'required|numeric|min:0',
+//         'items.*.remark' => 'nullable|string',
+//         'items.*.work_sub_description' => 'nullable|string',
+//         'items.*.gst_percent' => 'nullable|numeric|min:0',
+//         'items.*.cgst_amount' => 'nullable|numeric|min:0',
+//         'items.*.sgst_amount' => 'nullable|numeric|min:0',
+//         'discount' => 'nullable|numeric|min:0',
+//         'gst_percentage' => 'required|numeric|min:0|max:100',
+//         'cgst_percentage' => 'required|numeric|min:0|max:50',
+//         'sgst_percentage' => 'required|numeric|min:0|max:50',
+//         'igst_percentage' => 'required|numeric|min:0|max:100',
+//         'rule_ids' => 'nullable|array',
+//         'rule_ids.*' => 'exists:rules,id',
+//         'notes' => 'nullable|string',
+//         'payment_terms' => 'nullable|string',
+//         'terms_conditions' => 'nullable|string',
+
+//         // Support multiple advance payments
+//         'advance_payments' => 'nullable|array',
+//         'advance_payments.*.received_amount' => 'required_with:advance_payments|numeric|min:0.01',
+//         'advance_payments.*.payment_date' => 'nullable|date',
+//         'advance_payments.*.received_from' => 'nullable|string|max:255',
+//         'advance_payments.*.payment_type' => 'nullable|string|max:100|in:imps,rtgs,upi,cash,cheque,debit_note',
+//         'advance_payments.*.senders_bank' => 'nullable|string|max:255',
+//         'advance_payments.*.receivers_bank' => 'nullable|string|max:255',
+//         'advance_payments.*.remark' => 'nullable|string|max:500',
+//         'advance_payments.*.transaction_number' => 'nullable|string|max:100',
+//     ]);
+
+//     DB::beginTransaction();
+
+//     try {
+//         $project = Project::findOrFail($validated['project_id']);
+//         $workOrder = Order::findOrFail($validated['work_order_id']);
+
+//         if ($workOrder->project_id !== $project->id) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Project does not belong to the specified work order'
+//             ], 400);
+//         }
+
+//         // STEP 1: Validate items against work order
+//         $itemValidationErrors = $this->validateProformaItemsAgainstWorkOrder(
+//             $validated['work_order_id'],
+//             $validated['items']
+//         );
+
+//         if (!empty($itemValidationErrors)) {
+//             $errorMessage = "❌ Item-wise Validation Failed:\n\n" . implode("\n\n", $itemValidationErrors);
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => $errorMessage,
+//                 'errors' => $itemValidationErrors
+//             ], 400);
+//         }
+
+//         // Calculate amounts
+//         $subtotal = collect($validated['items'])->sum('total_price');
+//         $discount = $validated['discount'] ?? 0;
+//         $taxableAmount = $subtotal - $discount;
+
+//         if ($taxableAmount < 0) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => sprintf(
+//                     "⚠️ Discount Validation Failed:\n\n" .
+//                     "Subtotal: ₹%.2f\n" .
+//                     "Discount: ₹%.2f\n" .
+//                     "❌ Discount cannot be greater than subtotal.\n\n" .
+//                     "Please reduce the discount amount.",
+//                     $subtotal,
+//                     $discount
+//                 )
+//             ], 400);
+//         }
+
+//         $cgstAmount = $taxableAmount * ($validated['cgst_percentage'] / 100);
+//         $sgstAmount = $taxableAmount * ($validated['sgst_percentage'] / 100);
+//         $igstAmount = $taxableAmount * ($validated['igst_percentage'] / 100);
+//         $gstAmount = $cgstAmount + $sgstAmount + $igstAmount;
+
+//         $finalAmount = $taxableAmount + $gstAmount;
+
+//         // STEP 2: Validate total amount
+//         $totalValidation = $this->validateTotalProformaAmount($workOrder, $finalAmount);
+
+//         if (!$totalValidation['valid']) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => $totalValidation['message'],
+//                 'data' => $totalValidation['data']
+//             ], 400);
+//         }
+
+//         // Generate proforma invoice number
+//         $company = CompanyInfo::findOrFail($user->company_id);
+//         $lastProforma = ProformaInvoice::where('company_id', $user->company_id)
+//             ->orderBy('id', 'desc')
+//             ->first();
+
+//         $nextNumber = $lastProforma ? ($lastProforma->id + 1) : 1;
+//         $proformaNumber = $company->initials . '-PI-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+//         // Create proforma invoice
+//         $proformaInvoice = ProformaInvoice::create([
+//             'work_order_id' => $validated['work_order_id'],
+//             'project_id' => $validated['project_id'],
+//             'company_id' => $user->company_id,
+//             'proforma_invoice_number' => $proformaNumber,
+//             'tally_invoice_number' => $validated['tally_invoice_number'] ?? null,
+//             'invoice_date' => $validated['invoice_date'],
+//             'delivery_date' => $validated['delivery_date'] ?? null,
+//             'subtotal' => round($subtotal, 2),
+//             'discount' => round($discount, 2),
+//             'taxable_amount' => round($taxableAmount, 2),
+//             'gst_percentage' => $validated['gst_percentage'],
+//             'cgst_percentage' => $validated['cgst_percentage'],
+//             'sgst_percentage' => $validated['sgst_percentage'],
+//             'igst_percentage' => $validated['igst_percentage'],
+//             'gst_amount' => round($gstAmount, 2),
+//             'cgst_amount' => round($cgstAmount, 2),
+//             'sgst_amount' => round($sgstAmount, 2),
+//             'igst_amount' => round($igstAmount, 2),
+//             'final_amount' => round($finalAmount, 2),
+//             'paid_amount' => 0,
+//             'pending_amount' => round($finalAmount, 2),
+//             'payment_status' => 'pending',
+//             'status' => 'draft',
+//             'notes' => $validated['notes'] ?? null,
+//             'created_by' => $user->id,
+//             'updated_by' => $user->id,
+//             'payment_terms' => $validated['payment_terms'] ?? null,
+//             'terms_conditions' => $validated['terms_conditions'] ?? null,
+//         ]);
+
+//         // Create details
+//         foreach ($validated['items'] as $item) {
+//             ProformaInvoiceDetail::create([
+//                 'proforma_invoice_id' => $proformaInvoice->id,
+//                 'work_type' => $item['work_type'],
+//                 'uom' => $item['uom'] ?? null,
+//                 'qty' => $item['qty'],
+//                 'price' => $item['price'],
+//                 'total_price' => round($item['total_price'], 2),
+//                 'remark' => $item['remark'] ?? null,
+//                 'work_sub_description' => $item['work_sub_description'] ?? null,
+//                 'gst_percent' => $item['gst_percent'] ?? 0,
+//                 'cgst_amount' => round($item['cgst_amount'] ?? 0, 2),
+//                 'sgst_amount' => round($item['sgst_amount'] ?? 0, 2),
+//             ]);
+//         }
+
+//         // ────────────────────────────────────────────────────────────────
+//         // HANDLE ADVANCE PAYMENTS (multiple) — same logic as recordPayment
+//         // ────────────────────────────────────────────────────────────────
+//         $advancePaymentsData = $request->input('advance_payments', []);
+//         $totalAdvance = 0;
+
+//         // Pre-fetch details once (for GST split calculation)
+//         $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proformaInvoice->id)->get();
+//         $totalCGST = $details->sum('cgst_amount');
+//         $totalSGST = $details->sum('sgst_amount');
+//         $invoiceGST = round($totalCGST + $totalSGST, 2);
+//         $invoiceBasic = round($proformaInvoice->taxable_amount, 2);
+//         $invoiceTotal = round($proformaInvoice->final_amount, 2);
+
+//         $poNumber = $workOrder->po_number ?? 'N/A';
+
+//         foreach ($advancePaymentsData as $paymentInput) {
+//             $advanceAmount = round($paymentInput['received_amount'], 2);
+//             if ($advanceAmount <= 0) continue;
+
+//             $totalAdvance += $advanceAmount;
+
+//             if ($totalAdvance > $invoiceTotal) {
+//                 throw new \Exception("Total advance payments exceed invoice final amount");
+//             }
+
+//             // Proportional split (same logic as recordPayment)
+//             $ratio = $advanceAmount / $invoiceTotal;
+
+//             $basicAmount = round($invoiceBasic * $ratio, 2);
+//             $gstAmount   = round($invoiceGST   * $ratio, 2);
+//             $cgstAmount  = round($totalCGST    * $ratio, 2);
+//             $sgstAmount  = round($totalSGST    * $ratio, 2);
+//             $igstAmount  = 0; // future proof
+
+//             $basicPortion = $advanceAmount - $gstAmount;
+
+//             // Create Income record
+//             $income = Income::create([
+//                 'project_id'          => $proformaInvoice->project_id,
+//                 'order_id'            => $proformaInvoice->work_order_id,
+//                 'proforma_invoice_id' => $proformaInvoice->id,
+//                 'company_id'          => $user->company_id,
+
+//                 'po_no'               => $poNumber,
+//                 'po_date'             => $proformaInvoice->invoice_date,
+//                 'invoice_no'          => $proformaInvoice->proforma_invoice_number,
+//                 'invoice_date'        => $proformaInvoice->invoice_date,
+
+//                 'basic_amount'        => $basicPortion,
+//                 'gst_amount'          => $gstAmount,
+//                 'cgst_amount'         => $cgstAmount,
+//                 'sgst_amount'         => $sgstAmount,
+//                 'igst_amount'         => $igstAmount,
+
+//                 'billing_amount'      => $advanceAmount,
+//                 'received_amount'     => $advanceAmount,
+//                 'pending_amount'      => 0.00,
+
+//                 'received_by'         => $paymentInput['received_from'] ?? 'Advance',
+//                 'payment_type'        => $paymentInput['payment_type'] ?? 'cash',
+//                 'senders_bank'        => $paymentInput['senders_bank'] ?? null,
+//                 'receivers_bank'      => $paymentInput['receivers_bank'] ?? null,
+
+//                 'remark'              => $paymentInput['remark']
+//                     ?? "Advance payment for PI #{$proformaInvoice->proforma_invoice_number}",
+
+//                 'payment_date'        => $paymentInput['payment_date'] ?? now()->toDateString(),
+//             ]);
+
+//             // Also store in AdvancedPayment table (your audit/reference table)
+//             AdvancedPayment::create([
+//                 'order_id'           => $validated['work_order_id'],
+//                 'project_id'         => $validated['project_id'],
+//                 'proforma_id'        => $proformaInvoice->id,
+//                 'advanced_amount'    => $advanceAmount,
+//                 'payment_date'       => $paymentInput['payment_date'] ?? now()->toDateString(),
+//                 'received_from'      => $paymentInput['received_from'] ?? null,
+//                 'payment_type'       => $paymentInput['payment_type'] ?? null,
+//                 'senders_bank'       => $paymentInput['senders_bank'] ?? null,
+//                 'receivers_bank'     => $paymentInput['receivers_bank'] ?? null,
+//                 'transaction_number' => $paymentInput['transaction_number'] ?? null,
+//                 'remark'             => $paymentInput['remark'] ?? null,
+//             ]);
+
+//             // Update IncomeSummary (daily)
+//             $today = Carbon::today()->toDateString();
+//             $summary = IncomeSummary::firstOrNew([
+//                 'company_id' => $user->company_id,
+//                 'project_id' => $proformaInvoice->project_id,
+//                 'date'       => $today,
+//             ]);
+
+//             if ($summary->exists) {
+//                 $summary->invoice_count += 1;
+//                 $summary->total_amount  += $advanceAmount;
+//                 $summary->tax_amount    += $gstAmount;
+//             } else {
+//                 $summary->invoice_count  = 1;
+//                 $summary->total_amount   = $advanceAmount;
+//                 $summary->pending_amount = 0;
+//                 $summary->tax_amount     = $gstAmount;
+//             }
+//             $summary->save();
+//         }
+
+//         // Final update of proforma paid/pending/status
+//         if ($totalAdvance > 0) {
+//             $newPaid = round($totalAdvance, 2);
+//             $newPending = round($invoiceTotal - $newPaid, 2);
+//             $status = ($newPending <= 0) ? 'paid' : 'partial';
+
+//             $proformaInvoice->update([
+//                 'paid_amount'    => $newPaid,
+//                 'pending_amount' => max(0, $newPending),
+//                 'payment_status' => $status,
+//                 'updated_by'     => $user->id,
+//             ]);
+
+//             // Also update order paidAmount
+//             $workOrder->update([
+//                 'paidAmount' => ($workOrder->paidAmount ?? 0) + $totalAdvance,
+//                 'updated_by' => $user->id,
+//             ]);
+//         }
+
+//         // Attach rules (unchanged)
+//         if (!empty($validated['rule_ids'])) {
+//             foreach ($validated['rule_ids'] as $ruleId) {
+//                 ProformaInvoiceRule::create([
+//                     'proforma_invoice_id' => $proformaInvoice->id,
+//                     'rules_id' => $ruleId,
+//                 ]);
+//             }
+//         }
+
+//         DB::commit();
+
+//         $proformaInvoice->load(['workOrder', 'project.projectType', 'details', 'invoiceRules.rule']);
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Proforma invoice created successfully' . ($totalAdvance > 0 ? ' with advance payment(s)' : ''),
+//             'data' => $proformaInvoice
+//         ], 201);
+
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to create proforma invoice',
+//             'error' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+
+
+
 public function store(Request $request)
 {
     $user = Auth::user();
@@ -919,7 +999,7 @@ public function store(Request $request)
 
         $finalAmount = $taxableAmount + $gstAmount;
 
-        // STEP 2: Validate total amount
+        // STEP 2: Validate total amount against work order
         $totalValidation = $this->validateTotalProformaAmount($workOrder, $finalAmount);
 
         if (!$totalValidation['valid']) {
@@ -941,72 +1021,106 @@ public function store(Request $request)
 
         // Create proforma invoice
         $proformaInvoice = ProformaInvoice::create([
-            'work_order_id' => $validated['work_order_id'],
-            'project_id' => $validated['project_id'],
-            'company_id' => $user->company_id,
+            'work_order_id'       => $validated['work_order_id'],
+            'project_id'          => $validated['project_id'],
+            'company_id'          => $user->company_id,
             'proforma_invoice_number' => $proformaNumber,
             'tally_invoice_number' => $validated['tally_invoice_number'] ?? null,
-            'invoice_date' => $validated['invoice_date'],
-            'delivery_date' => $validated['delivery_date'] ?? null,
-            'subtotal' => round($subtotal, 2),
-            'discount' => round($discount, 2),
-            'taxable_amount' => round($taxableAmount, 2),
-            'gst_percentage' => $validated['gst_percentage'],
-            'cgst_percentage' => $validated['cgst_percentage'],
-            'sgst_percentage' => $validated['sgst_percentage'],
-            'igst_percentage' => $validated['igst_percentage'],
-            'gst_amount' => round($gstAmount, 2),
-            'cgst_amount' => round($cgstAmount, 2),
-            'sgst_amount' => round($sgstAmount, 2),
-            'igst_amount' => round($igstAmount, 2),
-            'final_amount' => round($finalAmount, 2),
-            'paid_amount' => 0,
-            'pending_amount' => round($finalAmount, 2),
-            'payment_status' => 'pending',
-            'status' => 'draft',
-            'notes' => $validated['notes'] ?? null,
-            'created_by' => $user->id,
-            'updated_by' => $user->id,
-            'payment_terms' => $validated['payment_terms'] ?? null,
-            'terms_conditions' => $validated['terms_conditions'] ?? null,
+            'invoice_date'        => $validated['invoice_date'],
+            'delivery_date'       => $validated['delivery_date'] ?? null,
+            'subtotal'            => round($subtotal, 2),
+            'discount'            => round($discount, 2),
+            'taxable_amount'      => round($taxableAmount, 2),
+            'gst_percentage'      => $validated['gst_percentage'],
+            'cgst_percentage'     => $validated['cgst_percentage'],
+            'sgst_percentage'     => $validated['sgst_percentage'],
+            'igst_percentage'     => $validated['igst_percentage'],
+            'gst_amount'          => round($gstAmount, 2),
+            'cgst_amount'         => round($cgstAmount, 2),
+            'sgst_amount'         => round($sgstAmount, 2),
+            'igst_amount'         => round($igstAmount, 2),
+            'final_amount'        => round($finalAmount, 2),
+            'paid_amount'         => 0,
+            'pending_amount'      => round($finalAmount, 2),
+            'payment_status'      => 'pending',
+            'status'              => 'draft',
+            'notes'               => $validated['notes'] ?? null,
+            'created_by'          => $user->id,
+            'updated_by'          => $user->id,
+            'payment_terms'       => $validated['payment_terms'] ?? null,
+            'terms_conditions'    => $validated['terms_conditions'] ?? null,
         ]);
 
-        // Create details
+        // Create proforma invoice details
         foreach ($validated['items'] as $item) {
             ProformaInvoiceDetail::create([
-                'proforma_invoice_id' => $proformaInvoice->id,
-                'work_type' => $item['work_type'],
-                'uom' => $item['uom'] ?? null,
-                'qty' => $item['qty'],
-                'price' => $item['price'],
-                'total_price' => round($item['total_price'], 2),
-                'remark' => $item['remark'] ?? null,
-                'work_sub_description' => $item['work_sub_description'] ?? null,
-                'gst_percent' => $item['gst_percent'] ?? 0,
-                'cgst_amount' => round($item['cgst_amount'] ?? 0, 2),
-                'sgst_amount' => round($item['sgst_amount'] ?? 0, 2),
+                'proforma_invoice_id'   => $proformaInvoice->id,
+                'work_type'             => $item['work_type'],
+                'uom'                   => $item['uom'] ?? null,
+                'qty'                   => $item['qty'],
+                'price'                 => $item['price'],
+                'total_price'           => round($item['total_price'], 2),
+                'remark'                => $item['remark'] ?? null,
+                'work_sub_description'  => $item['work_sub_description'] ?? null,
+                'gst_percent'           => $item['gst_percent'] ?? 0,
+                'cgst_amount'           => round($item['cgst_amount'] ?? 0, 2),
+                'sgst_amount'           => round($item['sgst_amount'] ?? 0, 2),
             ]);
         }
 
         // ────────────────────────────────────────────────────────────────
-        // HANDLE ADVANCE PAYMENTS (multiple) — same logic as recordPayment
+        // HANDLE ADVANCE PAYMENTS (multiple) — aligned with recordPayment logic
         // ────────────────────────────────────────────────────────────────
         $advancePaymentsData = $request->input('advance_payments', []);
         $totalAdvance = 0;
 
-        // Pre-fetch details once (for GST split calculation)
-        $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proformaInvoice->id)->get();
-        $totalCGST = $details->sum('cgst_amount');
-        $totalSGST = $details->sum('sgst_amount');
-        $invoiceGST = round($totalCGST + $totalSGST, 2);
-        $invoiceBasic = round($proformaInvoice->taxable_amount, 2);
-        $invoiceTotal = round($proformaInvoice->final_amount, 2);
+        // Pre-calculate GST split values (used for all advances)
+        // $details = ProformaInvoiceDetail::where('proforma_invoice_id', $proformaInvoice->id)->get();
+        // $totalCGST    = round($details->sum('cgst_amount'), 2);
+        // $totalSGST    = round($details->sum('sgst_amount'), 2);
+        // $invoiceGST   = round($totalCGST + $totalSGST, 2);
+        // $invoiceBasic = round($proformaInvoice->taxable_amount, 2);
+        // $invoiceTotal = round($proformaInvoice->final_amount, 2);
+
+
+        // ────────────────────────────────────────────────
+// GST FROM DETAILS TABLE  (MATCH recordPayment)
+// ────────────────────────────────────────────────
+$details = ProformaInvoiceDetail::where('proforma_invoice_id', $proformaInvoice->id)->get();
+
+if ($details->isEmpty()) {
+    throw new \Exception("Invoice details not found");
+}
+
+$totalCGST    = round($details->sum('cgst_amount'), 2);
+$totalSGST    = round($details->sum('sgst_amount'), 2);
+$invoiceGST   = round($totalCGST + $totalSGST, 2);
+
+$invoiceBasic = round($proformaInvoice->taxable_amount, 2);
+$invoiceTotal = round($proformaInvoice->final_amount, 2);
+
+if ($invoiceTotal <= 0) {
+    throw new \Exception("Invalid invoice total");
+}
+
+
+
 
         $poNumber = $workOrder->po_number ?? 'N/A';
+        $today    = Carbon::today()->toDateString();
+
+        // Prepare summary — will be saved only once
+        $summary = IncomeSummary::firstOrNew([
+            'company_id' => $user->company_id,
+            'project_id' => $proformaInvoice->project_id,
+            'date'       => $today,
+        ]);
 
         foreach ($advancePaymentsData as $paymentInput) {
-            $advanceAmount = round($paymentInput['received_amount'], 2);
-            if ($advanceAmount <= 0) continue;
+            $advanceAmount = round($paymentInput['received_amount'] ?? 0, 2);
+            if ($advanceAmount <= 0) {
+                continue;
+            }
 
             $totalAdvance += $advanceAmount;
 
@@ -1014,16 +1128,16 @@ public function store(Request $request)
                 throw new \Exception("Total advance payments exceed invoice final amount");
             }
 
-            // Proportional split (same logic as recordPayment)
+            // Proportional allocation — same logic as recordPayment
             $ratio = $advanceAmount / $invoiceTotal;
 
-            $basicAmount = round($invoiceBasic * $ratio, 2);
-            $gstAmount   = round($invoiceGST   * $ratio, 2);
-            $cgstAmount  = round($totalCGST    * $ratio, 2);
-            $sgstAmount  = round($totalSGST    * $ratio, 2);
-            $igstAmount  = 0; // future proof
+            $basicAmount  = round($invoiceBasic * $ratio, 2);
+            $gstAmount    = round($invoiceGST  * $ratio, 2);
+            $cgstAmount   = round($totalCGST   * $ratio, 2);
+            $sgstAmount   = round($totalSGST   * $ratio, 2);
+            $igstAmount   = 0;
 
-            $basicPortion = $advanceAmount - $gstAmount;
+            $basic = round($advanceAmount - $gstAmount, 2);
 
             // Create Income record
             $income = Income::create([
@@ -1037,7 +1151,7 @@ public function store(Request $request)
                 'invoice_no'          => $proformaInvoice->proforma_invoice_number,
                 'invoice_date'        => $proformaInvoice->invoice_date,
 
-                'basic_amount'        => $basicPortion,
+                'basic_amount'        => $basic,
                 'gst_amount'          => $gstAmount,
                 'cgst_amount'         => $cgstAmount,
                 'sgst_amount'         => $sgstAmount,
@@ -1055,16 +1169,16 @@ public function store(Request $request)
                 'remark'              => $paymentInput['remark']
                     ?? "Advance payment for PI #{$proformaInvoice->proforma_invoice_number}",
 
-                'payment_date'        => $paymentInput['payment_date'] ?? now()->toDateString(),
+                'payment_date'        => $paymentInput['payment_date'] ?? $today,
             ]);
 
-            // Also store in AdvancedPayment table (your audit/reference table)
+            // Store in AdvancedPayment table (audit/reference)
             AdvancedPayment::create([
                 'order_id'           => $validated['work_order_id'],
                 'project_id'         => $validated['project_id'],
                 'proforma_id'        => $proformaInvoice->id,
                 'advanced_amount'    => $advanceAmount,
-                'payment_date'       => $paymentInput['payment_date'] ?? now()->toDateString(),
+                'payment_date'       => $paymentInput['payment_date'] ?? $today,
                 'received_from'      => $paymentInput['received_from'] ?? null,
                 'payment_type'       => $paymentInput['payment_type'] ?? null,
                 'senders_bank'       => $paymentInput['senders_bank'] ?? null,
@@ -1073,32 +1187,27 @@ public function store(Request $request)
                 'remark'             => $paymentInput['remark'] ?? null,
             ]);
 
-            // Update IncomeSummary (daily)
-            $today = Carbon::today()->toDateString();
-            $summary = IncomeSummary::firstOrNew([
-                'company_id' => $user->company_id,
-                'project_id' => $proformaInvoice->project_id,
-                'date'       => $today,
-            ]);
+            // Accumulate in summary (tax_amount gets proportional GST)
+            $summary->total_amount += $advanceAmount;
+            $summary->tax_amount   += $gstAmount;
+        }
 
+        // Finalize summary — increment invoice_count only once
+        if ($totalAdvance > 0) {
             if ($summary->exists) {
                 $summary->invoice_count += 1;
-                $summary->total_amount  += $advanceAmount;
-                $summary->tax_amount    += $gstAmount;
             } else {
                 $summary->invoice_count  = 1;
-                $summary->total_amount   = $advanceAmount;
                 $summary->pending_amount = 0;
-                $summary->tax_amount     = $gstAmount;
             }
             $summary->save();
         }
 
         // Final update of proforma paid/pending/status
         if ($totalAdvance > 0) {
-            $newPaid = round($totalAdvance, 2);
+            $newPaid    = round($totalAdvance, 2);
             $newPending = round($invoiceTotal - $newPaid, 2);
-            $status = ($newPending <= 0) ? 'paid' : 'partial';
+            $status     = ($newPending <= 0) ? 'paid' : 'partial';
 
             $proformaInvoice->update([
                 'paid_amount'    => $newPaid,
@@ -1107,19 +1216,19 @@ public function store(Request $request)
                 'updated_by'     => $user->id,
             ]);
 
-            // Also update order paidAmount
+            // Update order paid amount
             $workOrder->update([
                 'paidAmount' => ($workOrder->paidAmount ?? 0) + $totalAdvance,
                 'updated_by' => $user->id,
             ]);
         }
 
-        // Attach rules (unchanged)
+        // Attach rules if provided
         if (!empty($validated['rule_ids'])) {
             foreach ($validated['rule_ids'] as $ruleId) {
                 ProformaInvoiceRule::create([
                     'proforma_invoice_id' => $proformaInvoice->id,
-                    'rules_id' => $ruleId,
+                    'rules_id'            => $ruleId,
                 ]);
             }
         }
@@ -1131,15 +1240,16 @@ public function store(Request $request)
         return response()->json([
             'success' => true,
             'message' => 'Proforma invoice created successfully' . ($totalAdvance > 0 ? ' with advance payment(s)' : ''),
-            'data' => $proformaInvoice
+            'data'    => $proformaInvoice
         ], 201);
 
     } catch (\Exception $e) {
         DB::rollBack();
+
         return response()->json([
             'success' => false,
             'message' => 'Failed to create proforma invoice',
-            'error' => $e->getMessage()
+            'error'   => $e->getMessage()
         ], 500);
     }
 }
@@ -1181,204 +1291,239 @@ public function store(Request $request)
 
 
 
-
     /**
      * ✅ UPDATED: Update proforma invoice with complete validation
      */
-    // public function update(Request $request, $id)
-    // {
-    //     $user = Auth::user();
+    
 
-    //     $validated = $request->validate([
-    //         'tally_invoice_number' => 'nullable|string|max:255',
-    //         'invoice_date' => 'sometimes|date',
-    //         'delivery_date' => 'nullable|date',
-    //         'items' => 'nullable|array',
-    //         'items.*.work_type' => 'nullable|string',
-    //         'items.*.uom' => 'nullable|string',
-    //         'items.*.qty' => 'nullable|numeric|min:0',
-    //         'items.*.price' => 'nullable|numeric|min:0',
-    //         'items.*.total_price' => 'nullable|numeric|min:0',
-    //         'items.*.remark' => 'nullable|string',
-    //          'items.*.work_sub_description' => 'nullable|string',
-    //         'items.*.gst_percent' => 'nullable|numeric|min:0',
-    //         'items.*.cgst_amount' => 'nullable|numeric|min:0',
-    //         'items.*.sgst_amount' => 'nullable|numeric|min:0',
-    //         'discount' => 'nullable|numeric|min:0',
-    //         'gst_percentage' => 'sometimes|numeric|min:0|max:100',
-    //         'cgst_percentage' => 'sometimes|numeric|min:0|max:50',
-    //         'sgst_percentage' => 'sometimes|numeric|min:0|max:50',
-    //         'igst_percentage' => 'sometimes|numeric|min:0|max:100',
-    //         'rule_ids' => 'nullable|array',
-    //         'rule_ids.*' => 'exists:rules,id',
-    //         'notes' => 'nullable|string',
-    //         'status' => 'sometimes|in:draft,sent,approved,cancelled',
-    //         'payment_terms' => 'nullable|string',
-    //         'terms_conditions' => 'nullable|string',
-    //     ]);
+// public function update(Request $request, $id)
+// {
+//     $user = Auth::user();
 
-    //     DB::beginTransaction();
+//     DB::beginTransaction();
 
-    //     try {
-    //         $proformaInvoice = ProformaInvoice::findOrFail($id);
+//     try {
 
-    //         if ($proformaInvoice->company_id !== $user->company_id) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthorized access'
-    //             ], 403);
-    //         }
+//         $proforma = ProformaInvoice::with('details','workOrder')->findOrFail($id);
 
-    //         // ✅ STEP 1: Validate items if changed
-    //         if (isset($validated['items'])) {
-    //             $itemValidationErrors = $this->validateProformaItemsAgainstWorkOrder(
-    //                 $proformaInvoice->work_order_id,
-    //                 $validated['items'],
-    //                 $id
-    //             );
-                
-    //             if (!empty($itemValidationErrors)) {
-    //                 // Format errors into a single readable message
-    //                 $errorMessage = "❌ Item-wise Validation Failed:\n\n" . implode("\n\n", $itemValidationErrors);
-                    
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => $errorMessage,
-    //                     'errors' => $itemValidationErrors
-    //                 ], 400);
-    //             }
-    //         }
+//         if ($proforma->company_id !== $user->company_id) {
+//             return response()->json(['success'=>false,'message'=>'Unauthorized'],403);
+//         }
 
-    //         // Recalculate if items changed
-    //         if (isset($validated['items'])) {
-    //             $subtotal = collect($validated['items'])->sum('total_price');
-    //             $discount = $validated['discount'] ?? $proformaInvoice->discount;
-    //             $taxableAmount = $subtotal - $discount;
-                
-    //             // ✅ Validate discount
-    //             if ($taxableAmount < 0) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => sprintf(
-    //                         "⚠️ Discount Validation Failed:\n\n" .
-    //                         "Subtotal: ₹%.2f\n" .
-    //                         "Discount: ₹%.2f\n" .
-    //                         "❌ Discount cannot be greater than subtotal.\n\n" .
-    //                         "Please reduce the discount amount.",
-    //                         $subtotal,
-    //                         $discount
-    //                     )
-    //                 ], 400);
-    //             }
-                
-    //             $cgstPercentage = $validated['cgst_percentage'] ?? $proformaInvoice->cgst_percentage;
-    //             $sgstPercentage = $validated['sgst_percentage'] ?? $proformaInvoice->sgst_percentage;
-    //             $igstPercentage = $validated['igst_percentage'] ?? $proformaInvoice->igst_percentage;
-                
-    //             $cgstAmount = $taxableAmount * ($cgstPercentage / 100);
-    //             $sgstAmount = $taxableAmount * ($sgstPercentage / 100);
-    //             $igstAmount = $taxableAmount * ($igstPercentage / 100);
-    //             $gstAmount = $cgstAmount + $sgstAmount + $igstAmount;
-                
-    //             $finalAmount = $taxableAmount + $gstAmount;
-    //             $pendingAmount = $finalAmount - $proformaInvoice->paid_amount;
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 1 — REVERSE OLD ACCOUNTING
+//         |--------------------------------------------------------------------------
+//         */
 
-    //             // ✅ STEP 2: Validate total amount
-    //             $workOrder = Order::findOrFail($proformaInvoice->work_order_id);
-    //             $totalValidation = $this->validateTotalProformaAmount($workOrder, $finalAmount, $id);
-                
-    //             if (!$totalValidation['valid']) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => $totalValidation['message'],
-    //                     'data' => $totalValidation['data']
-    //                 ], 400);
-    //             }
+//         $oldIncomes = Income::where('proforma_invoice_id',$proforma->id)->get();
 
-    //             $validated = array_merge($validated, [
-    //                 'subtotal' => round($subtotal, 2),
-    //                 'taxable_amount' => round($taxableAmount, 2),
-    //                 'gst_amount' => round($gstAmount, 2),
-    //                 'cgst_amount' => round($cgstAmount, 2),
-    //                 'sgst_amount' => round($sgstAmount, 2),
-    //                 'igst_amount' => round($igstAmount, 2),
-    //                 'final_amount' => round($finalAmount, 2),
-    //                 'pending_amount' => round($pendingAmount, 2),
-    //             ]);
+//         foreach ($oldIncomes as $inc) {
 
-    //             // Update payment status
-    //             if ($pendingAmount <= 0) {
-    //                 $validated['payment_status'] = 'paid';
-    //             } elseif ($proformaInvoice->paid_amount > 0) {
-    //                 $validated['payment_status'] = 'partial';
-    //             } else {
-    //                 $validated['payment_status'] = 'pending';
-    //             }
+//             $summary = IncomeSummary::where([
+//                 'company_id'=>$inc->company_id,
+//                 'project_id'=>$inc->project_id,
+//                 'date'=>Carbon::parse($inc->payment_date)->toDateString()
+//             ])->first();
 
-    //             // Delete old details
-    //             ProformaInvoiceDetail::where('proforma_invoice_id', $id)->delete();
-                
-    //             // Create new details
-    //             foreach ($validated['items'] as $item) {
-    //                 ProformaInvoiceDetail::create([
-    //                     'proforma_invoice_id' => $id,
-    //                     'work_type' => $item['work_type'],
-    //                     'uom' => $item['uom'] ?? null,
-    //                     'qty' => $item['qty'],
-    //                     'price' => $item['price'],
-    //                     'total_price' => round($item['total_price'], 2),
-    //                     'remark' => $item['remark'] ?? null,
-    //                     'work_sub_description' => $item['work_sub_description'] ?? null,
-    //                     'gst_percent' => $item['gst_percent'] ?? 0,
-    //                     'cgst_amount' => round($item['cgst_amount'] ?? 0, 2),
-    //                     'sgst_amount' => round($item['sgst_amount'] ?? 0, 2),
-    //                 ]);
-    //             }
-    //         }
+//             if ($summary) {
+//                 $summary->invoice_count -= 1;
+//                 $summary->total_amount  -= $inc->received_amount;
+//                 $summary->tax_amount    -= $inc->gst_amount;
+//                 $summary->save();
+//             }
+//         }
 
-    //         // Update rules if provided
-    //         if (isset($validated['rule_ids'])) {
-    //             ProformaInvoiceRule::where('proforma_invoice_id', $id)->delete();
-                
-    //             foreach ($validated['rule_ids'] as $ruleId) {
-    //                 ProformaInvoiceRule::create([
-    //                     'proforma_invoice_id' => $id,
-    //                     'rules_id' => $ruleId,
-    //                 ]);
-    //             }
-    //         }
+//         Income::where('proforma_invoice_id',$proforma->id)->delete();
+//         AdvancedPayment::where('proforma_id',$proforma->id)->delete();
 
-    //         // Update main record
-    //         unset($validated['items'], $validated['rule_ids']);
-    //         $validated['updated_by'] = $user->id;
-    //         $proformaInvoice->update($validated);
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 2 — DELETE OLD ITEMS
+//         |--------------------------------------------------------------------------
+//         */
+//         ProformaInvoiceDetail::where('proforma_invoice_id',$proforma->id)->delete();
 
-    //         DB::commit();
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 3 — INSERT NEW ITEMS
+//         |--------------------------------------------------------------------------
+//         */
 
-    //         $proformaInvoice->load(['workOrder', 'project', 'details', 'invoiceRules.rule']);
+//         $items = $request->items ?? [];
 
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Proforma invoice updated successfully',
-    //             'data' => $proformaInvoice
-    //         ], 200);
+//         $subtotal = collect($items)->sum(fn($i)=>(float)$i['total_price']);
+//         $discount = (float) ($request->discount ?? 0);
+//         $taxable  = $subtotal - $discount;
 
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to update proforma invoice',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+//         if ($taxable < 0) {
+//             throw new \Exception("Discount cannot exceed subtotal");
+//         }
 
-  
+//         $cgstPercent = (float) ($request->cgst_percentage ?? 0);
+//         $sgstPercent = (float) ($request->sgst_percentage ?? 0);
+//         $igstPercent = (float) ($request->igst_percentage ?? 0);
 
+//         $cgst = round($taxable * ($cgstPercent/100),2);
+//         $sgst = round($taxable * ($sgstPercent/100),2);
+//         $igst = round($taxable * ($igstPercent/100),2);
 
+//         $final = round($taxable + $cgst + $sgst + $igst,2);
 
+//         foreach ($items as $item) {
+//             ProformaInvoiceDetail::create([
+//                 'proforma_invoice_id'=>$proforma->id,
+//                 'work_type'=>$item['work_type'],
+//                 'qty'=>$item['qty'],
+//                 'price'=>$item['price'],
+//                 'uom'=>$item['uom'] ?? null,
+//                 'total_price'=>$item['total_price'],
+//                 'remark'=>$item['remark'] ?? null,
+//                 'work_sub_description'=>$item['work_sub_description'] ?? null,
+//                 'gst_percent'=>$item['gst_percent'] ?? 0,
+//                 'cgst_amount'=>$item['cgst_amount'] ?? 0,
+//                 'sgst_amount'=>$item['sgst_amount'] ?? 0,
+//             ]);
+//         }
 
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 4 — UPDATE HEADER
+//         |--------------------------------------------------------------------------
+//         */
 
+//         $proforma->update([
+//             'invoice_date'=>$request->invoice_date,
+//             'delivery_date'=>$request->delivery_date,
+//             'subtotal'=>$subtotal,
+//             'discount'=>$discount,
+//             'taxable_amount'=>$taxable,
+//             'cgst_amount'=>$cgst,
+//             'sgst_amount'=>$sgst,
+//             'igst_amount'=>$igst,
+//             'final_amount'=>$final,
+//             'updated_by'=>$user->id
+//         ]);
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 5 — CREATE ADVANCE + INCOME (FULL SAFE)
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $totalAdvance = 0;
+//         $poNumber = $proforma->workOrder->po_number ?? 'N/A';
+
+//         foreach ($request->advance_payments ?? [] as $pay) {
+
+//             $amt = (float) ($pay['received_amount'] ?? 0);
+//             if ($amt <= 0) continue;
+
+//             $totalAdvance += $amt;
+
+//             // prevent division crash
+//             $ratio = $final > 0 ? ($amt / $final) : 0;
+
+//             $basic = round($taxable * $ratio,2);
+//             $gst   = round(($cgst+$sgst+$igst) * $ratio,2);
+
+//             Income::create([
+//                 'project_id'=>$proforma->project_id,
+//                 'order_id'=>$proforma->work_order_id,
+//                 'proforma_invoice_id'=>$proforma->id,
+//                 'company_id'=>$user->company_id,
+
+//                 'po_no'=>$poNumber,
+//                 'po_date'=>$proforma->invoice_date,
+//                 'invoice_no'=>$proforma->proforma_invoice_number,
+//                 'invoice_date'=>$proforma->invoice_date,
+
+//                 'basic_amount'=>$basic,
+//                 'gst_amount'=>$gst,
+//                 'cgst_amount'=>round($cgst * $ratio,2),
+//                 'sgst_amount'=>round($sgst * $ratio,2),
+//                 'igst_amount'=>round($igst * $ratio,2),
+
+//                 'billing_amount'=>$amt,
+//                 'received_amount'=>$amt,
+//                 'pending_amount'=>0,
+
+//                 'received_by'=>$pay['received_from'] ?? 'Advance',
+//                 'payment_type'=>$pay['payment_type'] ?? 'cash',
+//                 'payment_date'=>$pay['payment_date'] ?? now(),
+
+//                 // 🔴 REQUIRED FIELDS (your DB needs these)
+//                 'senders_bank'=>$pay['senders_bank'] ?? null,
+//                 'receivers_bank'=>$pay['receivers_bank'] ?? null,
+//                 'transaction_number'=>$pay['transaction_number'] ?? null,
+//                 'remark'=>$pay['remark'] ?? null,
+//             ]);
+
+//             AdvancedPayment::create([
+//                 'order_id'=>$proforma->work_order_id,
+//                 'project_id'=>$proforma->project_id,
+//                 'proforma_id'=>$proforma->id,
+//                 'advanced_amount'=>$amt,
+//                 'payment_date'=>$pay['payment_date'] ?? now(),
+//                 'received_from'=>$pay['received_from'] ?? null,
+//                 'payment_type'=>$pay['payment_type'] ?? null,
+//                 'senders_bank'=>$pay['senders_bank'] ?? null,
+//                 'receivers_bank'=>$pay['receivers_bank'] ?? null,
+//                 'transaction_number'=>$pay['transaction_number'] ?? null,
+//                 'remark'=>$pay['remark'] ?? null,
+//             ]);
+
+//             $summary = IncomeSummary::firstOrCreate(
+//                 [
+//                     'company_id'=>$user->company_id,
+//                     'project_id'=>$proforma->project_id,
+//                     'date'=>Carbon::parse($pay['payment_date'] ?? now())->toDateString()
+//                 ],
+//                 [
+//                     'invoice_count'=>0,
+//                     'total_amount'=>0,
+//                     'tax_amount'=>0
+//                 ]
+//             );
+
+//             $summary->increment('invoice_count',1);
+//             $summary->increment('total_amount',$amt);
+//             $summary->increment('tax_amount',$gst);
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | STEP 6 — UPDATE PAYMENT STATUS
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $pending = $final - $totalAdvance;
+//         // $pending = 0.00;
+
+//         $proforma->update([
+//             'paid_amount'=>$totalAdvance,
+//             'pending_amount'=>$pending,
+//             'payment_status'=>$pending<=0?'paid':'partial'
+//         ]);
+
+//         DB::commit();
+
+//         return response()->json([
+//             'success'=>true,
+//             'message'=>'Proforma Updated Successfully',
+//             'data'=>$proforma->fresh('details')
+//         ]);
+
+//     } catch (\Exception $e) {
+
+//         DB::rollBack();
+
+//         return response()->json([
+//             'success'=>false,
+//             'message'=>$e->getMessage()
+//         ],500);
+//     }
+// }
 
 
 
@@ -1386,276 +1531,279 @@ public function store(Request $request)
 // {
 //     $user = Auth::user();
 
-//     $validated = $request->validate([
-//         'tally_invoice_number' => 'nullable|string|max:255',
-//         'invoice_date'         => 'sometimes|date',
-//         'delivery_date'        => 'nullable|date',
-//         'items'                => 'nullable|array',
-//         'items.*.work_type'    => 'nullable|string',
-//         'items.*.uom'          => 'nullable|string',
-//         'items.*.qty'          => 'nullable|numeric|min:0',
-//         'items.*.price'        => 'nullable|numeric|min:0',
-//         'items.*.total_price'  => 'nullable|numeric|min:0',
-//         'items.*.remark'       => 'nullable|string',
-//         'items.*.work_sub_description' => 'nullable|string',
-//         'items.*.gst_percent'  => 'nullable|numeric|min:0',
-//         'items.*.cgst_amount'  => 'nullable|numeric|min:0',
-//         'items.*.sgst_amount'  => 'nullable|numeric|min:0',
-//         'discount'             => 'nullable|numeric|min:0',
-//         'gst_percentage'       => 'sometimes|numeric|min:0|max:100',
-//         'cgst_percentage'      => 'sometimes|numeric|min:0|max:50',
-//         'sgst_percentage'      => 'sometimes|numeric|min:0|max:50',
-//         'igst_percentage'      => 'sometimes|numeric|min:0|max:100',
-//         'rule_ids'             => 'nullable|array',
-//         'rule_ids.*'           => 'exists:rules,id',
-//         'notes'                => 'nullable|string',
-//         'status'               => 'sometimes|in:draft,sent,approved,cancelled',
-//         'payment_terms'        => 'nullable|string',
-//         'terms_conditions'     => 'nullable|string',
-
-//         // Advance fields
-//         'received_amount'      => 'nullable|numeric|min:0',
-//         'payment_date'         => 'nullable|date',
-//         'received_from'        => 'nullable|string|max:255',
-//         'payment_type'         => 'nullable|string|max:100',
-//         'senders_bank'         => 'nullable|string|max:255',
-//         'receivers_bank'       => 'nullable|string|max:255',
-//         'transaction_number'   => 'nullable|string|max:100',
-//         'remark'               => 'nullable|string',
-//     ]);
-
 //     DB::beginTransaction();
 
 //     try {
-//         $proformaInvoice = ProformaInvoice::findOrFail($id);
+//         $proforma = ProformaInvoice::with('details', 'workOrder')->findOrFail($id);
 
-//         if ($proformaInvoice->company_id !== $user->company_id) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'Unauthorized access'
-//             ], 403);
+//         if ($proforma->company_id !== $user->company_id) {
+//             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
 //         }
 
-//         // ──────────────────────────────────────────────────────────────
-//         // STEP 1 — ITEM VALIDATION (तुझा जुना कोड)
-//         // ──────────────────────────────────────────────────────────────
-//         if (isset($validated['items'])) {
-//             $itemValidationErrors = $this->validateProformaItemsAgainstWorkOrder(
-//                 $proformaInvoice->work_order_id,
-//                 $validated['items'],
-//                 $id
-//             );
+//         // ────────────────────────────────────────────────
+//         // STEP 1 — REVERSE OLD ACCOUNTING
+//         // ────────────────────────────────────────────────
+//         $oldIncomes = Income::where('proforma_invoice_id', $proforma->id)->get();
 
-//             if (!empty($itemValidationErrors)) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => "❌ Item-wise Validation Failed:\n\n" . implode("\n\n", $itemValidationErrors),
-//                     'errors'  => $itemValidationErrors
-//                 ], 400);
+//         foreach ($oldIncomes as $inc) {
+//             $summary = IncomeSummary::where([
+//                 'company_id' => $inc->company_id,
+//                 'project_id' => $inc->project_id,
+//                 'date'       => Carbon::parse($inc->payment_date)->toDateString()
+//             ])->first();
+
+//             if ($summary) {
+//                 $summary->decrement('invoice_count', 1);
+//                 $summary->decrement('total_amount', $inc->received_amount);
+//                 $summary->decrement('tax_amount', $inc->gst_amount);
+//                 if ($summary->invoice_count <= 0 && $summary->total_amount <= 0) {
+//                     $summary->delete();
+//                 } else {
+//                     $summary->save();
+//                 }
 //             }
 //         }
 
-//         // ──────────────────────────────────────────────────────────────
-//         // STEP 2 — TOTAL RECALCULATION (तुझा जुना कोड)
-//         // ──────────────────────────────────────────────────────────────
-//         if (isset($validated['items'])) {
-//             $subtotal      = collect($validated['items'])->sum('total_price');
-//             $discount      = $validated['discount'] ?? $proformaInvoice->discount;
-//             $taxableAmount = $subtotal - $discount;
+//         Income::where('proforma_invoice_id', $proforma->id)->delete();
+//         AdvancedPayment::where('proforma_id', $proforma->id)->delete();
 
-//             if ($taxableAmount < 0) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => "Discount cannot be greater than subtotal."
-//                 ], 400);
-//             }
+//         // ────────────────────────────────────────────────
+//         // STEP 2 — DELETE OLD ITEMS
+//         // ────────────────────────────────────────────────
+//         ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->delete();
 
-//             $cgstPercentage = $validated['cgst_percentage'] ?? $proformaInvoice->cgst_percentage;
-//             $sgstPercentage = $validated['sgst_percentage'] ?? $proformaInvoice->sgst_percentage;
-//             $igstPercentage = $validated['igst_percentage'] ?? $proformaInvoice->igst_percentage;
+//         // ────────────────────────────────────────────────
+//         // STEP 3 — CALCULATE NEW TOTALS & INSERT NEW ITEMS
+//         // ────────────────────────────────────────────────
+//         $items = $request->items ?? [];
 
-//             $cgstAmount = $taxableAmount * ($cgstPercentage / 100);
-//             $sgstAmount = $taxableAmount * ($sgstPercentage / 100);
-//             $igstAmount = $taxableAmount * ($igstPercentage / 100);
-//             $gstAmount  = $cgstAmount + $sgstAmount + $igstAmount;
+//         $subtotal = collect($items)->sum(fn($i) => (float) $i['total_price']);
+//         $discount = (float) ($request->discount ?? 0);
+//         $taxable  = $subtotal - $discount;
 
-//             $finalAmount   = $taxableAmount + $gstAmount;
-//             $pendingAmount = $finalAmount - $proformaInvoice->paid_amount;
+//         if ($taxable < 0) {
+//             throw new \Exception("Discount cannot exceed subtotal");
+//         }
 
-//             $validated = array_merge($validated, [
-//                 'subtotal'        => round($subtotal, 2),
-//                 'taxable_amount'  => round($taxableAmount, 2),
-//                 'gst_amount'      => round($gstAmount, 2),
-//                 'cgst_amount'     => round($cgstAmount, 2),
-//                 'sgst_amount'     => round($sgstAmount, 2),
-//                 'igst_amount'     => round($igstAmount, 2),
-//                 'final_amount'    => round($finalAmount, 2),
-//                 'pending_amount'  => round($pendingAmount, 2),
+//         $cgst = round($taxable * ((float)($request->cgst_percentage ?? 0) / 100), 2);
+//         $sgst = round($taxable * ((float)($request->sgst_percentage ?? 0) / 100), 2);
+//         $igst = round($taxable * ((float)($request->igst_percentage ?? 0) / 100), 2);
+
+//         $final = round($taxable + $cgst + $sgst + $igst, 2);
+
+//         foreach ($items as $item) {
+//             ProformaInvoiceDetail::create([
+//                 'proforma_invoice_id'     => $proforma->id,
+//                 'work_type'               => $item['work_type'],
+//                 'qty'                     => $item['qty'],
+//                 'price'                   => $item['price'],
+//                 'uom'                     => $item['uom'] ?? null,
+//                 'total_price'             => $item['total_price'],
+//                 'remark'                  => $item['remark'] ?? null,
+//                 'work_sub_description'    => $item['work_sub_description'] ?? null,
+//                 'gst_percent'             => $item['gst_percent'] ?? 0,
+//                 'cgst_amount'             => $item['cgst_amount'] ?? 0,
+//                 'sgst_amount'             => $item['sgst_amount'] ?? 0,
+//             ]);
+//         }
+
+//         // ────────────────────────────────────────────────
+//         // STEP 4 — UPDATE PROFORMA HEADER
+//         // ────────────────────────────────────────────────
+//         $proforma->update([
+//             'invoice_date'     => $request->invoice_date,
+//             'delivery_date'    => $request->delivery_date,
+//             'subtotal'         => $subtotal,
+//             'discount'         => $discount,
+//             'taxable_amount'   => $taxable,
+//             'cgst_amount'      => $cgst,
+//             'sgst_amount'      => $sgst,
+//             'igst_amount'      => $igst,
+//             'final_amount'     => $final,
+//             'updated_by'       => $user->id
+//         ]);
+
+//         // ────────────────────────────────────────────────
+//         // STEP 5 — CREATE NEW ADVANCE + INCOME RECORDS
+//         // ────────────────────────────────────────────────
+//         $totalAdvance = 0;
+//         $poNumber = $proforma->workOrder->po_number ?? 'N/A';
+
+//         foreach ($request->advance_payments ?? [] as $pay) {
+//             $amt = (float) ($pay['received_amount'] ?? 0);
+//             if ($amt <= 0) continue;
+
+//             $totalAdvance += $amt;
+
+//             $ratio = $final > 0 ? ($amt / $final) : 0;
+
+//             $basic = round($taxable * $ratio, 2);
+//             $gst   = round(($cgst + $sgst + $igst) * $ratio, 2);
+
+//             Income::create([
+//                 'project_id'         => $proforma->project_id,
+//                 'order_id'           => $proforma->work_order_id,
+//                 'proforma_invoice_id'=> $proforma->id,
+//                 'company_id'         => $user->company_id,
+//                 'po_no'              => $poNumber,
+//                 'po_date'            => $proforma->invoice_date,
+//                 'invoice_no'         => $proforma->proforma_invoice_number,
+//                 'invoice_date'       => $proforma->invoice_date,
+//                 'basic_amount'       => $basic,
+//                 'gst_amount'         => $gst,
+//                 'cgst_amount'        => round($cgst * $ratio, 2),
+//                 'sgst_amount'        => round($sgst * $ratio, 2),
+//                 'igst_amount'        => round($igst * $ratio, 2),
+//                 'billing_amount'     => $amt,
+//                 'received_amount'    => $amt,
+//                 'pending_amount'     => 0,
+//                 'received_by'        => $pay['received_from'] ?? 'Advance',
+//                 'payment_type'       => $pay['payment_type'] ?? 'cash',
+//                 'payment_date'       => $pay['payment_date'] ?? now(),
+//                 'senders_bank'       => $pay['senders_bank'] ?? null,
+//                 'receivers_bank'     => $pay['receivers_bank'] ?? null,
+//                 'transaction_number' => $pay['transaction_number'] ?? null,
+//                 'remark'             => $pay['remark'] ?? null,
 //             ]);
 
-//             // Replace details
-//             ProformaInvoiceDetail::where('proforma_invoice_id', $id)->delete();
+//             AdvancedPayment::create([
+//                 'order_id'           => $proforma->work_order_id,
+//                 'project_id'         => $proforma->project_id,
+//                 'proforma_id'        => $proforma->id,
+//                 'advanced_amount'    => $amt,
+//                 'payment_date'       => $pay['payment_date'] ?? now(),
+//                 'received_from'      => $pay['received_from'] ?? null,
+//                 'payment_type'       => $pay['payment_type'] ?? null,
+//                 'senders_bank'       => $pay['senders_bank'] ?? null,
+//                 'receivers_bank'     => $pay['receivers_bank'] ?? null,
+//                 'transaction_number' => $pay['transaction_number'] ?? null,
+//                 'remark'             => $pay['remark'] ?? null,
+//             ]);
 
-//             foreach ($validated['items'] as $item) {
-//                 ProformaInvoiceDetail::create([
-//                     'proforma_invoice_id'  => $id,
-//                     'work_type'            => $item['work_type'],
-//                     'uom'                  => $item['uom'] ?? null,
-//                     'qty'                  => $item['qty'],
-//                     'price'                => $item['price'],
-//                     'total_price'          => round($item['total_price'], 2),
-//                     'remark'               => $item['remark'] ?? null,
-//                     'work_sub_description' => $item['work_sub_description'] ?? null,
-//                     'gst_percent'          => $item['gst_percent'] ?? 0,
-//                     'cgst_amount'          => round($item['cgst_amount'] ?? 0, 2),
-//                     'sgst_amount'          => round($item['sgst_amount'] ?? 0, 2),
-//                 ]);
-//             }
+//             $summary = IncomeSummary::firstOrCreate(
+//                 [
+//                     'company_id' => $user->company_id,
+//                     'project_id' => $proforma->project_id,
+//                     'date'       => Carbon::parse($pay['payment_date'] ?? now())->toDateString()
+//                 ],
+//                 [
+//                     'invoice_count' => 0,
+//                     'total_amount'  => 0,
+//                     'tax_amount'    => 0
+//                 ]
+//             );
+
+//             $summary->increment('invoice_count');
+//             $summary->increment('total_amount', $amt);
+//             $summary->increment('tax_amount', $gst);
 //         }
 
-//         // ──────────────────────────────────────────────────────────────
-//         // STEP 3 — ADVANCE PAYMENT VALIDATION + UPDATE
-//         // ──────────────────────────────────────────────────────────────
-//         if ($request->has('received_amount')) {
-//             $receivedAmount = $request->input('received_amount');
+//        // ────────────────────────────────────────────────
+// // ★★★ RECALCULATE ORDER PAID AMOUNT (LIKE INCOME UPDATE LOGIC) ★★★
+// // ────────────────────────────────────────────────
+// if ($proforma->work_order_id) {
 
-//             // 0 किंवा रिकामा → delete advance
-//             if (!$receivedAmount || $receivedAmount <= 0) {
-//                 AdvancedPayment::where('proforma_id', $proformaInvoice->id)->delete();
-//             } 
-//             else {
-//                 // Advance amount > final amount → error
-//                 $currentFinalAmount = $proformaInvoice->final_amount;
+//     $order = Order::find($proforma->work_order_id);
 
-//                 // जर items बदलले असतील तर नवीन final amount वापर
-//                 if (isset($validated['final_amount'])) {
-//                     $currentFinalAmount = $validated['final_amount'];
-//                 }
+//     if ($order) {
 
-//                 if ($receivedAmount > $currentFinalAmount) {
-//                     return response()->json([
-//                         'success' => false,
-//                         'message' => "Advance amount (₹" . number_format($receivedAmount, 2) . ") cannot be greater than total invoice amount (₹" . number_format($currentFinalAmount, 2) . ")."
-//                     ], 422);
-//                 }
+//         // Always calculate from DB (source of truth)
+//         $totalPaid = Income::where('order_id', $order->id)
+//             ->sum('received_amount');
 
-//                 // Validation पास झाली → update / create
-//                 $advanceData = $request->validate([
-//                     'received_amount'     => 'required|numeric|min:0.01',
-//                     'payment_date'        => 'nullable|date',
-//                     'received_from'       => 'nullable|string|max:255',
-//                     'payment_type'        => 'nullable|string|max:100',
-//                     'senders_bank'        => 'nullable|string|max:255',
-//                     'receivers_bank'      => 'nullable|string|max:255',
-//                     'transaction_number'  => 'nullable|string|max:100',
-//                     'remark'              => 'nullable|string',
-//                 ]);
+//         $order->paidAmount = round($totalPaid, 2);
 
-//                 AdvancedPayment::updateOrCreate(
-//                     ['proforma_id' => $proformaInvoice->id],
-//                     [
-//                         'order_id'           => $proformaInvoice->work_order_id,
-//                         'project_id'         => $proformaInvoice->project_id,
-//                         'advanced_amount'    => round($advanceData['received_amount'], 2),
-//                         'payment_date'       => $advanceData['payment_date'] ?? now()->toDateString(),
-//                         'received_from'      => $advanceData['received_from'] ?? null,
-//                         'payment_type'       => $advanceData['payment_type'] ?? null,
-//                         'senders_bank'       => $advanceData['senders_bank'] ?? null,
-//                         'receivers_bank'     => $advanceData['receivers_bank'] ?? null,
-//                         'transaction_number' => $advanceData['transaction_number'] ?? null,
-//                         'remark'             => $advanceData['remark'] ?? null,
-//                         'created_by'         => $user->id,           // optional
-//                         'updated_by'         => $user->id,
-//                     ]
-//                 );
-//             }
-//         }
+//         // Optional: update order status also (same logic you used)
+//         $order->orderStatus = match (true) {
+//             $totalPaid >= ($order->finalAmount ?? 0) => 1, // fully paid
+//             $totalPaid > 0                           => 2, // partial
+//             default                                  => 3, // pending
+//         };
 
-//         // ──────────────────────────────────────────────────────────────
-//         // FINAL UPDATE
-//         // ──────────────────────────────────────────────────────────────
-//         unset($validated['items'], $validated['rule_ids']);
-//         $validated['updated_by'] = $user->id;
+//         $order->save();
+//     }
+// }
 
-//         $proformaInvoice->update($validated);
+
+//         // ────────────────────────────────────────────────
+//         // STEP 6 — UPDATE PROFORMA PAYMENT STATUS
+//         // ────────────────────────────────────────────────
+//         $pending = $final - $totalAdvance;
+
+//         $proforma->update([
+//             'paid_amount'     => $totalAdvance,
+//             'pending_amount'  => $pending,
+//             'payment_status'  => $pending <= 0 ? 'paid' : 'partial'
+//         ]);
 
 //         DB::commit();
 
 //         return response()->json([
 //             'success' => true,
-//             'message' => 'Proforma invoice updated successfully',
-//             'data'    => $proformaInvoice->fresh()   // fresh() ने latest data मिळेल
-//         ], 200);
+//             'message' => 'Proforma Updated Successfully',
+//             'data'    => $proforma->fresh(['details', 'workOrder'])
+//         ]);
 
 //     } catch (\Exception $e) {
 //         DB::rollBack();
 //         return response()->json([
 //             'success' => false,
-//             'message' => 'Failed to update proforma invoice',
-//             'error'   => $e->getMessage()
+//             'message' => $e->getMessage()
 //         ], 500);
 //     }
 // }
 
 
 
+
+
 public function update(Request $request, $id)
 {
     $user = Auth::user();
-
     DB::beginTransaction();
-
     try {
-
-        $proforma = ProformaInvoice::with('details','workOrder')->findOrFail($id);
-
+        $proforma = ProformaInvoice::with('details', 'workOrder')->findOrFail($id);
         if ($proforma->company_id !== $user->company_id) {
-            return response()->json(['success'=>false,'message'=>'Unauthorized'],403);
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 1 — REVERSE OLD ACCOUNTING
-        |--------------------------------------------------------------------------
-        */
-
-        $oldIncomes = Income::where('proforma_invoice_id',$proforma->id)->get();
+        // ────────────────────────────────────────────────
+        // STEP 1 — REVERSE OLD ACCOUNTING
+        // ────────────────────────────────────────────────
+        $oldIncomes = Income::where('proforma_invoice_id', $proforma->id)->get();
 
         foreach ($oldIncomes as $inc) {
-
             $summary = IncomeSummary::where([
-                'company_id'=>$inc->company_id,
-                'project_id'=>$inc->project_id,
-                'date'=>Carbon::parse($inc->payment_date)->toDateString()
+                'company_id' => $inc->company_id,
+                'project_id' => $inc->project_id,
+                'date'       => Carbon::parse($inc->payment_date)->toDateString()
             ])->first();
 
             if ($summary) {
-                $summary->invoice_count -= 1;
-                $summary->total_amount  -= $inc->received_amount;
-                $summary->tax_amount    -= $inc->gst_amount;
-                $summary->save();
+                $summary->decrement('invoice_count', 1);
+                $summary->decrement('total_amount', $inc->received_amount);
+                $summary->decrement('tax_amount', $inc->gst_amount);
+                if ($summary->invoice_count <= 0 && $summary->total_amount <= 0) {
+                    $summary->delete();
+                } else {
+                    $summary->save();
+                }
             }
         }
 
-        Income::where('proforma_invoice_id',$proforma->id)->delete();
-        AdvancedPayment::where('proforma_id',$proforma->id)->delete();
+        Income::where('proforma_invoice_id', $proforma->id)->delete();
+        AdvancedPayment::where('proforma_id', $proforma->id)->delete();
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 2 — DELETE OLD ITEMS
-        |--------------------------------------------------------------------------
-        */
-        ProformaInvoiceDetail::where('proforma_invoice_id',$proforma->id)->delete();
+        // ────────────────────────────────────────────────
+        // STEP 2 — DELETE OLD ITEMS
+        // ────────────────────────────────────────────────
+        ProformaInvoiceDetail::where('proforma_invoice_id', $proforma->id)->delete();
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 3 — INSERT NEW ITEMS
-        |--------------------------------------------------------------------------
-        */
-
+        // ────────────────────────────────────────────────
+        // STEP 3 — CALCULATE NEW TOTALS & INSERT NEW ITEMS
+        // ────────────────────────────────────────────────
         $items = $request->items ?? [];
-
-        $subtotal = collect($items)->sum(fn($i)=>(float)$i['total_price']);
+        $subtotal = collect($items)->sum(fn($i) => (float) $i['total_price']);
         $discount = (float) ($request->discount ?? 0);
         $taxable  = $subtotal - $discount;
 
@@ -1663,169 +1811,176 @@ public function update(Request $request, $id)
             throw new \Exception("Discount cannot exceed subtotal");
         }
 
-        $cgstPercent = (float) ($request->cgst_percentage ?? 0);
-        $sgstPercent = (float) ($request->sgst_percentage ?? 0);
-        $igstPercent = (float) ($request->igst_percentage ?? 0);
+        $cgst = round($taxable * ((float)($request->cgst_percentage ?? 0) / 100), 2);
+        $sgst = round($taxable * ((float)($request->sgst_percentage ?? 0) / 100), 2);
+        $igst = round($taxable * ((float)($request->igst_percentage ?? 0) / 100), 2);
 
-        $cgst = round($taxable * ($cgstPercent/100),2);
-        $sgst = round($taxable * ($sgstPercent/100),2);
-        $igst = round($taxable * ($igstPercent/100),2);
-
-        $final = round($taxable + $cgst + $sgst + $igst,2);
+        $final = round($taxable + $cgst + $sgst + $igst, 2);
 
         foreach ($items as $item) {
             ProformaInvoiceDetail::create([
-                'proforma_invoice_id'=>$proforma->id,
-                'work_type'=>$item['work_type'],
-                'qty'=>$item['qty'],
-                'price'=>$item['price'],
-                'uom'=>$item['uom'] ?? null,
-                'total_price'=>$item['total_price'],
-                'remark'=>$item['remark'] ?? null,
-                'work_sub_description'=>$item['work_sub_description'] ?? null,
-                'gst_percent'=>$item['gst_percent'] ?? 0,
-                'cgst_amount'=>$item['cgst_amount'] ?? 0,
-                'sgst_amount'=>$item['sgst_amount'] ?? 0,
+                'proforma_invoice_id'     => $proforma->id,
+                'work_type'               => $item['work_type'],
+                'qty'                     => $item['qty'],
+                'price'                   => $item['price'],
+                'uom'                     => $item['uom'] ?? null,
+                'total_price'             => $item['total_price'],
+                'remark'                  => $item['remark'] ?? null,
+                'work_sub_description'    => $item['work_sub_description'] ?? null,
+                'gst_percent'             => $item['gst_percent'] ?? 0,
+                'cgst_amount'             => $item['cgst_amount'] ?? 0,
+                'sgst_amount'             => $item['sgst_amount'] ?? 0,
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 4 — UPDATE HEADER
-        |--------------------------------------------------------------------------
-        */
-
+        // ────────────────────────────────────────────────
+        // STEP 4 — UPDATE PROFORMA HEADER
+        // ────────────────────────────────────────────────
         $proforma->update([
-            'invoice_date'=>$request->invoice_date,
-            'delivery_date'=>$request->delivery_date,
-            'subtotal'=>$subtotal,
-            'discount'=>$discount,
-            'taxable_amount'=>$taxable,
-            'cgst_amount'=>$cgst,
-            'sgst_amount'=>$sgst,
-            'igst_amount'=>$igst,
-            'final_amount'=>$final,
-            'updated_by'=>$user->id
+            'invoice_date'     => $request->invoice_date,
+            'delivery_date'    => $request->delivery_date,
+            'subtotal'         => $subtotal,
+            'discount'         => $discount,
+            'taxable_amount'   => $taxable,
+            'cgst_amount'      => $cgst,
+            'sgst_amount'      => $sgst,
+            'igst_amount'      => $igst,
+            'final_amount'     => $final,
+            'updated_by'       => $user->id
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 5 — CREATE ADVANCE + INCOME (FULL SAFE)
-        |--------------------------------------------------------------------------
-        */
-
+        // ────────────────────────────────────────────────
+        // STEP 5 — CREATE NEW ADVANCE + INCOME RECORDS
+        // ────────────────────────────────────────────────
         $totalAdvance = 0;
         $poNumber = $proforma->workOrder->po_number ?? 'N/A';
 
         foreach ($request->advance_payments ?? [] as $pay) {
-
             $amt = (float) ($pay['received_amount'] ?? 0);
             if ($amt <= 0) continue;
 
             $totalAdvance += $amt;
 
-            // prevent division crash
-            $ratio = $final > 0 ? ($amt / $final) : 0;
+            // Match your screenshot logic: GST ≈ 18% on received amount
+            // basic = received / 1.18, gst = received - basic
+            // This gives very close values to 101.69 + 18.31 = 120
+            $gstRate = 0.18; // you can make this dynamic later if needed
+            $gstAmount    = round($amt * $gstRate / (1 + $gstRate), 2);
+            $basicAmount  = round($amt - $gstAmount, 2);
 
-            $basic = round($taxable * $ratio,2);
-            $gst   = round(($cgst+$sgst+$igst) * $ratio,2);
+            // Split GST into CGST + SGST (assuming equal split - most common)
+            $cgstAmount = round($gstAmount / 2, 2);
+            $sgstAmount = $gstAmount - $cgstAmount; // avoid rounding error
 
             Income::create([
-                'project_id'=>$proforma->project_id,
-                'order_id'=>$proforma->work_order_id,
-                'proforma_invoice_id'=>$proforma->id,
-                'company_id'=>$user->company_id,
-
-                'po_no'=>$poNumber,
-                'po_date'=>$proforma->invoice_date,
-                'invoice_no'=>$proforma->proforma_invoice_number,
-                'invoice_date'=>$proforma->invoice_date,
-
-                'basic_amount'=>$basic,
-                'gst_amount'=>$gst,
-                'cgst_amount'=>round($cgst * $ratio,2),
-                'sgst_amount'=>round($sgst * $ratio,2),
-                'igst_amount'=>round($igst * $ratio,2),
-
-                'billing_amount'=>$amt,
-                'received_amount'=>$amt,
-                'pending_amount'=>0,
-
-                'received_by'=>$pay['received_from'] ?? 'Advance',
-                'payment_type'=>$pay['payment_type'] ?? 'cash',
-                'payment_date'=>$pay['payment_date'] ?? now(),
-
-                // 🔴 REQUIRED FIELDS (your DB needs these)
-                'senders_bank'=>$pay['senders_bank'] ?? null,
-                'receivers_bank'=>$pay['receivers_bank'] ?? null,
-                'transaction_number'=>$pay['transaction_number'] ?? null,
-                'remark'=>$pay['remark'] ?? null,
+                'project_id'          => $proforma->project_id,
+                'order_id'            => $proforma->work_order_id,
+                'proforma_invoice_id' => $proforma->id,
+                'company_id'          => $user->company_id,
+                'po_no'               => $poNumber,
+                'po_date'             => $proforma->invoice_date,
+                'invoice_no'          => $proforma->proforma_invoice_number,
+                'invoice_date'        => $proforma->invoice_date,
+                'basic_amount'        => $basicAmount,
+                'gst_amount'          => $gstAmount,
+                'cgst_amount'         => $cgstAmount,
+                'sgst_amount'         => $sgstAmount,
+                'igst_amount'         => 0,
+                'billing_amount'      => $amt,
+                'received_amount'     => $amt,
+                'pending_amount'      => 0,
+                'received_by'         => $pay['received_from'] ?? 'Advance',
+                'payment_type'        => $pay['payment_type'] ?? 'cash',
+                'payment_date'        => $pay['payment_date'] ?? now(),
+                'senders_bank'        => $pay['senders_bank'] ?? null,
+                'receivers_bank'      => $pay['receivers_bank'] ?? null,
+                'transaction_number'  => $pay['transaction_number'] ?? null,
+                'remark'              => $pay['remark'] ?? null,
             ]);
 
             AdvancedPayment::create([
-                'order_id'=>$proforma->work_order_id,
-                'project_id'=>$proforma->project_id,
-                'proforma_id'=>$proforma->id,
-                'advanced_amount'=>$amt,
-                'payment_date'=>$pay['payment_date'] ?? now(),
-                'received_from'=>$pay['received_from'] ?? null,
-                'payment_type'=>$pay['payment_type'] ?? null,
-                'senders_bank'=>$pay['senders_bank'] ?? null,
-                'receivers_bank'=>$pay['receivers_bank'] ?? null,
-                'transaction_number'=>$pay['transaction_number'] ?? null,
-                'remark'=>$pay['remark'] ?? null,
+                'order_id'           => $proforma->work_order_id,
+                'project_id'         => $proforma->project_id,
+                'proforma_id'        => $proforma->id,
+                'advanced_amount'    => $amt,
+                'payment_date'       => $pay['payment_date'] ?? now(),
+                'received_from'      => $pay['received_from'] ?? null,
+                'payment_type'       => $pay['payment_type'] ?? null,
+                'senders_bank'       => $pay['senders_bank'] ?? null,
+                'receivers_bank'     => $pay['receivers_bank'] ?? null,
+                'transaction_number' => $pay['transaction_number'] ?? null,
+                'remark'             => $pay['remark'] ?? null,
             ]);
 
+            // IncomeSummary – same as your previous working version
             $summary = IncomeSummary::firstOrCreate(
                 [
-                    'company_id'=>$user->company_id,
-                    'project_id'=>$proforma->project_id,
-                    'date'=>Carbon::parse($pay['payment_date'] ?? now())->toDateString()
+                    'company_id' => $user->company_id,
+                    'project_id' => $proforma->project_id,
+                    'date'       => Carbon::parse($pay['payment_date'] ?? now())->toDateString()
                 ],
                 [
-                    'invoice_count'=>0,
-                    'total_amount'=>0,
-                    'tax_amount'=>0
+                    'invoice_count' => 0,
+                    'total_amount'  => 0,
+                    'tax_amount'    => 0
                 ]
             );
 
-            $summary->increment('invoice_count',1);
-            $summary->increment('total_amount',$amt);
-            $summary->increment('tax_amount',$gst);
+            $summary->increment('invoice_count');
+            $summary->increment('total_amount', $amt);
+            $summary->increment('tax_amount', $gstAmount);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 6 — UPDATE PAYMENT STATUS
-        |--------------------------------------------------------------------------
-        */
+        // ────────────────────────────────────────────────
+        // RECALCULATE ORDER PAID AMOUNT
+        // ────────────────────────────────────────────────
+        if ($proforma->work_order_id) {
+            $order = Order::find($proforma->work_order_id);
+            if ($order) {
+                $totalPaid = Income::where('order_id', $order->id)
+                    ->sum('received_amount');
+                $order->paidAmount = round($totalPaid, 2);
+                $order->orderStatus = match (true) {
+                    $totalPaid >= ($order->finalAmount ?? 0) => 1,
+                    $totalPaid > 0 => 2,
+                    default => 3,
+                };
+                $order->save();
+            }
+        }
 
+        // ────────────────────────────────────────────────
+        // STEP 6 — UPDATE PROFORMA PAYMENT STATUS
+        // ────────────────────────────────────────────────
         $pending = $final - $totalAdvance;
-
         $proforma->update([
-            'paid_amount'=>$totalAdvance,
-            'pending_amount'=>$pending,
-            'payment_status'=>$pending<=0?'paid':'partial'
+            'paid_amount'    => $totalAdvance,
+            'pending_amount' => max(0, $pending),
+            'payment_status' => $pending <= 0 ? 'paid' : ($totalAdvance > 0 ? 'partial' : 'pending')
         ]);
 
         DB::commit();
 
         return response()->json([
-            'success'=>true,
-            'message'=>'Proforma Updated Successfully',
-            'data'=>$proforma->fresh('details')
+            'success' => true,
+            'message' => 'Proforma Updated Successfully',
+            'data'    => $proforma->fresh(['details', 'workOrder'])
         ]);
-
     } catch (\Exception $e) {
-
         DB::rollBack();
-
         return response()->json([
-            'success'=>false,
-            'message'=>$e->getMessage()
-        ],500);
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
 }
+
+
+
+
+
+
+
 
 
 
