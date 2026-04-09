@@ -1804,6 +1804,8 @@ const [editingSubDescValue, setEditingSubDescValue] = useState('');
       ref_id: initialData.ref_id,
       po_number: initialData.po_number || '',
     });
+
+
     const initialWorks = initialData.items || [{
       work_type: '',
       uom: '',
@@ -1816,10 +1818,27 @@ const [editingSubDescValue, setEditingSubDescValue] = useState('');
       remark: '',
       sub_descriptions: [],
     }];
-    const processedWorks = initialWorks.map(w => ({
-      ...w,
-      sub_descriptions: w.work_sub_description ? w.work_sub_description.split('\n').filter(Boolean) : (w.sub_descriptions || []),
-    }));
+
+
+    // const processedWorks = initialWorks.map(w => ({
+    //   ...w,
+    //   sub_descriptions: w.work_sub_description ? w.work_sub_description.split('\n').filter(Boolean) : (w.sub_descriptions || []),
+    // }));
+
+
+    const processedWorks = (initialData.items || []).map(item => ({
+  ...item,
+  qty: Number(item.qty || 0),
+  qtyDisplay: item.qty != null ? String(item.qty) : '',   // ← important: string for input
+  sub_descriptions: item.work_sub_description 
+    ? item.work_sub_description.split('\n').filter(Boolean) 
+    : (item.sub_descriptions || []),
+  // alreadyBilledQty and isWorkOrder should already be there from EditInvoice
+}));
+setWorks(processedWorks);
+
+
+
     setWorks(processedWorks);
     setNewSubDescs(Array(processedWorks.length).fill(''));
     setSearchQuery(initialData.projectName || '');
@@ -1997,29 +2016,63 @@ const handleWorkChange = (index, field, value) => {
   const isWorkOrder = item.isWorkOrder === true;
   const alreadyBilled = item.alreadyBilledQty || 0;
 
+  // if (field === 'qty') {
+  //   // Allow completely empty field (user deleted everything)
+  //   if (value === '' || value === null) {
+  //     updated[index].qty = '';
+  //   }
+  //   // When user actually types a number
+  //   else {
+  //     const parsed = parseFloat(value);
+  //     let newQty = Number.isNaN(parsed) ? 0 : parsed;
+
+  //     // Enforce minimum ONLY when user has entered a real number
+  //     // and it's a work order row with previous billing
+  //     if (isWorkOrder && alreadyBilled > 0 && newQty < alreadyBilled) {
+  //       showToast(
+  //         'danger',
+  //         `Quantity cannot be less than already billed (${alreadyBilled.toFixed(2)}). You can only add more.`
+  //       );
+  //       newQty = alreadyBilled;
+  //     }
+
+  //     updated[index].qty = newQty;
+  //   }
+  // }
+
+
   if (field === 'qty') {
-    // Allow completely empty field (user deleted everything)
-    if (value === '' || value === null) {
-      updated[index].qty = '';
-    }
-    // When user actually types a number
-    else {
-      const parsed = parseFloat(value);
-      let newQty = Number.isNaN(parsed) ? 0 : parsed;
+  const updated = [...works];
 
-      // Enforce minimum ONLY when user has entered a real number
-      // and it's a work order row with previous billing
-      if (isWorkOrder && alreadyBilled > 0 && newQty < alreadyBilled) {
-        showToast(
-          'danger',
-          `Quantity cannot be less than already billed (${alreadyBilled.toFixed(2)}). You can only add more.`
-        );
-        newQty = alreadyBilled;
-      }
+  // Always allow any typing (including empty)
+  updated[index].qtyDisplay = value;
 
-      updated[index].qty = newQty;
-    }
+  // Parse for calculation (treat empty as null / no value yet)
+  let newQty = null;
+  if (value.trim() !== '') {
+    const parsed = parseFloat(value);
+    newQty = isNaN(parsed) ? null : parsed;
   }
+
+  updated[index].qty = newQty;
+
+  // Live calculation (use 0 if still invalid/empty)
+  const qtyForCalc = newQty ?? 0;
+  const price = updated[index].price || 0;
+  const gstPercent = updated[index].gst_percent ?? 0;
+
+  const baseAmount = qtyForCalc * price;
+  const halfGST = gstPercent / 2;
+
+  updated[index].cgst_amount = baseAmount * (halfGST / 100);
+  updated[index].sgst_amount = baseAmount * (halfGST / 100);
+  updated[index].total_price = baseAmount + updated[index].cgst_amount + updated[index].sgst_amount;
+
+  setWorks(updated);
+  calculateTotals(updated);
+}
+
+
   else if (field === 'price') {
     updated[index].price = value === "" ? 0 : parseFloat(value) || 0;
   }
@@ -2053,6 +2106,19 @@ const handleWorkChange = (index, field, value) => {
 };
 
 
+
+
+
+// const invalidRows = works.filter(w => 
+//   w.isWorkOrder && 
+//   w.alreadyBilledQty > 0 && 
+//   (w.qty ?? 0) < w.alreadyBilledQty
+// );
+
+// if (invalidRows.length > 0) {
+//   showToast('danger', `Cannot submit: ${invalidRows.length} item(s) have quantity below already billed amount`);
+//   return;
+// }
 
 
 
@@ -2149,6 +2215,19 @@ const calculateTotals = (currentWorks) => {
       showToast('danger', 'Please select a project with a valid customer');
       return;
     }
+
+    const invalidRows = works.filter(w => 
+  w.isWorkOrder && 
+  w.alreadyBilledQty > 0 && 
+  (w.qty ?? 0) < w.alreadyBilledQty
+);
+
+if (invalidRows.length > 0) {
+  showToast('danger', `Cannot submit: ${invalidRows.length} item(s) have quantity below already billed amount`);
+  return;
+}
+
+
     // if (works.length === 0 || works.every((w) => !w.work_type || w.qty <= 0)) {
     //   showToast('danger', 'Please add at least one valid work item');
     //   return;
@@ -2156,20 +2235,36 @@ const calculateTotals = (currentWorks) => {
 
     try {
       setLoading(true);
+      // const data = {
+      //   ...form,
+      //   project_id: form.projectId,
+      //   customer_name: form.customer_name,
+      //   address: form.address,
+      //   mobile_number: form.mobile_number,
+      //   items: works.filter((w) => w.work_type && w.qty > 0).map(w => ({
+      //     ...w,
+      //     work_sub_description: w.sub_descriptions.join('\n'),
+      //   })),
+      //   payment_terms: paymentTerms.join('\n'),
+      //   terms_and_conditions: termsAndConditions.join('\n'),
+      //   note: note,
+      // };
+
       const data = {
-        ...form,
-        project_id: form.projectId,
-        customer_name: form.customer_name,
-        address: form.address,
-        mobile_number: form.mobile_number,
-        items: works.filter((w) => w.work_type && w.qty > 0).map(w => ({
-          ...w,
-          work_sub_description: w.sub_descriptions.join('\n'),
-        })),
-        payment_terms: paymentTerms.join('\n'),
-        terms_and_conditions: termsAndConditions.join('\n'),
-        note: note,
-      };
+  ...form,
+  project_id: form.projectId,
+  customer_id: form.customer_id,
+  address: form.address,
+  mobile_number: form.mobile_number,
+  items: works.filter((w) => w.work_type && w.qty > 0).map(w => ({
+    ...w,
+    work_sub_description: w.sub_descriptions.join('\n'),
+  })),
+  payment_terms: paymentTerms.join('\n'),
+  terms_and_conditions: termsAndConditions.join('\n'),
+  note: note,
+  po_number: form.invoiceType === 2 ? '' : form.po_number,   // Let backend generate if Work Order
+};
       console.log('Submitting data:', data);
 
       if (editMode && onSubmit) {
@@ -2409,7 +2504,7 @@ const saveNewProject = async () => {
                   />
                 </CCol>
 
-                <CCol md={4}>
+                {/* <CCol md={4}>
                   <CFormLabel>Po Number</CFormLabel>
                   <CFormInput
                     type="text"
@@ -2418,7 +2513,7 @@ const saveNewProject = async () => {
                     onChange={handleFormChange}
                     placeholder="Enter PO Number"
                   />
-                </CCol>
+                </CCol> */}
               </CRow>
 
               <CRow className="mb-3">
@@ -2635,14 +2730,63 @@ const saveNewProject = async () => {
               </small>
             )}
           </CFormLabel>
-          <CFormInput
+          {/* <CFormInput
             type="number"
             step="0.01"
             min="0"
             value={w.qty === '' ? '' : w.qty}
             onChange={(e) => handleWorkChange(idx, 'qty', e.target.value)}
             required
-          />
+          /> */}
+
+{/* <CFormInput
+  type="number"
+  step="0.01"
+  value={w.qtyDisplay ?? ''}                    // ← use string version
+  onChange={(e) => handleWorkChange(idx, 'qty', e.target.value)}
+  onBlur={() => {
+    if (!w.isWorkOrder || w.alreadyBilledQty <= 0) return;
+
+    const currentQty = w.qty ?? 0;
+    if (currentQty < w.alreadyBilledQty) {
+      showToast(
+        'danger',
+        `Quantity cannot be less than already billed (${w.alreadyBilledQty.toFixed(2)})`
+      );
+     
+    }
+  }}
+  required
+/> */}
+
+<CFormInput
+  type="text"   // ⚠️ use text, not number (number allows invalid typing)
+  value={w.qtyDisplay ?? ''}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // ✅ Allow only numbers with max 2 decimal places
+    if (/^\d*\.?\d{0,2}$/.test(value)) {
+      handleWorkChange(idx, 'qty', value);
+    }
+  }}
+  onBlur={() => {
+    if (!w.isWorkOrder || w.alreadyBilledQty <= 0) return;
+
+    const currentQty = parseFloat(w.qty ?? 0);
+    if (currentQty < w.alreadyBilledQty) {
+      showToast(
+        'danger',
+        `Quantity cannot be less than already billed (${w.alreadyBilledQty.toFixed(2)})`
+      );
+    }
+  }}
+  required
+/>
+
+
+
+
         </CCol>
 
         <CCol md={3}>

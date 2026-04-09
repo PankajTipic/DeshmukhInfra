@@ -2875,6 +2875,35 @@ const CreateProformaInvoice = () => {
   })
   const [editingAdvanceIndex, setEditingAdvanceIndex] = useState(-1)
 
+
+  // Add these two helpers at the top of the file (after imports)
+const formatNumber = (num, decimals = 2) => {
+  if (num == null || isNaN(num)) return '0.00';
+  
+  const rounded = (num * Math.pow(10, decimals).toFixed(2)) / Math.pow(10, decimals);
+  
+  return rounded.toLocaleString('en-IN', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+};
+
+const formatCurrency = (amount) => {
+  return '₹' + formatNumber(amount)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
   // ──────────────────────────────────────────────────────────────
   // Load previous proformas
   // ──────────────────────────────────────────────────────────────
@@ -3026,25 +3055,91 @@ const CreateProformaInvoice = () => {
     calculateTotals(updated)
   }
 
-  const handleWorkChange = (index, field, value) => {
-    const updated = [...works]
+  // const handleWorkChange = (index, field, value) => {
+  //   const updated = [...works]
 
-    if (field === 'qty') {
-      let val = parseFloat(value) || 0
-      if (updated[index].original_qty) {
-        const max = updated[index].original_qty - updated[index].used_qty
-        val = Math.max(0, Math.min(val, max))
-      }
-      updated[index].qty = val
-    } else if (field === 'price' || field === 'gst_percent') {
-      updated[index][field] = Number(value) || 0
-    } else {
-      updated[index][field] = value
-    }
+  //   if (field === 'qty') {
+  //     let val = parseFloat(value) || 0
+  //     if (updated[index].original_qty) {
+  //       const max = updated[index].original_qty - updated[index].used_qty
+  //       val = Math.max(0, Math.min(val, max))
+  //     }
+  //     updated[index].qty = val
+  //   } else if (field === 'price' || field === 'gst_percent') {
+  //     updated[index][field] = Number(value) || 0
+  //   } else {
+  //     updated[index][field] = value
+  //   }
+
+  //   setWorks(updated)
+  //   recalcRow(index, updated)
+  // }
+
+
+
+
+const handleWorkChange = (index, field, value) => {
+  const updated = [...works]
+  const row = updated[index]
+
+  if (field === 'qty') {
+    // ✅ Allow FREE typing (no restriction)
+    row.qty = value   // keep raw string exactly as user types
 
     setWorks(updated)
-    recalcRow(index, updated)
+    return
   }
+
+  if (field === 'price' || field === 'gst_percent') {
+    row[field] = Number(value) || 0
+  } else {
+    row[field] = value
+  }
+
+  setWorks(updated)
+}
+
+const validateQtyOnBlur = (index) => {
+  const updated = [...works]
+  const row = updated[index]
+
+  // If user cleared field → keep empty
+  if (row.qty === '' || row.qty === '.') {
+    setWorks(updated)
+    return
+  }
+
+  const val = parseFloat(row.qty)
+
+  if (isNaN(val)) {
+    row.qty = ''
+    setWorks(updated)
+    return
+  }
+
+  // ✅ Now apply your Pending validation
+  if (row.original_qty > 0) {
+    // const remaining = row.original_qty - row.used_qty
+    // const remaining = toFixedNumber(row.original_qty - row.used_qty)
+    const remaining = Number((row.original_qty - row.used_qty).toFixed(4))
+
+
+    if (val > remaining) {
+      showToast('warning', `Entered amount cannot be greater than pending (${formatNumber(remaining)})`)
+      row.qty = ''   // ❗ clear instead of forcing value
+      setWorks(updated)
+      return
+    }
+  }
+
+  // ✅ Accept value
+  row.qty = val
+  setWorks(updated)
+
+  recalcRow(index, updated) // calculate only after valid
+}
+
+
 
   const addWorkRow = () => {
     const newRow = {
@@ -3859,7 +3954,11 @@ const CreateProformaInvoice = () => {
           placeholder="Unit"
         />
       </CCol>
-      <CCol md={3}>
+
+
+
+
+      {/* <CCol md={3}>
         <CFormLabel>
           Qty <span className="text-danger fw-bold">*</span>
         </CFormLabel>
@@ -3871,14 +3970,54 @@ const CreateProformaInvoice = () => {
           </small>
         )}
         <CFormInput
-          type="number"
+          type="text"
           step="0.01"
           min="0"
-          value={w.qty}
+          // value={w.qty}
+          value={formatNumber(w.qty)}
           onChange={e => handleWorkChange(idx, 'qty', e.target.value)}
           required
         />
-      </CCol>
+      </CCol> */}
+
+
+<CCol md={3}>
+  <CFormLabel>
+    Qty <span className="text-danger fw-bold">*</span>
+  </CFormLabel>
+  {w.original_qty > 0 && (
+    <small className="text-danger d-block mt-1" style={{ lineHeight: '1.2' }}>
+      Total: {formatNumber(w.original_qty)}<br />
+      Billed: {formatNumber(w.used_qty)}<br />
+      <strong>Remaining: {formatNumber(w.original_qty - w.used_qty)}</strong>
+    </small>
+  )}
+ <CFormInput
+  type="text"
+  inputMode="decimal"
+ // value={w.qty ?? ''}   // ❗ show raw value (NO formatNumber)
+ value={
+      w.qty === '' || w.qty == null 
+        ? '' 
+        : (typeof w.qty === 'string' 
+            ? w.qty 
+            : Number(w.qty).toFixed(2)
+          )
+    }
+  onChange={e => handleWorkChange(idx, 'qty', e.target.value)}
+  onBlur={() => validateQtyOnBlur(idx)}
+  placeholder="0.00"
+/>
+
+</CCol>
+
+
+
+
+
+
+
+
       <CCol md={3}>
         <CFormLabel>Rate</CFormLabel>
         <CInputGroup>
@@ -3892,6 +4031,9 @@ const CreateProformaInvoice = () => {
           ₹{((w.qty || 0) * (w.price || 0)).toFixed(2)}
         </div>
       </CCol>
+
+
+
     </CRow>
 
     <CRow className="g-3 mb-3">

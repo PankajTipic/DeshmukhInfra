@@ -62,6 +62,24 @@ const observerTarget = useRef(null)
 
 
 
+// const getPoNumber = (order) => {
+//   if (order.po_number) return order.po_number;
+//   if (order.invoiceType === 2) return 'PO/DI/00?'; // fallback (should not happen)
+//   return '';
+// };
+
+
+const getPoNumber = (order) => {
+  if (order.po_number) {
+    return order.po_number;                    // Already has PO/DI/xxx
+  }
+  if (order.invoiceType === 2) {
+    return 'PO/DI/???';                        // Temporary placeholder
+  }
+  return '';
+};
+
+
 
 
   const navigate = useNavigate()
@@ -697,7 +715,17 @@ const handleDeleteOrder = async (orderId) => {
                           </CTableDataCell>
                           <CTableDataCell className="d-none d-md-table-cell">{index + 1}</CTableDataCell>
                           <CTableDataCell>
-                            <strong>{order.invoice_number || `ORD-${order.id}`}</strong>
+                          <strong>{order.invoice_number || `ORD-${order.id}`}</strong>
+
+
+
+{getPoNumber(order) && (
+    <div className="text-success small fw-bold mt-1">
+      📋 {getPoNumber(order)}
+    </div>
+  )}
+
+
                             <div className="d-lg-none">
                               <small className="text-muted d-block">
                                 {order.project?.project_name || 'N/A'}
@@ -869,7 +897,7 @@ const handleDeleteOrder = async (orderId) => {
         isAllProjects={true}
       />
 
-      <UpdateProjectModal
+      {/* <UpdateProjectModal
         visible={showUpdateProjectModal}
         onClose={() => { setShowUpdateProjectModal(false); setSelectedOrderForUpdate(null) }}
         orderData={selectedOrderForUpdate}
@@ -877,7 +905,29 @@ const handleDeleteOrder = async (orderId) => {
           showAlert('Status & project updated successfully', 'success')
           fetchOrders()
         }}
-      />
+      /> */}
+
+
+
+      {/* Replace your existing UpdateProjectModal with this */}
+<UpdateProjectModal
+  visible={showUpdateProjectModal}
+  onClose={() => { 
+    setShowUpdateProjectModal(false); 
+    setSelectedOrderForUpdate(null) 
+  }}
+  orderData={selectedOrderForUpdate}
+  onUpdated={(response) => {
+    // Show PO Number in Toast
+    const poNumber = response?.data?.po_number || response?.po_number;
+    if (poNumber) {
+      showAlert(`Successfully converted to Work Order! PO Number: ${poNumber}`, 'success');
+    } else {
+      showAlert('Status & project updated successfully', 'success');
+    }
+    fetchOrders();   // Refresh the list
+  }}
+/>
 
 
 

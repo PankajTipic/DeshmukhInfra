@@ -692,15 +692,35 @@ const numberToWordsIndian = (num) => {
   return result + ' Only';
 };
 
+// const formatScopePoints = (text = '') => {
+//   if (!text) return '—';
+//   const points = text
+//     .split(/[\n•,|.]+/)
+//     .map(t => t.trim())
+//     .filter(Boolean);
+//   if (!points.length) return '—';
+//   return points.map(p => `• ${p}`).join('\n_____________________\n');
+// };
+
+
+
 const formatScopePoints = (text = '') => {
-  if (!text) return '—';
+  if (!text?.trim()) return '—';
+
+  // Split on newlines or existing bullets, clean each part
   const points = text
-    .split(/[\n•,|.]+/)
+    .split(/[\n•]+/)
     .map(t => t.trim())
     .filter(Boolean);
+
   if (!points.length) return '—';
-  return points.map(p => `• ${p}`).join('\n_____________________\n');
+
+  // Join with newline + horizontal line after EACH point
+  return points
+    .map(point => point)
+    .join('\n_____________________\n');
 };
+
 
 const hasRowLevelGST = (items) => {
   if (!items || items.length === 0) return false;

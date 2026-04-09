@@ -3315,6 +3315,8 @@ const EditProformaInvoice = () => {
           required
         />
       </CCol>
+
+      
       <CCol md={3}>
         <CFormLabel>Rate</CFormLabel>
         <CInputGroup>

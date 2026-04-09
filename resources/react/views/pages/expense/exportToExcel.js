@@ -386,6 +386,9 @@ export const exportToExcel = (
         'Sr No': index + 1,
         'Date': formatDate(expense.expense_date),
         'Project': expense.project?.project_name || '-',
+        'Party Name' : expense.party_name || '-',
+        'Party GST Number' : expense.party_gst_number || '-',
+        'Party Address' : expense.party_address || '-',
         'Expense Type': expense.expense_type?.name || expenseType[expense.expense_id] || '-',
         'Expense Category': expense.expense_type?.expense_category || '-',
         'Qty': expense.qty || '-',
@@ -440,6 +443,9 @@ export const exportToExcel = (
       'Sr No': '',
       'Date': '',
       'Project': '',
+      'Party Name':'',
+       'Party GST Number':'',
+        'Party Address':'',
       'Expense Type': '',
       'Expense Category': 'Total',
       'Qty': sumQty,
@@ -488,6 +494,9 @@ export const exportToExcel = (
       'Sr No',
       'Date',
       'Project',
+       'Party Name',
+       'Party GST Number',
+        'Party Address',
       'Expense Type',
       'Expense Category',
       'Qty',
@@ -540,6 +549,9 @@ export const exportToExcel = (
       { wch: 6 },   // Sr No
       { wch: 12 },  // Date
       { wch: 20 },  // Project
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 20 },
       { wch: 20 },  // Expense Type
       { wch: 18 },  // Expense Category
       { wch: 8 },   // Qty

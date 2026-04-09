@@ -66,6 +66,11 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
     aadhar: "",
     pan: "",
     transaction_id: "",
+
+    party_name: '',
+    party_gst_number: '',
+    party_address: '',
+
   });
 
   const getCurrentLanguage = () => {
@@ -269,6 +274,12 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
         if (state.aadhar) formData.append('aadhar', state.aadhar);
         if (state.pan) formData.append('pan', state.pan);
 
+        if (state.party_name) formData.append('party_name', state.party_name);
+        if (state.party_gst_number) formData.append('party_gst_number', state.party_gst_number);
+        if (state.party_address) formData.append('party_address', state.party_address);
+
+   
+
         // Add photos to delete
         if (photosToDelete.length > 0) {
           photosToDelete.forEach((id, index) => {
@@ -357,6 +368,51 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
               />
             </div>
           </div>
+
+
+
+
+ <div className="row">
+            <div className="col-sm-4 mb-3">
+
+              <CFormLabel><b>Party Name</b></CFormLabel>
+              <CFormInput
+                name="party_name"
+                value={state.party_name}
+                onChange={handleChange}
+                placeholder="Enter Party name"
+              />
+
+            </div>
+
+            <div className="col-sm-4 mb-3">
+
+              <CFormLabel><b>Party GST Number</b></CFormLabel>
+              <CFormInput
+                name="party_gst_number"
+                value={state.party_gst_number}
+                onChange={handleChange}
+                placeholder="Enter Party GST Number"
+              />
+
+            </div>
+
+            <div className="col-sm-4 mb-3">
+
+<CFormLabel><b>Address</b></CFormLabel>
+              <CFormInput
+                name="party_address"
+                value={state.party_address}
+                onChange={handleChange}
+                placeholder="Enter Party Address"
+              />
+
+            </div>
+  </div>
+
+
+
+
 
           {/* Amount Section */}
           <div className="row">

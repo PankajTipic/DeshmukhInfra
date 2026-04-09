@@ -74,12 +74,18 @@ const ExpenseReport = () => {
   // New state for filters
   const [projects, setProjects] = useState([]);
   const [expenseTypes, setExpenseTypes] = useState([]);
+
+  const [partyNames, setPartyNames] = useState([]);           // All unique party names
+  const [filteredPartyNames, setFilteredPartyNames] = useState([]); // For search dropdown
+  const [partySearchTerm, setPartySearchTerm] = useState('');
+  const [showPartyDropdown, setShowPartyDropdown] = useState(false);
   
   const [state, setState] = useState({
     start_date: '',
     end_date: '',
     project_id: '',
     expense_type_id: '',
+    party_name: '',
   });
 
   // Refs
@@ -88,6 +94,43 @@ const ExpenseReport = () => {
   const scrollTimeoutRef = useRef(null);
   const scrollPositionRef = useRef(0);
   const isInfiniteScrollingRef = useRef(false);
+  const partyDropdownRef = useRef(null);
+
+
+  // Fetch unique party names
+  const fetchPartyNames = async () => {
+    try {
+      const response = await getAPICall('/api/party-names');
+      setPartyNames(response || []);
+      setFilteredPartyNames(response || []);
+    } catch (error) {
+      showToast('danger', 'Error fetching party names: ' + error);
+    }
+  };
+
+
+  // Party name search handler
+  const handlePartySearch = (e) => {
+    const value = e.target.value;
+    setPartySearchTerm(value);
+    setState({ ...state, party_name: value });
+
+    if (value.trim() === '') {
+      setFilteredPartyNames(partyNames);
+    } else {
+      const filtered = partyNames.filter(name =>
+        name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredPartyNames(filtered);
+    }
+    setShowPartyDropdown(true);
+  };
+
+  const selectPartyName = (name) => {
+    setState({ ...state, party_name: name });
+    setPartySearchTerm(name);
+    setShowPartyDropdown(false);
+  };
 
   // Fetch projects
   const fetchProjects = async () => {
@@ -119,73 +162,141 @@ const ExpenseReport = () => {
     setState({ ...state, [name]: value });
   };
 
-  const fetchExpense = async (reset = true) => {
-    if (!state.start_date || !state.end_date) {
-      if (!state.project_id && !state.expense_type_id) {
-        showToast('warning', 'Please select dates or at least one filter (Project or Expense Type)');
-        return;
+// Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (partyDropdownRef.current && !partyDropdownRef.current.contains(event.target)) {
+        setShowPartyDropdown(false);
       }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+
+
+  // const fetchExpense = async (reset = true) => {
+  //   if (!state.start_date || !state.end_date) {
+  //     if (!state.project_id && !state.expense_type_id) {
+  //       showToast('warning', 'Please select dates or at least one filter (Project or Expense Type)');
+  //       return;
+  //     }
+  //   }
+
+  //   if (reset) {
+  //     setIsLoading(true);
+  //     isInfiniteScrollingRef.current = false;
+  //   } else {
+  //     setIsFetchingMore(true);
+  //   }
+
+  //   try {
+  //     let url = `/api/expense?`;
+  //     const params = [];
+      
+  //     if (state.start_date && state.end_date) {
+  //       params.push(`startDate=${state.start_date}`);
+  //       params.push(`endDate=${state.end_date}`);
+  //     }
+      
+  //     if (state.project_id) {
+  //       params.push(`customerId=${state.project_id}`);
+  //     }
+      
+  //     if (state.expense_type_id) {
+  //       params.push(`expenseTypeId=${state.expense_type_id}`);
+  //     }
+
+  //     if (state.party_name && state.party_name.trim() !== '') {
+  //     params.append('partyName', state.party_name.trim());
+  //   }
+      
+  //     if (nextCursor && !reset) {
+  //       params.push(`cursor=${nextCursor}`);
+  //     }
+      
+  //     url += params.join('&');
+
+  //     const response = await getAPICall(url);
+
+  //     if (response.error) {
+  //       showToast('danger', response.error);
+  //     } else {
+  //       const newExpenses = reset ? response.data : [...expenses, ...response.data];
+  //       setExpenses(newExpenses);
+  //       setTotalExpense(response.totalExpense || 0);
+  //       setNextCursor(response.next_cursor || null);
+  //       setHasMorePages(response.has_more_pages);
+
+  //       if (isInfiniteScrollingRef.current && !reset) {
+  //         requestAnimationFrame(() => {
+  //           requestAnimationFrame(() => {
+  //             if (tableContainerRef.current) {
+  //               tableContainerRef.current.scrollTop = scrollPositionRef.current;
+  //             }
+  //             isInfiniteScrollingRef.current = false;
+  //           });
+  //         });
+  //       }
+  //     }
+  //   } catch (error) {
+  //     showToast('danger', 'Error occurred: ' + error);
+  //   } finally {
+  //     setIsLoading(false);
+  //     setIsFetchingMore(false);
+  //   }
+  // };
+
+
+
+const fetchExpense = async (reset = true) => {
+  if (reset) {
+    setIsLoading(true);
+    setNextCursor(null);
+    isInfiniteScrollingRef.current = false;
+  } else {
+    setIsFetchingMore(true);
+  }
+
+  try {
+    const params = new URLSearchParams();
+
+    if (state.start_date && state.end_date) {
+      params.append('startDate', state.start_date);
+      params.append('endDate', state.end_date);
+    }
+    if (state.project_id) params.append('customerId', state.project_id);
+    if (state.expense_type_id) params.append('expenseTypeId', state.expense_type_id);
+    
+    // FIXED: Properly send party_name
+    if (state.party_name && state.party_name.trim() !== '') {
+      params.append('partyName', state.party_name.trim());
     }
 
-    if (reset) {
-      setIsLoading(true);
-      isInfiniteScrollingRef.current = false;
+    if (nextCursor && !reset) {
+      params.append('cursor', nextCursor);
+    }
+
+    const url = `/api/expense?${params.toString()}`;
+
+    const response = await getAPICall(url);
+
+    if (response.error) {
+      showToast('danger', response.error);
     } else {
-      setIsFetchingMore(true);
+      const newExpenses = reset ? response.data : [...expenses, ...response.data];
+      setExpenses(newExpenses);
+      setTotalExpense(response.totalExpense || 0);
+      setNextCursor(response.next_cursor || null);
+      setHasMorePages(response.has_more_pages || false);
     }
-
-    try {
-      let url = `/api/expense?`;
-      const params = [];
-      
-      if (state.start_date && state.end_date) {
-        params.push(`startDate=${state.start_date}`);
-        params.push(`endDate=${state.end_date}`);
-      }
-      
-      if (state.project_id) {
-        params.push(`customerId=${state.project_id}`);
-      }
-      
-      if (state.expense_type_id) {
-        params.push(`expenseTypeId=${state.expense_type_id}`);
-      }
-      
-      if (nextCursor && !reset) {
-        params.push(`cursor=${nextCursor}`);
-      }
-      
-      url += params.join('&');
-
-      const response = await getAPICall(url);
-
-      if (response.error) {
-        showToast('danger', response.error);
-      } else {
-        const newExpenses = reset ? response.data : [...expenses, ...response.data];
-        setExpenses(newExpenses);
-        setTotalExpense(response.totalExpense || 0);
-        setNextCursor(response.next_cursor || null);
-        setHasMorePages(response.has_more_pages);
-
-        if (isInfiniteScrollingRef.current && !reset) {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (tableContainerRef.current) {
-                tableContainerRef.current.scrollTop = scrollPositionRef.current;
-              }
-              isInfiniteScrollingRef.current = false;
-            });
-          });
-        }
-      }
-    } catch (error) {
-      showToast('danger', 'Error occurred: ' + error);
-    } finally {
-      setIsLoading(false);
-      setIsFetchingMore(false);
-    }
-  };
+  } catch (error) {
+    showToast('danger', 'Error occurred: ' + error);
+  } finally {
+    setIsLoading(false);
+    setIsFetchingMore(false);
+  }
+};
 
   const handleSubmit = async (event) => {
     try {
@@ -522,6 +633,7 @@ const ExpenseReport = () => {
   useEffect(() => {
     fetchProjects();
     fetchExpenseTypes();
+    fetchPartyNames();
   }, []);
 
   useEffect(() => {
@@ -629,7 +741,7 @@ const ExpenseReport = () => {
             <button className="badge bg-primary" onClick={() => handleEditExpense(expense)} role="button">
               Edit
             </button>
-            {usertype === 1 && (
+            {(usertype === 1 || usertype === 3) && (
               <button className="badge bg-danger" onClick={() => handleDelete(expense)} role="button">
                 Delete
               </button>
@@ -1190,6 +1302,51 @@ const ExpenseReport = () => {
                     </div>
                   </div>
 
+
+
+
+
+
+
+{/* ================== NEW PARTY NAME FILTER ================== */}
+                  <div className="col-sm-3" ref={partyDropdownRef}>
+                    <CFormLabel>Party Name</CFormLabel>
+                    <div className="position-relative">
+                      <CFormInput
+                        type="text"
+                        placeholder="Search party name..."
+                        value={partySearchTerm}
+                        onChange={handlePartySearch}
+                        onFocus={() => setShowPartyDropdown(true)}
+                      />
+
+                      {showPartyDropdown && filteredPartyNames.length > 0 && (
+                        <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded" 
+                             style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
+                          {filteredPartyNames.map((name, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover-bg-light cursor-pointer"
+                              onClick={() => selectPartyName(name)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+
+
+
+
+
+
+
+
+
                   <div className="col-sm-2">
                     <div className="mb-1 mt-4">
                       <CButton color="success" type="submit" disabled={isLoading} className="w-100">
@@ -1275,6 +1432,14 @@ const ExpenseReport = () => {
                             <CTableHeaderCell onClick={() => handleSort('customer_name')} style={{ cursor: 'pointer' }}>
                               Project <span style={getSortIconStyle('customer_name')}>{getSortIcon('customer_name')}</span>
                             </CTableHeaderCell>
+
+
+ <CTableHeaderCell>Party Name</CTableHeaderCell>
+  <CTableHeaderCell>Party GST Number</CTableHeaderCell> 
+  <CTableHeaderCell>Party Address</CTableHeaderCell>
+
+
+
                             <CTableHeaderCell onClick={() => handleSort('expense_type')} style={{ cursor: 'pointer' }}>
                               Expense Type <span style={getSortIconStyle('expense_type')}>{getSortIcon('expense_type')}</span>
                             </CTableHeaderCell>
@@ -1315,6 +1480,13 @@ const ExpenseReport = () => {
                                 <CTableDataCell>{expense.sr_no}</CTableDataCell>
                                 <CTableDataCell>{formatDate(expense.expense_date)}</CTableDataCell>
                                 <CTableDataCell>{expense.project?.project_name || '-'}</CTableDataCell>
+
+
+<CTableDataCell>{expense.party_name || '-'}</CTableDataCell>
+<CTableDataCell>{expense.party_gst_number || '-'}</CTableDataCell>
+<CTableDataCell>{expense.party_address || '-'}</CTableDataCell>
+
+
                                 <CTableDataCell>{expenseType[expense.expense_id] || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.expense_type?.expense_category || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.qty || '-'}</CTableDataCell>
@@ -1339,7 +1511,7 @@ const ExpenseReport = () => {
                                 <CTableDataCell>{expense.photo_remark || '-'}</CTableDataCell>
                                 <CTableDataCell>
                                   <div className="action-buttons">
-                                    {usertype === 1 ? (
+                                    {(usertype === 1 || usertype ===3) ? (
                                       <>
                                         <CBadge
                                           role="button"

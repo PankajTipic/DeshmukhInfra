@@ -361,6 +361,9 @@ Thank you!`)
 
 
   const displayTotals = calculateDisplayTotals()
+  const isWorkOrder = formData.invoiceType == 2
+  console.log(isWorkOrder);
+  
 
   return (
     <CCard>
@@ -381,7 +384,12 @@ Thank you!`)
             <div className="col-md-6">
               <p><strong>Invoice Number:</strong> {formData.invoice_number}</p>
               <p><strong>Reference ID:</strong> {formData.ref_id}</p>
-              <p><strong>Po Number:</strong> {formData.po_number}</p>
+              {/* <p><strong>Po Number:</strong> {formData.po_number}</p> */}
+
+{isWorkOrder  && (
+                <p><strong>PO Number:</strong> <span className="text-success fw-bold">{formData.po_number}</span></p>
+              )}
+
               <p><strong>Invoice Date:</strong> {formData.date}</p>
               <p><strong>PAN Number:</strong> {formData.pan_number}</p>
             </div>

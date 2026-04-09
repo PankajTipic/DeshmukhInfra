@@ -611,8 +611,8 @@ const ProjectSummary = () => {
                   <CTableHeaderCell>Grand Total</CTableHeaderCell>
                   <CTableHeaderCell>Paid</CTableHeaderCell>
                   <CTableHeaderCell>Pending</CTableHeaderCell>
-                  <CTableHeaderCell>Status</CTableHeaderCell>
-                  <CTableHeaderCell>Payment Type</CTableHeaderCell>
+                  {/* <CTableHeaderCell>Status</CTableHeaderCell>
+                  <CTableHeaderCell>Payment Type</CTableHeaderCell> */}
                 </CTableRow>
               </CTableHead>
               <CTableBody>
@@ -640,7 +640,7 @@ const ProjectSummary = () => {
                       <CTableDataCell className="text-danger fw-bold">
                         {formatIndianCurrency(order.pending_amount || 0)}
                       </CTableDataCell>
-                      <CTableDataCell>
+                      {/* <CTableDataCell>
                         <CBadge color={status.color} size="lg">{status.text}</CBadge>
                         {order.is_settled && (
                           <CBadge color="success" className="ms-2">Settled</CBadge>
@@ -649,7 +649,7 @@ const ProjectSummary = () => {
                       <CTableDataCell>
                         {order.payment_type || 'N/A'}
                         {order.pay_later && <CBadge color="warning" className="ms-2">Pay Later</CBadge>}
-                      </CTableDataCell>
+                      </CTableDataCell> */}
                     </CTableRow>
                   );
                 })}

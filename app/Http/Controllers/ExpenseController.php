@@ -32,6 +32,7 @@ class ExpenseController extends Controller
         $endDate = $request->query('endDate');
         $customerId = $request->query('customerId');
         $expenseTypeId = $request->query('expenseTypeId');
+        $partyName = $request->query('partyName');
         $perPage = $request->query('perPage', 50);
         $cursor = $request->query('cursor');
 
@@ -54,11 +55,20 @@ class ExpenseController extends Controller
                 $query->where('project_id', $customerId);
             }
 
+             if ($customerId) {
+                $query->where('project_id', $customerId);
+            }
+
+             // party name filter
+        if ($partyName) {
+            $query->where('party_name', 'like', '%' . $partyName . '%');
+        }
+
             if ($startDate && $endDate) {
                 $query->whereBetween('expense_date', [$startDate, $endDate]);
             }
 
-            if (!$expenseTypeId && !$customerId && !($startDate && $endDate)) {
+            if (!$expenseTypeId && !$customerId && !$partyName && !($startDate && $endDate)) {
                 return response()->json(['error' => 'Please provide at least one filter'], 422);
             }
 
@@ -71,6 +81,10 @@ class ExpenseController extends Controller
             if ($customerId) {
                 $summaryQuery->where('project_id', $customerId);
             }
+
+             if ($partyName) {
+            $summaryQuery->where('party_name', 'like', '%' . $partyName . '%');
+        }
 
             if ($startDate && $endDate) {
                 $summaryQuery->whereBetween('expense_date', [$startDate, $endDate]);
@@ -132,6 +146,9 @@ class ExpenseController extends Controller
             'sgst' => 'nullable|numeric',
             'cgst' => 'nullable|numeric',
             'igst' => 'nullable|numeric',
+            'party_name'=> 'nullable|string',
+  'party_gst_number'=> 'nullable|string',
+  'party_address'=> 'nullable|string',
         ]);
 
         DB::beginTransaction();
@@ -166,6 +183,10 @@ class ExpenseController extends Controller
                 'sgst' => $request->sgst,
                 'cgst' => $request->cgst,
                 'igst' => $request->igst,
+                'party_name'=> $request->party_name,
+                'party_gst_number'=> $request->party_gst_number,
+                'party_address'=> $request->party_address,
+
             ]);
 
             // Handle multiple photos
@@ -277,8 +298,8 @@ class ExpenseController extends Controller
             'qty' => 'required|numeric|min:0',
             'total_price' => 'required|numeric|min:0',
             'show' => 'required|boolean',
-            'payment_by' => 'required|string',
-            'payment_type' => 'required|string',
+            'payment_by' => 'nullable|string',
+            'payment_type' => 'nullable|string',
             'bank_name' => 'nullable|string',
             'acc_number' => 'nullable|string',
             'ifsc' => 'nullable|string',
@@ -291,6 +312,10 @@ class ExpenseController extends Controller
             'new_photo_remarks.*' => 'nullable|string',
             'delete_photo_ids' => 'nullable|array',
             'delete_photo_ids.*' => 'integer|exists:expense_photos,id',
+
+            'party_name'=> 'nullable|string',
+  'party_gst_number'=> 'nullable|string',
+  'party_address'=> 'nullable|string',
         ]);
 
         $expense = Expense::where('id', $id)->where('company_id', $companyId)->first();
@@ -324,6 +349,11 @@ class ExpenseController extends Controller
                 'sgst' => $request->sgst,
                 'cgst' => $request->cgst,
                 'igst' => $request->igst,
+
+                  'party_name'=> $request->party_name,
+                'party_gst_number'=> $request->party_gst_number,
+                'party_address'=> $request->party_address,
+
             ]);
 
             // Delete photos if requested
@@ -508,6 +538,37 @@ class ExpenseController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+
+
+
+
+   /**
+ * Get unique party names for dropdown filter
+ */
+public function getUniquePartyNames()
+{
+    $user = Auth::user();
+
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    $companyId = $user->company_id;
+
+    $partyNames = Expense::where('company_id', $companyId)
+        ->whereNotNull('party_name')
+        ->where('party_name', '!=', '')
+        ->select('party_name')
+        ->distinct()
+        ->orderBy('party_name', 'asc')
+        ->pluck('party_name');
+
+    return response()->json($partyNames);
+}
+
+
+
 
 
 }

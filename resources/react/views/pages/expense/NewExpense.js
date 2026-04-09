@@ -53,6 +53,11 @@ const NewExpense = () => {
   const [showPhotoPreviewModal, setShowPhotoPreviewModal] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Add these states near your other useState calls
+const [isSubmittingSingle, setIsSubmittingSingle] = useState(false);
+const [isAddingToList, setIsAddingToList] = useState(false);
+const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { t } = useTranslation("global");
@@ -94,6 +99,10 @@ const NewExpense = () => {
   cgstAmount: 0,
   igstAmount: 0,
   baseAmount: 0,
+
+  party_name:"",
+  party_gst_number :"",
+  party_address:""
 
   });
 
@@ -186,89 +195,6 @@ const calculateFinalAmount = (item) => {
 
 
 
-
-
-  // const calculateFinalAmount = (item) => {
-  //   const qtyNum = parseFloat(item.qty) || 0;
-  //   const priceNum = parseFloat(item.price) || 0;
-  //   item.total_price = Math.round(qtyNum * priceNum);
-  // };
-
-  
-
-  // const handleChange = (e) => {
-  //   const { name, value, type, checked, files } = e.target;
-
-  //   setState((prev) => {
-  //     const updated = { ...prev };
-
-
-
-  //     if (type === "checkbox" && name === "isGst") {
-  //       // ✅ Only store boolean, no calculation
-  //       updated.isGst = checked;
-             
-  //     return calculateGST(updated);
-  //       // return updated;
-  //     }
-
-
-  //     if (["price", "qty", "gst", "cgst", "sgst", "igst"].includes(name)) {
-  //     updated[name] = value;
-  //     // Auto split total GST equally if total gst changed
-  //     if (name === "gst") {
-  //       updated.cgst = value / 2;
-  //       updated.sgst = value / 2;
-  //     }
-  //     return calculateGST(updated);
-  //   }
-
-
-
-
-  //     if (name === "price" || name === "qty") {
-  //       updated[name] = value;
-  //       // ✅ Recalculate total WITHOUT GST
-  //       calculateFinalAmount(updated);
-  //       return updated;
-  //     }
-
-  //     if (name === "expense_id") {
-  //       updated.expense_id = value;
-  //       updated.typeNotSet = !value;
-  //       return updated;
-  //     }
-
-  //     if (name === "name") {
-  //       const regex = /^[a-zA-Z0-9\u0900-\u097F ]*$/;
-  //       if (regex.test(value)) updated.name = value;
-  //       return updated;
-  //     }
-
-
-  //     if (name === "photoAvailable") {
-  //       updated.photoAvailable = checked;
-  //       if (checked) {
-  //         updated.photo_remark = ""; // clear remark if photo ON
-  //       } else {
-  //         updated.photo_url = null; // clear file if photo OFF
-  //       }
-  //       return updated;
-  //     }
-
-  //     if (type === "file" && name === "photo_url") {
-  //       updated.photo_url = files[0] || null;
-  //       return updated;
-  //     }
-
-  //     updated[name] = type === "checkbox" ? checked : value;
-  //     return updated;
-
-
-  //     updated[name] = value;
-  //     return updated;
-  //   });
-  // };
 
 const handleChange = (e) => {
   const { name, value, type, checked, files } = e.target;
@@ -439,8 +365,52 @@ const updatePhotoRemark = (photoId, remark) => {
     setCustomerSuggestions([]);
   };
 
+  // const addToExpensesList = () => {
+  //   if (state.expense_id && state.price > 0 && state.qty > 0 && state.project_id) { // ✅ Changed from customer_id to project_id
+  //     const expenseType = expenseTypes.find(type => type.id === parseInt(state.expense_id));
+  //     const currentLang = getCurrentLanguage();
+
+  //     const newExpense = {
+  //       ...state,
+  //       expense_type_name: expenseType ? getDisplayName(expenseType, currentLang) : 'Unknown',
+  //       customer_name: customerName.name,
+  //       photos: [...photos], // Include photos
+  //       id: Date.now()
+  //     };
+
+  //     if (editingExpense) {
+  //       const updatedList = expensesList.map(expense =>
+  //         expense.id === editingExpense.id ? { ...newExpense, id: editingExpense.id } : expense
+  //       );
+  //       setExpensesList(updatedList);
+  //       showToast('success', t("MSG.expense_updated_successfully"));
+  //       setEditingExpense(null);
+  //     } else {
+  //       setExpensesList([...expensesList, newExpense]);
+  //       showToast('success', t("MSG.expense_added_to_list"));
+  //     }
+
+  //     handleClear();
+  //   } else {
+  //     setState((old) => ({ ...old, typeNotSet: old.expense_id === undefined }));
+  //     showToast('danger', t("MSG.fill_required_fields"));
+  //   }
+  // };
+
+
+
   const addToExpensesList = () => {
-    if (state.expense_id && state.price > 0 && state.qty > 0 && state.project_id) { // ✅ Changed from customer_id to project_id
+  if (!state.expense_id || state.price <= 0 || state.qty <= 0 || !state.project_id) {
+    setState((old) => ({ ...old, typeNotSet: old.expense_id === undefined }));
+    showToast('danger', t("MSG.fill_required_fields"));
+    return;
+  }
+
+  setIsAddingToList(true);
+
+  // Small timeout just to show loader (optional – remove if not needed)
+  setTimeout(() => {
+    try {
       const expenseType = expenseTypes.find(type => type.id === parseInt(state.expense_id));
       const currentLang = getCurrentLanguage();
 
@@ -448,7 +418,7 @@ const updatePhotoRemark = (photoId, remark) => {
         ...state,
         expense_type_name: expenseType ? getDisplayName(expenseType, currentLang) : 'Unknown',
         customer_name: customerName.name,
-        photos: [...photos], // Include photos
+        photos: [...photos],
         id: Date.now()
       };
 
@@ -465,11 +435,13 @@ const updatePhotoRemark = (photoId, remark) => {
       }
 
       handleClear();
-    } else {
-      setState((old) => ({ ...old, typeNotSet: old.expense_id === undefined }));
-      showToast('danger', t("MSG.fill_required_fields"));
+    } finally {
+      setIsAddingToList(false);
     }
-  };
+  }, 300); // ← remove this setTimeout if you don't want artificial delay
+};
+
+
 
   const editExpenseFromList = (expense) => {
     setState({
@@ -488,6 +460,14 @@ const updatePhotoRemark = (photoId, remark) => {
       pending_amount: expense.pending_amount,
       show: expense.show,
       isGst: expense.isGst,
+
+// new 
+       party_name:expense.party_name,
+  party_gst_number :expense.party_gst_number,
+  party_address:expense.party_address,
+
+
+
     });
     setCustomerName({ name: expense.customer_name, id: expense.project_id }); // ✅ Changed from customer_id to project_id
     setPhotos(expense.photos || []); // Load photos when editing
@@ -541,6 +521,12 @@ const updatePhotoRemark = (photoId, remark) => {
       }
     }
 
+    if (!state.project_id || !state.expense_id || state.price <= 0 || state.qty <= 0) {
+    return;
+  }
+
+  setIsSubmittingSingle(true);
+
 
     const formData = new FormData();
 
@@ -574,6 +560,12 @@ const updatePhotoRemark = (photoId, remark) => {
     formData.append("cgst", state.cgstAmount || "");
     formData.append("igst", state.igstAmount || "");
 
+    formData.append("party_name", state.party_name || ""); 
+    formData.append("party_gst_number", state.party_gst_number || ""); 
+    formData.append("party_address", state.party_address || ""); 
+    
+
+
 
     // ✅ Add multiple photos if selected
     if (state.photoAvailable && photos.length > 0) {
@@ -597,6 +589,9 @@ const updatePhotoRemark = (photoId, remark) => {
       } catch (error) {
         showToast("danger", "Error occurred " + error);
       }
+      finally {
+    setIsSubmittingSingle(false);
+  }
     } else {
       setState((old) => ({ ...old, typeNotSet: old.expense_id === undefined }));
     }
@@ -607,63 +602,127 @@ const updatePhotoRemark = (photoId, remark) => {
     return Number((Math.round(value * 100) / 100).toFixed(2));
   };
 
-  const submitAllExpenses = async () => {
-    if (expensesList.length === 0) {
-      showToast('warning', t("MSG.add_atleast_one_expense"));
-      return;
-    }
-    setShowConfirmModal(true);
-  };
+  // const submitAllExpenses = async () => {
+  //   if (expensesList.length === 0) {
+  //     showToast('warning', t("MSG.add_atleast_one_expense"));
+  //     return;
+  //   }
+  //   setShowConfirmModal(true);
+  // };
 
-  const confirmSubmitAllExpenses = async () => {
-    try {
-      const promises = expensesList.map(expense => {
-        const { id, expense_type_name, customer_name, photos, ...expenseData } = expense;
+  // const confirmSubmitAllExpenses = async () => {
+  //   try {
+  //     const promises = expensesList.map(expense => {
+  //       const { id, expense_type_name, customer_name, photos, ...expenseData } = expense;
         
-        // Create FormData for each expense
-        const formData = new FormData();
+  //       // Create FormData for each expense
+  //       const formData = new FormData();
         
-        // Add all expense data
-        Object.keys(expenseData).forEach(key => {
-          if (expenseData[key] !== null && expenseData[key] !== undefined && expenseData[key] !== '') {
-            formData.append(key, expenseData[key]);
-          }
-        });
+  //       // Add all expense data
+  //       Object.keys(expenseData).forEach(key => {
+  //         if (expenseData[key] !== null && expenseData[key] !== undefined && expenseData[key] !== '') {
+  //           formData.append(key, expenseData[key]);
+  //         }
+  //       });
         
-        // Add photos if available
-        if (expense.photoAvailable && photos && photos.length > 0) {
-          photos.forEach((photo, index) => {
-            formData.append(`photos[${index}]`, photo.file);
-            if (photo.remark) {
-              formData.append(`photo_remarks[${index}]`, photo.remark);
-            }
-          });
+  //       // Add photos if available
+  //       if (expense.photoAvailable && photos && photos.length > 0) {
+  //         photos.forEach((photo, index) => {
+  //           formData.append(`photos[${index}]`, photo.file);
+  //           if (photo.remark) {
+  //             formData.append(`photo_remarks[${index}]`, photo.remark);
+  //           }
+  //         });
+  //       }
+        
+  //       return postFormData('/api/expense', formData);
+  //     });
+
+  //     const results = await Promise.all(promises);
+  //     const successCount = results.filter(result => result).length;
+
+  //     if (successCount === expensesList.length) {
+  //       const successMsg = t("MSG.expenses_submitted_successfully", { count: successCount })
+  //         || `${successCount} expenses submitted successfully`;
+  //       showToast('success', successMsg);
+  //       setExpensesList([]);
+  //       setEditingExpense(null);
+  //     } else {
+  //       const warningMsg = t("MSG.partial_expenses_submitted", { successCount, totalCount: expensesList.length })
+  //         || `${successCount} out of ${expensesList.length} expenses submitted`;
+  //       showToast('warning', warningMsg);
+  //     }
+  //   } catch (error) {
+  //     const errorMsg = t("MSG.error_occurred") || "Error occurred";
+  //     showToast('danger', `${errorMsg}: ${error}`);
+  //   }
+
+  //   setShowConfirmModal(false);
+  // };
+
+
+
+
+
+
+  const submitAllExpenses = async () => {
+  if (expensesList.length === 0) {
+    showToast('warning', t("MSG.add_atleast_one_expense"));
+    return;
+  }
+  setShowConfirmModal(true);
+};
+
+const confirmSubmitAllExpenses = async () => {
+  setIsSubmittingAll(true);
+  setShowConfirmModal(false);
+
+  try {
+    const promises = expensesList.map(expense => {
+      const { id, expense_type_name, customer_name, photos, ...expenseData } = expense;
+      
+      const formData = new FormData();
+      Object.keys(expenseData).forEach(key => {
+        if (expenseData[key] !== null && expenseData[key] !== undefined && expenseData[key] !== '') {
+          formData.append(key, expenseData[key]);
         }
-        
-        return postFormData('/api/expense', formData);
       });
 
-      const results = await Promise.all(promises);
-      const successCount = results.filter(result => result).length;
-
-      if (successCount === expensesList.length) {
-        const successMsg = t("MSG.expenses_submitted_successfully", { count: successCount })
-          || `${successCount} expenses submitted successfully`;
-        showToast('success', successMsg);
-        setExpensesList([]);
-        setEditingExpense(null);
-      } else {
-        const warningMsg = t("MSG.partial_expenses_submitted", { successCount, totalCount: expensesList.length })
-          || `${successCount} out of ${expensesList.length} expenses submitted`;
-        showToast('warning', warningMsg);
+      if (expense.photoAvailable && photos && photos.length > 0) {
+        photos.forEach((photo, index) => {
+          formData.append(`photos[${index}]`, photo.file);
+          if (photo.remark) {
+            formData.append(`photo_remarks[${index}]`, photo.remark);
+          }
+        });
       }
-    } catch (error) {
-      const errorMsg = t("MSG.error_occurred") || "Error occurred";
-      showToast('danger', `${errorMsg}: ${error}`);
-    }
 
-    setShowConfirmModal(false);
-  };
+      return postFormData('/api/expense', formData);
+    });
+
+    const results = await Promise.all(promises);
+    const successCount = results.filter(result => result).length;
+
+    if (successCount === expensesList.length) {
+      showToast('success', `${successCount} expenses submitted successfully`);
+      setExpensesList([]);
+      setEditingExpense(null);
+    } else {
+      showToast('warning', `${successCount} out of ${expensesList.length} submitted`);
+    }
+  } catch (error) {
+    showToast('danger', `Error: ${error.message}`);
+  } finally {
+    setIsSubmittingAll(false);
+  }
+};
+
+
+
+
+
+
+
 
   const getTotalAmount = () => {
     const total = expensesList.reduce((sum, item) => {
@@ -705,6 +764,10 @@ const updatePhotoRemark = (photoId, remark) => {
       acc_number: '',
       ifsc: '',
       transaction_id: '',
+
+       party_name:'',
+  party_gst_number :'',
+  party_address:'',
 
     });
     setCustomerName({ name: '', id: null });
@@ -902,7 +965,14 @@ const updatePhotoRemark = (photoId, remark) => {
                       />
 
                     </div>
+
+
                   </div>
+
+
+
+
+
                   <div className="col-sm-3">
                     <div className="mb-3">
                       <CFormLabel htmlFor="name"><b>{t("LABELS.about_expense")}</b></CFormLabel>
@@ -932,6 +1002,60 @@ const updatePhotoRemark = (photoId, remark) => {
                     </div>
                   </div>
                 </div>
+
+
+
+
+ <div className="row align-items-end">
+
+ <div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="name"><b>Party Name</b></CFormLabel>
+                      <CFormInput
+                        type="text"
+                        id="party_name"
+                        placeholder="Enter a party name"
+                        name="party_name"
+                        value={state.party_name}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                  </div>
+
+                  
+<div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="name"><b>GST Number</b></CFormLabel>
+                      <CFormInput
+                        type="text"
+                        id="party_gst_number"
+                        placeholder="Enter a Party GST Number"
+                        name="party_gst_number"
+                        value={state.party_gst_number}
+                        onChange={handleChange}
+                      />
+                    </div> </div>
+
+
+                    <div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="name"><b>Address</b></CFormLabel>
+                      <CFormInput
+                        type="text"
+                        id="party_address"
+                        placeholder="Enter Address"
+                        name="party_address"
+                        value={state.party_address}
+                        onChange={handleChange}
+                      />
+                    </div> </div>
+
+</div>
+
+
+
+
 
                 <div className="row align-items-end">
                   <div className="col-sm-3">
@@ -1110,7 +1234,7 @@ const updatePhotoRemark = (photoId, remark) => {
 
 
                 <div className="row">
-                  <div className="col-sm-3">
+                  <div className="col-sm-4">
                     <div className="mb-3">
                       <CFormLabel htmlFor="contact">
                         <b>{t("LABELS.contact")}</b>
@@ -1149,7 +1273,7 @@ const updatePhotoRemark = (photoId, remark) => {
                       />
                     </div>
                   </div> */}
-                  <div className="col-sm-3">
+                  <div className="col-sm-4">
                     <div className="mb-3">
                       <CFormLabel htmlFor="payment_by">
                         <b>{t("LABELS.payment_by")}</b>
@@ -1171,7 +1295,7 @@ const updatePhotoRemark = (photoId, remark) => {
                     </div>
                   </div>
 
-                  <div className="col-sm-3">
+                  <div className="col-sm-4">
                     <div className="mb-3">
                       <CFormLabel htmlFor="payment_type"><b>{t("LABELS.payment_type")}</b></CFormLabel>
                       <CFormSelect
@@ -1193,7 +1317,7 @@ const updatePhotoRemark = (photoId, remark) => {
                     </div>
                   </div>
 
-                  <div className="col-sm-3">
+                  {/* <div className="col-sm-3">
                     <div className="mb-3">
                       <CFormLabel htmlFor="pending_amount"><b>{t("LABELS.pending_amount")}</b></CFormLabel>
                       <CFormInput
@@ -1205,7 +1329,7 @@ const updatePhotoRemark = (photoId, remark) => {
                         onChange={handleChange}
                       />
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
 
@@ -1413,13 +1537,50 @@ const updatePhotoRemark = (photoId, remark) => {
 
 
                 <div className="mb-3 mt-3">
-                  <CButton color="success" type="submit">
+                  {/* <CButton color="success" type="submit">
                     {t("LABELS.submit")}
-                  </CButton>
+                  </CButton> */}
+
+
+
+<CButton
+  color="success"
+  type="submit"
+  disabled={isSubmittingSingle || !state.project_id || !state.expense_id || state.price <= 0 || state.qty <= 0}
+>
+  {isSubmittingSingle ? (
+    <>
+      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      Submitting...
+    </>
+  ) : (
+    t("LABELS.submit")
+  )}
+</CButton>
+
                   &nbsp;
-                  <CButton color="primary" type="button" onClick={addToExpensesList}>
+                  {/* <CButton color="primary" type="button" onClick={addToExpensesList}>
                     {editingExpense ? t("LABELS.update_in_list") : t("LABELS.add_to_list")}
-                  </CButton>
+                  </CButton> */}
+
+                  {/* <CButton
+  color="primary"
+  type="button"
+  onClick={addToExpensesList}
+  disabled={isAddingToList}
+>
+  {isAddingToList ? (
+    <>
+      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      {editingExpense ? "Updating..." : "Adding..."}
+    </>
+  ) : editingExpense ? (
+    t("LABELS.update_in_list")
+  ) : (
+    t("LABELS.add_to_list")
+  )}
+</CButton> */}
+
                   &nbsp;
                   {editingExpense && (
                     <>
@@ -1512,14 +1673,34 @@ const updatePhotoRemark = (photoId, remark) => {
                   </CTable>
                 </div>
                 <div className="mt-3">
-                  <CButton
+                  {/* <CButton
                     color="success"
                     size="lg"
                     onClick={submitAllExpenses}
                     disabled={editingExpense !== null}
                   >
                     {t("LABELS.submit_all_expenses")} ({expensesList.length})
-                  </CButton>
+                  </CButton> */}
+
+
+<CButton
+  color="success"
+  size="lg"
+  onClick={submitAllExpenses}
+  disabled={isSubmittingAll || editingExpense !== null || expensesList.length === 0}
+>
+  {isSubmittingAll ? (
+    <>
+      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      Submitting {expensesList.length}...
+    </>
+  ) : (
+    <>
+      {t("LABELS.submit_all_expenses")} ({expensesList.length})
+    </>
+  )}
+</CButton>
+
                   {editingExpense && (
                     <div className="mt-2">
                       <small className="text-warning">

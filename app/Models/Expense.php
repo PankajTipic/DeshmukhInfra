@@ -38,7 +38,11 @@ class Expense extends Model
         'pan',
         'transaction_id',
 
-        'gst','sgst','cgst','igst'
+        'gst','sgst','cgst','igst',
+
+         'party_name',
+  'party_gst_number',
+  'party_address',
 
     ];
 
