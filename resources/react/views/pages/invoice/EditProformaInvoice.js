@@ -3444,7 +3444,18 @@ const EditProformaInvoice = () => {
                     )
                   }
                   return (
-                    <CBadge color="info" key={i} className="px-3 py-2" style={{ fontSize: '0.9rem' }}>
+                    // <CBadge color="info" key={i} className="px-3 py-2" style={{ fontSize: '0.9rem' }}>
+
+<CBadge color="info" key={i} className="px-3 py-2" style={{ 
+  fontSize: '0.9rem',
+  whiteSpace: 'normal',
+  maxWidth: '100%',
+  display: 'inline-block',
+  wordBreak: 'break-word',
+  textAlign: 'left',
+  lineHeight: '1.5',
+}}>
+
                       {term}
                       <CIcon
                         icon={cilPencil}
@@ -3519,7 +3530,16 @@ const EditProformaInvoice = () => {
                     )
                   }
                   return (
-                    <CBadge color="warning" key={i} className="px-3 py-2" style={{ fontSize: '0.9rem' }}>
+                    // <CBadge color="warning" key={i} className="px-3 py-2" style={{ fontSize: '0.9rem' }}>
+                    <CBadge color="warning" key={i} className="px-3 py-2" style={{ 
+  fontSize: '0.9rem',
+  whiteSpace: 'normal',
+  maxWidth: '100%',
+  display: 'inline-block',
+  wordBreak: 'break-word',
+  textAlign: 'left',
+  lineHeight: '1.5',
+}}>
                       {cond}
                       <CIcon
                         icon={cilPencil}

@@ -134,6 +134,13 @@ const NewPurchesVendor = React.lazy(()=>import('./views/pages/Oprator/NewPurches
 const PurchaseVendorReport = React.lazy(()=>import('./views/pages/budget/purchaseVendorReport.js'))
 const PurchaseVendorLedgerReport = React.lazy(()=>import('./views/pages/budget/purchseVendorLadgerReport.js'))
 const seprateAllData  = React.lazy(() => import('./views/pages/report/seprateAllData.js'))
+
+const machineryStockUpdate  = React.lazy(() => import('./views/pages/Machinary/MachineryStockUpdation.js'))
+const machineryStockTable  = React.lazy(() => import('./views/pages/Machinary/MachineryStockTable.js'))
+
+const dailyActivityDashboard = React.lazy(() => import('./views/dashboard/DailyActivityDashboard.js'))
+
+
  
 export default function fetchRoutes(){
   const user=getUserType();
@@ -182,7 +189,7 @@ export default function fetchRoutes(){
       { path: '/Reports/Reports', name: 'Reports', element: All_Reports },
       // { path: 'products/updateqty', name: 'Update Bulk Quantity', element: BulkQuantity },
       { path:'/resetPassword', name: 'Update Password', element: Resetpassword },
-    { path: '/updatepassword', name: 'Reset Password', element: Updatepassword },
+      { path: '/updatepassword', name: 'Reset Password', element: Updatepassword },
 
       { path:'/usermanagement/create-user', name: 'Create User', element: NewUsers },
       { path:'usermanagement/all-users', name: 'All Users', element: AllUser },
@@ -198,6 +205,10 @@ export default function fetchRoutes(){
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+      
+      { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+
 
 
      
@@ -284,6 +295,12 @@ export default function fetchRoutes(){
 
  { path: '/seprateAllData', name: 'All Data', element: seprateAllData },
 
+       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+
+
+      { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+
 
   ]
   }
@@ -361,6 +378,8 @@ export default function fetchRoutes(){
 
   { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
+
+ 
 
   ]
   }

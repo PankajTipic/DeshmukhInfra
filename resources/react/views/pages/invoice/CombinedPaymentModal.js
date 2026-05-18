@@ -339,14 +339,39 @@ const CombinedPaymentModal = ({
                         >
                           <CIcon icon={cilNotes} />
                         </CButton>
-                        <CButton
+                        {/* <CButton
                           color="warning"
                           size="sm"
                           onClick={() => handleEditProformaInvoice(proforma.id)}
                           title="Edit Proforma Invoice"
                         >
                           <CIcon icon={cilEyedropper} /> 
-                        </CButton>
+                        </CButton> */}
+
+                        <CButton
+  color="warning"
+  size="sm"
+  onClick={() => {
+    if (parseFloat(proforma.paid_amount || 0) > 0) {
+      showToast(
+        'warning',
+        'Payment has been recorded for this proforma invoice. Editing is not allowed.',
+        5000
+      );
+    } else {
+      handleEditProformaInvoice(proforma.id);
+    }
+  }}
+  disabled={parseFloat(proforma.paid_amount || 0) > 0}
+  title={
+    parseFloat(proforma.paid_amount || 0) > 0 
+      ? "Payment recorded - Editing disabled" 
+      : "Edit Proforma Invoice"
+  }
+>
+  <CIcon icon={cilEyedropper} /> 
+  Edit
+</CButton>
                       </div>
                     </div>
                     
@@ -479,6 +504,7 @@ const CombinedPaymentModal = ({
         />
       )}
     </>
+  
   )
 }
 

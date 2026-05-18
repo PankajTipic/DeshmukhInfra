@@ -2016,48 +2016,56 @@ const handleWorkChange = (index, field, value) => {
   const isWorkOrder = item.isWorkOrder === true;
   const alreadyBilled = item.alreadyBilledQty || 0;
 
-  // if (field === 'qty') {
-  //   // Allow completely empty field (user deleted everything)
-  //   if (value === '' || value === null) {
-  //     updated[index].qty = '';
-  //   }
-  //   // When user actually types a number
-  //   else {
-  //     const parsed = parseFloat(value);
-  //     let newQty = Number.isNaN(parsed) ? 0 : parsed;
-
-  //     // Enforce minimum ONLY when user has entered a real number
-  //     // and it's a work order row with previous billing
-  //     if (isWorkOrder && alreadyBilled > 0 && newQty < alreadyBilled) {
-  //       showToast(
-  //         'danger',
-  //         `Quantity cannot be less than already billed (${alreadyBilled.toFixed(2)}). You can only add more.`
-  //       );
-  //       newQty = alreadyBilled;
-  //     }
-
-  //     updated[index].qty = newQty;
-  //   }
-  // }
 
 
-  if (field === 'qty') {
+//   if (field === 'qty') {
+//   const updated = [...works];
+
+//   // Always allow any typing (including empty)
+//   updated[index].qtyDisplay = value;
+
+//   // Parse for calculation (treat empty as null / no value yet)
+//   let newQty = null;
+//   if (value.trim() !== '') {
+//     const parsed = parseFloat(value);
+//     newQty = isNaN(parsed) ? null : parsed;
+//   }
+
+//   updated[index].qty = newQty;
+
+//   // Live calculation (use 0 if still invalid/empty)
+//   const qtyForCalc = newQty ?? 0;
+//   const price = updated[index].price || 0;
+//   const gstPercent = updated[index].gst_percent ?? 0;
+
+//   const baseAmount = qtyForCalc * price;
+//   const halfGST = gstPercent / 2;
+
+//   updated[index].cgst_amount = baseAmount * (halfGST / 100);
+//   updated[index].sgst_amount = baseAmount * (halfGST / 100);
+//   updated[index].total_price = baseAmount + updated[index].cgst_amount + updated[index].sgst_amount;
+
+//   setWorks(updated);
+//   calculateTotals(updated);
+// }
+
+if (field === 'qty') {
   const updated = [...works];
+  // const value = e.target.value;   // already passed as value
 
-  // Always allow any typing (including empty)
+  // Allow empty string (user deleting) or valid number including 0
   updated[index].qtyDisplay = value;
 
-  // Parse for calculation (treat empty as null / no value yet)
   let newQty = null;
   if (value.trim() !== '') {
     const parsed = parseFloat(value);
-    newQty = isNaN(parsed) ? null : parsed;
+    newQty = isNaN(parsed) ? 0 : parsed;
   }
 
-  updated[index].qty = newQty;
+  updated[index].qty = newQty ?? 0;   // treat empty as 0 for calculation
 
-  // Live calculation (use 0 if still invalid/empty)
-  const qtyForCalc = newQty ?? 0;
+  // Recalculate row totals
+  const qtyForCalc = updated[index].qty || 0;
   const price = updated[index].price || 0;
   const gstPercent = updated[index].gst_percent ?? 0;
 
@@ -2070,6 +2078,7 @@ const handleWorkChange = (index, field, value) => {
 
   setWorks(updated);
   calculateTotals(updated);
+  return;   // Important: return early
 }
 
 
@@ -2256,10 +2265,19 @@ if (invalidRows.length > 0) {
   customer_id: form.customer_id,
   address: form.address,
   mobile_number: form.mobile_number,
-  items: works.filter((w) => w.work_type && w.qty > 0).map(w => ({
+  // items: works.filter((w) => w.work_type && w.qty > 0).map(w => ({
+  //   ...w,
+  //   work_sub_description: w.sub_descriptions.join('\n'),
+  // })),
+
+  items: works
+  .filter((w) => w.work_type && w.work_type.trim() !== '')   // Only require work_type
+  .map(w => ({
     ...w,
     work_sub_description: w.sub_descriptions.join('\n'),
   })),
+
+
   payment_terms: paymentTerms.join('\n'),
   terms_and_conditions: termsAndConditions.join('\n'),
   note: note,
@@ -2609,7 +2627,7 @@ const saveNewProject = async () => {
 
 
 
-                <div className="d-flex flex-wrap gap-2 mb-3">
+                {/* <div className="d-flex flex-wrap gap-2 mb-3">
  {w.sub_descriptions.map((desc, subIdx) => {
   const isEditing = editingSubDescWorkIdx === idx && editingSubDescIdx === subIdx;
 
@@ -2666,18 +2684,22 @@ const saveNewProject = async () => {
       color="light"
       textColor="dark"
       // shape="rounded-pill"
-     
-      className="px-3 py-2 d-flex align-items-center gap-2 border border-secondary-subtle"
-      style={{
-        fontSize: '0.95rem',
-        fontWeight: 500,
-        backgroundColor: '#f1f3f5',
-      }}
+ className="px-3 py-2 d-flex align-items-center gap-2 border border-secondary-subtle"
+      style={{ 
+  fontSize: '0.9rem',
+  whiteSpace: 'normal',
+  maxWidth: '100%',
+  display: 'inline-block',
+  wordBreak: 'break-word',
+  textAlign: 'left',
+  lineHeight: '1.5',
+}}
     >
       {desc}
       <CIcon
         icon={cilPencil}
-        size="sm"
+        size="xl"
+        style={{ fontSize: '1.35rem' }}
         className="cursor-pointer text-primary"
         onClick={() => {
           setEditingSubDescWorkIdx(idx);
@@ -2687,7 +2709,7 @@ const saveNewProject = async () => {
       />
       <CIcon
         icon={cilX}
-        size="sm"
+        size="xl"
         className="cursor-pointer text-danger"
         onClick={() => {
           const updated = [...works];
@@ -2698,12 +2720,105 @@ const saveNewProject = async () => {
     </CBadge>
   );
 })}
+</div> */}
+
+
+
+
+{/* FIXED Sub Descriptions Badges - Icons always visible & proper size */}
+<div className="d-flex flex-wrap gap-2 mb-3">
+  {(w.sub_descriptions || []).map((desc, subIdx) => {
+    const isEditing = editingSubDescWorkIdx === idx && editingSubDescIdx === subIdx;
+
+    if (isEditing) {
+      return (
+        <CInputGroup key={subIdx} size="sm" className="align-items-center" style={{ width: 'auto', minWidth: '320px' }}>
+          <CFormInput
+            value={editingSubDescValue}
+            onChange={(e) => setEditingSubDescValue(e.target.value)}
+            autoFocus
+          />
+          <CButton
+          color="success"
+          size="sm"
+          onClick={() => {
+            if (editingSubDescValue.trim() === '') {
+              showToast('warning', 'Sub-description cannot be empty');
+              return;
+            }
+            const updatedWorks = [...works];
+            updatedWorks[idx].sub_descriptions[subIdx] = editingSubDescValue.trim();
+            setWorks(updatedWorks);
+            setEditingSubDescWorkIdx(-1);
+            setEditingSubDescIdx(-1);
+            setEditingSubDescValue('');
+          }}
+        >
+          Save
+        </CButton>
+        <CButton
+          color="secondary"
+          size="sm"
+          onClick={() => {
+            setEditingSubDescWorkIdx(-1);
+            setEditingSubDescIdx(-1);
+            setEditingSubDescValue('');
+          }}
+        >
+          Cancel
+        </CButton>
+        </CInputGroup>
+      );
+    }
+
+    return (
+      <div
+        key={subIdx}
+        className="d-flex align-items-start gap-2 border border-secondary-subtle rounded px-3 py-2"
+        style={{
+          backgroundColor: '#f1f3f5',
+          maxWidth: '100%',
+          minWidth: '150px',
+          fontSize: '0.95rem',
+          fontWeight: 500,
+          lineHeight: '1.5',
+          wordBreak: 'break-word',
+        }}
+      >
+        {/* Text Part - Takes all available space */}
+        <div style={{ flex: 1, paddingTop: '3px' }}>
+          {desc}
+        </div>
+
+        {/* Icons Container - Fixed size, never shrinks */}
+        <div className="d-flex align-items-center gap-1 flex-shrink-0 pt-1">
+          <CIcon
+            icon={cilPencil}
+            size="xl"
+            className="cursor-pointer text-primary"
+            style={{ fontSize: '1.45rem' }}   // ← Clear & Big size
+            onClick={() => {
+              setEditingSubDescWorkIdx(idx);
+              setEditingSubDescIdx(subIdx);
+              setEditingSubDescValue(desc);
+            }}
+          />
+          <CIcon
+            icon={cilX}
+            size="lg"
+            className="cursor-pointer text-danger"
+            style={{ fontSize: '1.25rem' }}
+            onClick={() => {
+              const updated = [...works];
+              updated[idx].sub_descriptions.splice(subIdx, 1);
+              setWorks(updated);
+            }}
+          />
+        </div>
+      </div>
+    );
+  })}
 </div>
-
-
-
-
-
 
 
 
@@ -2791,7 +2906,7 @@ const saveNewProject = async () => {
 
         <CCol md={3}>
           <CFormLabel>
-            Rate *
+            Rate 
             {w.isWorkOrder && w.alreadyBilledQty > 0 && (
               <small className="text-danger d-block mt-1">
                 Price locked (already billed)
@@ -2952,7 +3067,8 @@ const saveNewProject = async () => {
 </CRow>
 
               <h6 className="mt-4 mb-3 fw-semibold text-primary border-bottom border-primary pb-2">Payment Terms</h6>
-              <div className="d-flex flex-wrap gap-2 mb-3">
+              {/* <div className="d-flex flex-wrap gap-2 mb-3"> */}
+              <div className="d-flex flex-wrap gap-2 mb-3" style={{ alignItems: 'flex-start' }}>
                 {paymentTerms.map((term, idx) => {
                   if (editingPaymentIndex === idx) {
                     return (
@@ -2979,7 +3095,17 @@ const saveNewProject = async () => {
                     );
                   } else {
                     return (
-                      <CBadge color="info" key={idx} className="me-1 mb-1" style={{ fontSize: '0.9em' }}>
+                      // <CBadge color="info" key={idx} className="me-1 mb-1" style={{ fontSize: '0.9em' }}>
+                      <CBadge color="info" key={idx} className="me-1 mb-1" style={{ 
+  fontSize: '0.9em', 
+  whiteSpace: 'normal', 
+  maxWidth: '100%',
+  display: 'inline-block',
+  wordBreak: 'break-word',
+  textAlign: 'left',
+  lineHeight: '1.5',
+  padding: '6px 10px'
+}}>
                         {term}
                         <CIcon
                           icon={cilPencil}
@@ -3054,7 +3180,18 @@ const saveNewProject = async () => {
                     );
                   } else {
                     return (
-                      <CBadge color="warning" key={idx} className="me-1 mb-1" style={{ fontSize: '0.9em' }}>
+                      // <CBadge color="warning" key={idx} className="me-1 mb-1" style={{ fontSize: '0.9em' }}>
+
+                      <CBadge color="warning" key={idx} className="me-1 mb-1" style={{ 
+  fontSize: '0.9em', 
+  whiteSpace: 'normal', 
+  maxWidth: '100%',
+  display: 'inline-block',
+  wordBreak: 'break-word',
+  textAlign: 'left',
+  lineHeight: '1.5',
+  padding: '6px 10px'
+}}>
                         {term}
                         <CIcon
                           icon={cilPencil}

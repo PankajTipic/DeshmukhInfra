@@ -1254,21 +1254,67 @@ if (advances.length > 0) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
 
+    // const printBlock = (title, value) => {
+    //   if (!value?.trim()) return;
+    //   doc.setFont('helvetica', 'bold');
+    //   doc.setFontSize(12);
+    //   y += 10;
+    //   doc.text(title, margin, y);
+    //   y += 14;
+    //   doc.setFont('helvetica', 'normal');
+    //   doc.setFontSize(10);
+
+    //   const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
+    //   lines.forEach(line => {
+    //     const wrapped = doc.splitTextToSize(line, contentWidth);
+    //     doc.text(wrapped, margin, y);
+    //     y += wrapped.length * 13;
+    //   });
+    //   y += 12;
+    // };
+
+    // printBlock('Notes', proformaInvoice.notes);
+    // printBlock('Payment Terms', proformaInvoice.payment_terms);
+    // printBlock('Terms & Conditions', proformaInvoice.terms_conditions);
+
+    // drawFooter();
+  
+  
+
+    const bottomSafeY = pageHeight - 80;
+
     const printBlock = (title, value) => {
       if (!value?.trim()) return;
+
+      if (y + 10 + 16 + 13 > bottomSafeY) {
+        doc.addPage();
+        y = drawCompanyHeader(false) + 3;
+        drawFooter();
+      }
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       y += 10;
       doc.text(title, margin, y);
-      y += 14;
+      y += 16;
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
 
       const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
-      lines.forEach(line => {
+      lines.forEach((line) => {
         const wrapped = doc.splitTextToSize(line, contentWidth);
-        doc.text(wrapped, margin, y);
-        y += wrapped.length * 13;
+        wrapped.forEach((wline) => {
+          if (y + 13 > bottomSafeY) {
+            doc.addPage();
+            y = drawCompanyHeader(false) + 3;
+            drawFooter();
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+          }
+          doc.text(wline, margin, y);
+          y += 13;
+        });
       });
       y += 12;
     };
@@ -1278,6 +1324,9 @@ if (advances.length > 0) {
     printBlock('Terms & Conditions', proformaInvoice.terms_conditions);
 
     drawFooter();
+
+
+  
   }
 
   /* ---------- OUTPUT ---------- */

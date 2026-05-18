@@ -53,7 +53,10 @@ use App\Http\Controllers\RulesController;
 
 use App\Http\Controllers\ProformaInvoiceController;
 use App\Http\Controllers\InternalMoneyTransferController;
-use App\Http\Controllers\PurchesVendorController;
+use App\Http\Controllers\PurchesVendorController; 
+use App\Http\Controllers\MachineryStockUpdateController;  
+
+use App\Http\Controllers\DashboardController;
 
 
 
@@ -503,6 +506,17 @@ Route::delete('/company-receipts/{id}', [CompanyReceiptController::class, 'destr
 
       // Onboarding Partner Type
 
+Route::post('/machinery-stock-update', [MachineryStockUpdateController::class, 'store']);
+Route::get('/machinery-stock-update', [MachineryStockUpdateController::class, 'getData']);
+Route::post('/machinery-stock-transfer', [MachineryStockUpdateController::class, 'transferStock']);
+Route::put('/machinery-stock-update/{id}', [MachineryStockUpdateController::class, 'update']);
+Route::put('/machinery-stock-items/{id}', [MachineryStockUpdateController::class, 'updateStockItem']);
+Route::get('/machinery-stock-logs/{stock_item_id}', [MachineryStockUpdateController::class, 'getStockLogs']);
+
+
+
+Route::get('/dashboard/today-activity', [DashboardController::class, 'todayLatestActivity']);
+
 
 });
 
@@ -558,5 +572,8 @@ Route::post('/reset-password-link', [MailController::class, 'sendEmail']);
 Route::post('/resetPassword',[MailController::class, 'resetPassword']);
 Route::post('/send-otp', [OtpController::class, 'sendOtp']);
 Route::post('/verify-otp', [OtpController::class, 'verifyOtp']);
+
+
+Route::put('/orders/{orderId}/adjust-income', [OrderController::class, 'adjustIncomeAfterBillChange']);
 
 

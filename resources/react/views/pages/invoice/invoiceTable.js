@@ -50,6 +50,13 @@ const observerTarget = useRef(null)
   const [projects, setProjects] = useState([])
   const [projectTypes, setProjectTypes] = useState([])
 
+  const [showAdjustModal, setShowAdjustModal] = useState(false)
+const [selectedAdjustOrder, setSelectedAdjustOrder] = useState(null)
+const [newAmount, setNewAmount] = useState('')
+const [adjustLoading, setAdjustLoading] = useState(false)
+
+const [adjustmentReason, setAdjustmentReason] = useState('');
+
 
  const [filters, setFilters] = useState({
   project_id: '',
@@ -134,43 +141,6 @@ useEffect(() => {
 
 
 
-
-
-//   const fetchOrders = async (cursor = null, isLoadMore = false) => {
-//   try {
-//     if (isLoadMore) {
-//       setLoadingMore(true)
-//     } else {
-//       setLoading(true)
-//     }
-
-//     // Build URL with cursor for pagination
-//     const url = cursor 
-//       ? `/api/getAllData?cursor=${cursor}&perPage=25`
-//       : '/api/getAllData?perPage=25'
-    
-//     const response = await getAPICall(url)
-    
-//     if (isLoadMore) {
-//       // Append new data to existing orders (for infinite scroll)
-//       setOrders(prev => [...prev, ...(response.data || [])])
-//     } else {
-//       // Replace orders (for initial load or refresh)
-//       setOrders(response.data || [])
-//     }
-    
-//     // Update pagination state from API response
-//     setNextCursor(response.next_cursor)
-//     setHasMore(response.has_more_pages)
-    
-//   } catch (error) {
-//     console.error('Error fetching orders:', error)
-//     showAlert('Failed to fetch orders', 'danger')
-//   } finally {
-//     setLoading(false)
-//     setLoadingMore(false)
-//   }
-// }
 
 
 const fetchOrders = async (cursor = null, isLoadMore = false) => {
@@ -465,6 +435,73 @@ const handleDeleteOrder = async (orderId) => {
 
 
 
+
+// const handleAdjustClick = (order) => {
+//   setSelectedAdjustOrder(order)
+//   setNewAmount(order.finalAmount || 0)
+//   setShowAdjustModal(true)
+// }
+
+// const handleAdjustSubmit = async () => {
+//   try {
+//     setAdjustLoading(true)
+
+//     await put(`/api/orders/${selectedAdjustOrder.id}/adjust-income`, {
+//       new_final_amount: newAmount
+//     })
+
+//     showAlert('Income adjusted successfully', 'success')
+//     setShowAdjustModal(false)
+//     fetchOrders()
+
+//   } catch (error) {
+//     console.error(error)
+//     showAlert('Failed to adjust income', 'danger')
+//   } finally {
+//     setAdjustLoading(false)
+//   }
+// }
+
+
+
+
+
+
+
+
+const handleAdjustClick = (order) => {
+  setSelectedAdjustOrder(order);
+  setNewAmount(order.finalAmount || 0);
+  setAdjustmentReason('');           // Reset reason
+  setShowAdjustModal(true);
+};
+
+const handleAdjustSubmit = async () => {
+  if (!adjustmentReason.trim()) {
+    showAlert('Please provide a reason for the adjustment', 'warning');
+    return;
+  }
+
+  try {
+    setAdjustLoading(true);
+
+    await put(`/api/orders/${selectedAdjustOrder.id}/adjust-income`, {
+      new_final_amount: parseFloat(newAmount),
+      adjustment_reason: adjustmentReason.trim()
+    });
+
+    showAlert('Income adjusted successfully', 'success');
+    setShowAdjustModal(false);
+    setAdjustmentReason('');
+    fetchOrders();   // Refresh list
+
+  } catch (error) {
+    console.error(error);
+    showAlert(error.response?.data?.message || 'Failed to adjust income', 'danger');
+  } finally {
+    setAdjustLoading(false);
+  }
+};
 
 
 
@@ -836,6 +873,20 @@ const handleDeleteOrder = async (orderId) => {
   <CIcon icon={cilTrash} />
 </CButton>
 
+
+<CButton
+  color="dark"
+  size="sm"
+  onClick={() => handleAdjustClick(order)}
+  title="Adjust Income"
+>
+  {/* ₹ */}
+  <CIcon icon={cilChart} />
+</CButton>
+
+
+
+
                             </div>
                           </CTableDataCell>
                         </CTableRow>
@@ -989,6 +1040,176 @@ const handleDeleteOrder = async (orderId) => {
 )}
 
 
+
+
+
+
+{/* {showAdjustModal && selectedAdjustOrder && (
+  <div 
+    className="modal fade show" 
+    style={{ display: 'block', background: 'rgba(0,0,0,0.5)' }}
+  >
+    <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            Adjust Income - {selectedAdjustOrder.invoice_number}
+          </h5>
+          <button 
+            type="button" 
+            className="btn-close" 
+            onClick={() => setShowAdjustModal(false)}
+          />
+        </div>
+
+        <div className="modal-body">
+          <p className="mb-2">
+            Current Bill: <strong>₹ {selectedAdjustOrder.finalAmount}</strong>
+          </p>
+
+          <label className="form-label">New Bill Amount</label>
+          <input
+            type="number"
+            className="form-control"
+            value={newAmount}
+            onChange={(e) => setNewAmount(e.target.value)}
+          />
+
+          <small className="text-muted">
+            If reduced, adjustment entry will be created automatically.
+          </small>
+        </div>
+
+        <div className="modal-footer">
+          <CButton 
+            color="secondary" 
+            onClick={() => setShowAdjustModal(false)}
+          >
+            Cancel
+          </CButton>
+
+          <CButton 
+            color="primary" 
+            onClick={handleAdjustSubmit}
+            disabled={adjustLoading}
+          >
+            {adjustLoading ? <CSpinner size="sm" /> : 'Confirm'}
+          </CButton>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)} */}
+
+{/* IMPROVED ADJUST INCOME MODAL */}
+{showAdjustModal && selectedAdjustOrder && (
+  <div 
+    className="modal fade show" 
+    style={{ display: 'block', background: 'rgba(0,0,0,0.5)' }}
+  >
+    <div className="modal-dialog modal-dialog-centered modal-lg">   {/* modal-lg for more space */}
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            Adjust Income - {selectedAdjustOrder.invoice_number || `ORD-${selectedAdjustOrder.id}`}
+          </h5>
+          <button 
+            type="button" 
+            className="btn-close" 
+            onClick={() => setShowAdjustModal(false)}
+          />
+        </div>
+
+        <div className="modal-body">
+
+          {/* Order Details */}
+          <div className="border p-3 bg-light rounded mb-4">
+            <h6 className="mb-3 text-primary">Order Details</h6>
+            <div className="row g-2 small">
+              <div className="col-6">
+                <strong>Project:</strong><br />
+                {selectedAdjustOrder.project?.project_name || 'N/A'}
+              </div>
+              <div className="col-6">
+                <strong>Customer:</strong><br />
+                {selectedAdjustOrder.project?.customer_name || selectedAdjustOrder.customer?.name || 'N/A'}
+              </div>
+              <div className="col-6">
+                <strong>Current Bill Amount:</strong><br />
+                <span className="text-success fw-bold">₹ {Number(selectedAdjustOrder.finalAmount || 0).toLocaleString()}</span>
+              </div>
+              <div className="col-6">
+                <strong>Paid Amount:</strong><br />
+                <span className="text-info fw-bold">₹ {Number(selectedAdjustOrder.paidAmount || 0).toLocaleString()}</span>
+              </div>
+              {selectedAdjustOrder.po_number && (
+                <div className="col-12">
+                  <strong>PO Number:</strong> {selectedAdjustOrder.po_number}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* New Amount */}
+          <div className="mb-3">
+            <label className="form-label fw-bold">New Bill Amount (₹)</label>
+            <input
+              type="number"
+              className="form-control form-control-lg"
+              value={newAmount}
+              onChange={(e) => setNewAmount(e.target.value)}
+              min="0"
+              step="0.01"
+            />
+            <small className="text-muted">
+              Enter the revised final amount. If reduced, an adjustment entry will be created automatically.
+            </small>
+          </div>
+
+          {/* Reason / Remark */}
+          <div className="mb-3">
+            <label className="form-label fw-bold">
+              Reason for Adjustment <span className="text-danger">*</span>
+            </label>
+            <textarea
+              className="form-control"
+              rows="4"
+              value={adjustmentReason}
+              onChange={(e) => setAdjustmentReason(e.target.value)}
+              placeholder="Enter the reason why you are changing the final amount (e.g., Discount given, Correction of error, Client negotiation, etc.)"
+              required
+            />
+            <small className="text-muted">
+              This remark will be saved for audit and future reference.
+            </small>
+          </div>
+
+        </div>
+
+        <div className="modal-footer">
+          <CButton 
+            color="secondary" 
+            onClick={() => setShowAdjustModal(false)}
+          >
+            Cancel
+          </CButton>
+
+          <CButton 
+            color="primary" 
+            onClick={handleAdjustSubmit}
+            disabled={adjustLoading || !newAmount || !adjustmentReason.trim()}
+          >
+            {adjustLoading ? <CSpinner size="sm" /> : 'Confirm Adjustment'}
+          </CButton>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
 
 
 

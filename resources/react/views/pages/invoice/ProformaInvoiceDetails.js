@@ -658,14 +658,57 @@ const ProformaInvoiceDetails = () => {
 
           {/* Action Buttons */}
           <div className="d-flex justify-content-center flex-wrap gap-2 d-print-none">
-            <CButton
+            {/* <CButton
               color="danger"
               variant="outline"
               onClick={() => navigate(`/edit-proforma-invoice/${id}`)}
             >
               <CIcon icon={cilPencil} className="me-1" />
               Edit Proforma Invoice
-            </CButton>
+            </CButton> */}
+
+
+
+<CButton
+    color="danger"
+    variant="outline"
+    onClick={() => {
+      if (parseFloat(proformaInvoice.paid_amount || 0) > 0) {
+        showToast(
+          'warning',
+          'Payment has been recorded for this proforma invoice. Editing is not allowed.',
+          5000
+        );
+      } else {
+        navigate(`/edit-proforma-invoice/${id}`);
+      }
+    }}
+    disabled={parseFloat(proformaInvoice.paid_amount || 0) > 0}
+    title={
+      parseFloat(proformaInvoice.paid_amount || 0) > 0 
+        ? "Payment recorded - Editing disabled" 
+        : "Edit Proforma Invoice"
+    }
+  >
+    <CIcon icon={cilPencil} className="me-1" />
+    Edit Proforma Invoice
+  </CButton>
+
+  {/* {parseFloat(proformaInvoice.pending_amount) > 0 && (
+    <CButton
+      color="success"
+      onClick={handleRecordPayment}
+    >
+      <CIcon icon={cilCreditCard} className="me-1" />
+      Record Payment
+    </CButton>
+  )}
+
+  <CButton color="info" onClick={handleDownload}>
+    Download PDF ({selectedLang})
+  </CButton> */}
+
+
 
             {parseFloat(proformaInvoice.pending_amount) > 0 && (
               <CButton

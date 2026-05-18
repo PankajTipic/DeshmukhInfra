@@ -36,7 +36,8 @@ class Order extends Model
         'gst','cgst','sgst','igst',
         'terms_and_conditions','payment_terms','note',
         'ref_id',
-        	'po_number'
+        	'po_number',
+            "adjustment_reason"
     ];
 
     protected $casts = [

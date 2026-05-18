@@ -15,8 +15,8 @@ class ExpensePhoto extends Model
         'photo_type',
         'file_size',
         'remark',
-    ];
-
+    ]; 
+     
     public function expense()
     {
         return $this->belongsTo(Expense::class);

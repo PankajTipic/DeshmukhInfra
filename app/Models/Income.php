@@ -33,6 +33,10 @@ class Income extends Model
         'pending_amount',
         'remark',
         'payment_date', 
+           'type',
+
+           'created_by',
+    'updated_by',
     ];
 
     // Cast fields for proper data types

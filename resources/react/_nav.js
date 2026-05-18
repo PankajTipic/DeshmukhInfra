@@ -96,6 +96,19 @@ export default function fetchNavItems(t1) {
         icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
+
+
+         {
+        component: CNavItem,
+        name: "Daily Activity Dashboard",
+        to: '/dailyActivityDashboard',
+        icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+        // style: { backgroundColor: 'cyan', color: 'black' },
+      },
+
+      
+
+
       {
         component: CNavItem,
         name: 'Work Log',
@@ -398,6 +411,22 @@ className: 'ms-2',
                 to: '/MachineriesTable',
                 className: 'ms-2',
               },
+
+              {
+                component: CNavItem,
+                name: "Machinary Stock Updation",
+                to: '/machineryStockUpdate',
+                className: 'ms-2',
+              },
+
+                 {
+                component: CNavItem,
+                name: "Machinary Stock Table",
+                to: '/machineryStockTable',
+                className: 'ms-2',
+              },
+              
+
         ],
 
       },

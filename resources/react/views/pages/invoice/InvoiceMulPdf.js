@@ -1282,46 +1282,114 @@ export const generateMultiLanguagePDF = async (
   y = doc.lastAutoTable.finalY + 6;
 
   /* ---------- TERMS PAGE (if needed) ---------- */
+  // if (hasTermsPage) {
+  //   doc.addPage();
+  //   y = drawCompanyHeader(false);
+
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.setFontSize(10);
+
+  //   const printBlock = (title, value) => {
+  //     if (!value?.trim()) return;
+  //     doc.setFont('helvetica', 'bold');
+  //     doc.setFontSize(12);
+  //     y += 10;
+  //     doc.text(title, margin, y);
+  //     y += 14;
+  //     doc.setFont('helvetica', 'normal');
+  //     doc.setFontSize(10);
+  //     const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
+  //     lines.forEach((line) => {
+  //       const wrapped = doc.splitTextToSize(line, contentWidth);
+  //       doc.text(wrapped, margin, y);
+  //       y += wrapped.length * 13;
+  //     });
+  //     y += 12;
+  //   };
+
+  //   printBlock('Notes', formData.note);
+  //   printBlock('Payment Terms', formData.payment_terms);
+  //   printBlock('Terms & Conditions', formData.terms_and_conditions);
+
+  //   drawFooter();
+
+  //   // ---- Signature section at bottom of terms page (Work Order only) ----
+  //   if (isWorkOrder) {
+  //     y = drawSignatureSection(y);
+  //   }
+
+  // } else if (isWorkOrder) {
+  //   // No terms page — draw signature section after summary
+  //   y = drawSignatureSection(y);
+  // }
+
+
+
+  /* ---------- TERMS PAGE (if needed) ---------- */
   if (hasTermsPage) {
     doc.addPage();
-    y = drawCompanyHeader(false);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-
+    y = drawCompanyHeader(false) + 3;
+ 
+    // Bottom safe boundary — leave 80pt for footer
+    const bottomSafeY = pageHeight - 80;
+ 
     const printBlock = (title, value) => {
       if (!value?.trim()) return;
+ 
+      // --- Title ---
+      // Check if title + at least one line of content fits; if not, new page
+      if (y + 10 + 16 + 13 > bottomSafeY) {
+        doc.addPage();
+        y = drawCompanyHeader(false) + 3;
+        drawFooter();
+      }
+ 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       y += 10;
       doc.text(title, margin, y);
-      y += 14;
+      y += 16;
+ 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
+ 
       const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
       lines.forEach((line) => {
         const wrapped = doc.splitTextToSize(line, contentWidth);
-        doc.text(wrapped, margin, y);
-        y += wrapped.length * 13;
+        wrapped.forEach((wline) => {
+          // If this line would go past the safe boundary, start a new page
+          if (y + 13 > bottomSafeY) {
+            doc.addPage();
+            y = drawCompanyHeader(false) + 3;
+            drawFooter();
+            // Re-apply font after page break
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+          }
+          doc.text(wline, margin, y);
+          y += 13;
+        });
       });
       y += 12;
     };
-
+ 
     printBlock('Notes', formData.note);
     printBlock('Payment Terms', formData.payment_terms);
     printBlock('Terms & Conditions', formData.terms_and_conditions);
-
+ 
     drawFooter();
-
+ 
     // ---- Signature section at bottom of terms page (Work Order only) ----
     if (isWorkOrder) {
       y = drawSignatureSection(y);
     }
-
+ 
   } else if (isWorkOrder) {
     // No terms page — draw signature section after summary
     y = drawSignatureSection(y);
   }
+ 
+
 
   /* ---------- OUTPUT ---------- */
   let fileName;
