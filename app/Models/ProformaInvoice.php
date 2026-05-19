@@ -165,4 +165,9 @@ class ProformaInvoice extends Model
     return $this->hasMany(AdvancedPayment::class, 'proforma_id', 'id');
 }
 
+public function income()
+{
+    return $this->hasMany(Income::class, 'proforma_invoice_id', 'id');
+}
+
 }

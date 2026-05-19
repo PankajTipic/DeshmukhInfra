@@ -657,6 +657,94 @@ const ProjectSummary = () => {
             </CTable>
           </div>
         </div>
+
+
+
+<div className="mt-5">
+    <h6 className="text-dark mb-3 fw-bold">Payment Logs</h6>
+    <div className="table-responsive">
+        <CTable striped hover responsive className="bg-white shadow-sm">
+            <CTableHead color="dark">
+                <CTableRow>
+                    <CTableHeaderCell>Invoice #</CTableHeaderCell>
+                    <CTableHeaderCell>Date</CTableHeaderCell>
+                    <CTableHeaderCell>Description</CTableHeaderCell>
+                    <CTableHeaderCell>Amount</CTableHeaderCell>
+                    <CTableHeaderCell>Payment Type</CTableHeaderCell>
+                    <CTableHeaderCell>Bank / Received By</CTableHeaderCell>
+                    <CTableHeaderCell>Remark</CTableHeaderCell>
+                </CTableRow>
+            </CTableHead>
+            <CTableBody>
+                {currentProject.order_details.map((order) => (
+                    <React.Fragment key={order.id}>
+                        {/* === Order Summary Row === */}
+                        {/* <CTableRow className="table-active">
+                            <CTableDataCell>
+                                <div className="fw-bold text-primary">
+                                    {order.invoice_number || 'Draft'}
+                                </div>
+                                <small className="text-muted">Order ID: {order.id}</small>
+                            </CTableDataCell>
+                            <CTableDataCell>{order.invoice_date || '-'}</CTableDataCell>
+                            <CTableDataCell>
+                                <strong>Order Total</strong>
+                            </CTableDataCell>
+                            <CTableDataCell className="fw-bold text-info">
+                                {formatIndianCurrency(order.final_amount || 0)}
+                            </CTableDataCell>
+                            <CTableDataCell colSpan={3} className="text-muted">
+                                Paid: {formatIndianCurrency(order.paid_amount || 0)} | 
+                                Pending: <span className="text-danger">{formatIndianCurrency(order.pending_amount || 0)}</span>
+                            </CTableDataCell>
+                        </CTableRow> */}
+
+                        {/* === Payment Logs Rows === */}
+                        {order.payments && order.payments.length > 0 ? (
+                            order.payments.map((payment, idx) => (
+                                <CTableRow key={`payment-${order.id}-${idx}`} className="bg-light">
+                                    <CTableDataCell>
+                                        <small className="text-muted">Payment #{payment.income_id}</small>
+                                    </CTableDataCell>
+                                    <CTableDataCell>
+                                        {payment.received_date || '-'}
+                                    </CTableDataCell>
+                                    <CTableDataCell className="fw-medium">
+                                        Payment Received
+                                    </CTableDataCell>
+                                    <CTableDataCell className="text-success fw-bold">
+                                        {formatIndianCurrency(payment.received_amount || 0)}
+                                    </CTableDataCell>
+                                    <CTableDataCell>
+                                        <CBadge color="info" shape="rounded-pill">
+                                            {payment.payment_type?.toUpperCase() || 'N/A'}
+                                        </CBadge>
+                                    </CTableDataCell>
+                                    <CTableDataCell>
+                                        <div>{payment.bank || '-'}</div>
+                                        <small className="text-muted">{payment.received_by}</small>
+                                    </CTableDataCell>
+                                    <CTableDataCell className="text-muted small">
+                                        {payment.remark || '-'}
+                                    </CTableDataCell>
+                                </CTableRow>
+                            ))
+                        ) : (
+                            <CTableRow>
+                                <CTableDataCell colSpan={7} className="text-center text-muted py-3">
+                                    No payment records found for this order
+                                </CTableDataCell>
+                            </CTableRow>
+                        )}
+                    </React.Fragment>
+                ))}
+            </CTableBody>
+        </CTable>
+    </div>
+</div>
+
+
+
       </CCollapse>
     )}
 

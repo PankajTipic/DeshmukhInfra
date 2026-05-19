@@ -85,4 +85,10 @@ class Order extends Model
 }
 
 
+public function income()
+{
+    return $this->hasMany(Income::class, 'order_id', 'id');
+}
+
+
 }
