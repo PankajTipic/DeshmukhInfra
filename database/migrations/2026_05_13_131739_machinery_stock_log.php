@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('machinery_stock_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('machinery_stock_item_id')->constrained('machinery_stock_items')->onDelete('cascade');
-            $table->enum('type', ['used', 'transferred']);   // used or transferred
+            $table->string('type', 50);   // issued, usage, transfer-out
             $table->decimal('quantity', 12, 2);
             $table->decimal('remaining_after', 12, 2);
             $table->text('remarks')->nullable();

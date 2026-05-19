@@ -18,7 +18,7 @@ class ProjectController extends Controller
 {
     $user = Auth::user();
 
-    if ($user->type == 1 || $user->type == 3) {
+    if ($user->type == 1 || $user->type == 3 || $user->type == 5 || $user->type == 4) {
         // Admin (type 1) → show all projects within their company
         $projects = Project::with(['supervisor:id,name', 'user:id,name', 'projectType'])
             ->where('company_id', $user->company_id)

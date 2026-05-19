@@ -15,20 +15,19 @@ class MachineryStockItem extends Model
         'issued_qty',
         'used_qty',
         'remaining_qty',
+        'transferred_qty',
         'remarks'
     ];
+
+    // ── Relationships ──────────────────────────────────────
 
     public function stockUpdate()
     {
         return $this->belongsTo(MachineryStockUpdate::class, 'machinery_stock_update_id');
     }
 
-    public function machineryStockUpdate()
-{
-    return $this->belongsTo(
-        MachineryStockUpdate::class,
-        'machinery_stock_update_id',
-        'id'
-    );
-}
+    public function logs()
+    {
+        return $this->hasMany(MachineryStockLog::class, 'machinery_stock_item_id');
+    }
 }

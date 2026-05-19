@@ -13,7 +13,7 @@ class MachineryStockUpdate extends Model
          'company_id','sr_no', 'project_id', 'machine_id', 'hrs', 'update_date',
         'maintenance_date', 'hammer', 'stock_details', 'tamplet',
         'capping', 'damage_part', 'bit', 'used_bit', 'oil_bal',
-        'supervisor_id', 'remarks', 'created_by'
+        'supervisor_id', 'remarks', 'created_by', 'cost', 'next_due', 'serviced_by'
     ];
 
     public function project()

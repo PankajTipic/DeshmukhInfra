@@ -506,13 +506,40 @@ Route::delete('/company-receipts/{id}', [CompanyReceiptController::class, 'destr
 
       // Onboarding Partner Type
 
-Route::post('/machinery-stock-update', [MachineryStockUpdateController::class, 'store']);
-Route::get('/machinery-stock-update', [MachineryStockUpdateController::class, 'getData']);
-Route::post('/machinery-stock-transfer', [MachineryStockUpdateController::class, 'transferStock']);
-Route::put('/machinery-stock-update/{id}', [MachineryStockUpdateController::class, 'update']);
-Route::put('/machinery-stock-items/{id}', [MachineryStockUpdateController::class, 'updateStockItem']);
-Route::get('/machinery-stock-logs/{stock_item_id}', [MachineryStockUpdateController::class, 'getStockLogs']);
+// Machinery Stock Tracking & Operational Endpoints (MachineryOS)
+Route::prefix('machinery')->group(function () {
+    Route::get('masters', [MachineryStockUpdateController::class, 'getMasters']);
+    Route::get('stock', [MachineryStockUpdateController::class, 'getStockMaster']);
+    Route::post('stock', [MachineryStockUpdateController::class, 'storeStockMaster']);
+    Route::put('stock/{id}', [MachineryStockUpdateController::class, 'updateStockMaster']);
+    Route::delete('stock/{id}', [MachineryStockUpdateController::class, 'deleteStockMaster']);
+    Route::post('stock/use', [MachineryStockUpdateController::class, 'useStock']);
+    Route::post('stock/transfer', [MachineryStockUpdateController::class, 'transferStock']);
+    Route::get('stock/{id}/history', [MachineryStockUpdateController::class, 'getStockHistory']);
+    
+    Route::get('transfers', [MachineryStockUpdateController::class, 'getTransferLogs']);
+    Route::put('transfers/{id}', [MachineryStockUpdateController::class, 'updateTransferLog']);
+    Route::delete('transfers/{id}', [MachineryStockUpdateController::class, 'deleteTransferLog']);
+    
+    Route::get('daily-logs', [MachineryStockUpdateController::class, 'getDailyLogs']);
+    Route::post('daily-logs', [MachineryStockUpdateController::class, 'storeDailyLog']);
+    Route::put('daily-logs/{id}', [MachineryStockUpdateController::class, 'updateDailyLog']);
+    Route::delete('daily-logs/{id}', [MachineryStockUpdateController::class, 'deleteDailyLog']);
+    
+    Route::get('maintenance', [MachineryStockUpdateController::class, 'getMaintenanceLogs']);
+    Route::post('maintenance', [MachineryStockUpdateController::class, 'storeMaintenance']);
+    Route::put('maintenance/{id}', [MachineryStockUpdateController::class, 'updateMaintenance']);
+    Route::delete('maintenance/{id}', [MachineryStockUpdateController::class, 'deleteMaintenance']);
+    
+    Route::get('dashboard', [MachineryStockUpdateController::class, 'getDashboard']);
+});
 
+// Backward Compatibility Routes
+Route::post('/machinery-stock-update', [MachineryStockUpdateController::class, 'storeStockMaster']);
+Route::get('/machinery-stock-update', [MachineryStockUpdateController::class, 'getStockMaster']);
+Route::post('/machinery-stock-transfer', [MachineryStockUpdateController::class, 'transferStock']);
+Route::put('/machinery-stock-items/{id}', [MachineryStockUpdateController::class, 'useStock']);
+Route::get('/machinery-stock-logs/{stock_item_id}', [MachineryStockUpdateController::class, 'getStockHistory']);
 
 
 Route::get('/dashboard/today-activity', [DashboardController::class, 'todayLatestActivity']);

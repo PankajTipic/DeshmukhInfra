@@ -18,8 +18,15 @@ class MachineryStockMovement extends Model
         'stock_name',
         'quantity',
         'reason',
-        'moved_by'
+        'moved_by',
     ];
+
+    // ── Relationships ──────────────────────────────────────
+
+    public function stockUpdate()
+    {
+        return $this->belongsTo(MachineryStockUpdate::class, 'machinery_stock_update_id');
+    }
 
     public function fromProject()
     {

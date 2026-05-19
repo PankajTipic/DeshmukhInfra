@@ -99,6 +99,8 @@ const SupervisorsList = () => {
       { label: 'User', value: '2', disabled: false },
       { label: 'User++', value: '3', disabled: false },
       { label: 'Purchase Vendor', value: '4', disabled: false },
+      { label: 'Work Log User', value: '5', disabled: false },
+
     ]
   } else if (user.type === 1) {
     userTypes = [
@@ -107,6 +109,9 @@ const SupervisorsList = () => {
       { label: 'User', value: '2', disabled: false },
       { label: 'User++', value: '3', disabled: false },
       { label: 'Purchase Vendor', value: '4', disabled: false },
+      { label: 'Work Log User', value: '5', disabled: false },
+
+
     ]
   } else {
     userTypes = [
@@ -114,6 +119,8 @@ const SupervisorsList = () => {
       { label: 'User', value: '2', disabled: false },
       { label: 'User++', value: '3', disabled: false },
       { label: 'Purchase Vendor', value: '4', disabled: false },
+      { label: 'Work Log User', value: '5', disabled: false },
+
     ]
   }
 

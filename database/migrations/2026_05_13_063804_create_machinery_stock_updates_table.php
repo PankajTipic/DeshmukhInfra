@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('bit')->nullable();
             $table->string('used_bit')->nullable();
             $table->decimal('oil_bal', 10, 2)->default(0);
-            $table->foreignId('supervisor_id')->constrained('operators')->onDelete('set null');
+            $table->foreignId('supervisor_id')->nullable()->constrained('operators')->onDelete('set null');
             $table->text('remarks')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->timestamps();

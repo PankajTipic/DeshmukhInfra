@@ -1044,12 +1044,12 @@ public function recordPayment(Request $request, $id)
             'remark'              => $validated['remark']
                 ?? "Payment for PI #{$proforma->proforma_invoice_number}",
 
-            'payment_date'        => Carbon::today()->toDateString(),
+            'payment_date'        => $request->payment_date,
 
 
             'created_by'          => $user->id,
             'updated_by'          => $user->id,
-        ]);
+        ]); 
 
         // ────────────────────────────────────────────────
         // UPDATE PROFORMA
