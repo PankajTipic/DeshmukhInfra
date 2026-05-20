@@ -16,7 +16,10 @@ class MachineryStockItem extends Model
         'used_qty',
         'remaining_qty',
         'transferred_qty',
-        'remarks'
+        'remarks',
+        'category',
+        'min_qty',
+        'unit'
     ];
 
     // ── Relationships ──────────────────────────────────────

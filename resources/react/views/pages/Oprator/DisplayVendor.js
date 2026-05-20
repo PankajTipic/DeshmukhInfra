@@ -1,3 +1,272 @@
+// import React, { useEffect, useState } from "react";
+// import {
+//   CCard,
+//   CCardBody,
+//   CCardHeader,
+//   CTable,
+//   CTableHead,
+//   CTableRow,
+//   CTableHeaderCell,
+//   CTableBody,
+//   CTableDataCell,
+//   CSpinner,
+//   CAlert,
+//   CButton,
+//   CModal,
+//   CModalHeader,
+//   CModalBody,
+//   CModalFooter,
+//   CForm,
+//   CFormInput,
+//   CRow,
+//   CCol,
+//   CFormTextarea,
+//   CFormLabel,
+//   CFormSelect,
+// } from "@coreui/react";
+// import { getAPICall, put } from "../../../util/api";
+// import { useNavigate } from "react-router-dom";
+// import { useToast } from "../../common/toast/ToastContext";
+
+// const OperatorList = () => {
+//   const [operators, setOperators] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState("");
+//   const [editModal, setEditModal] = useState(false);
+//   const [currentOperator, setCurrentOperator] = useState(null);
+
+//   const navigate = useNavigate();
+//   const { showToast } = useToast();
+// const [projects, setProjects] = useState([]);
+
+//   useEffect(() => {
+//     getAPICall('/api/projects')
+//       .then(res => setProjects(Array.isArray(res) ? res : []))
+//       .catch(err => console.error("Failed to load projects", err));
+//   }, []);
+
+ 
+
+//   useEffect(() => {
+//     fetchOperators();
+//   }, []);
+
+//   const fetchOperators = () => {
+//     getAPICall("/api/operatorsByCompanyId")
+//       .then((res) => {
+//         if (!res) throw new Error("Failed to fetch operators");
+
+//         // SHOW ONLY TYPE = 3
+//         setOperators(res.filter(op => op.type === "3"));
+//         setLoading(false);
+//       })
+//       .catch((err) => {
+//         setError(err.message);
+//         setLoading(false);
+//       });
+//   };
+
+//   const handleEditClick = (operator) => {
+//     setCurrentOperator({
+//       ...operator,
+//       gst_no: operator.gst_no || "",
+//       bank_name: operator.bank_name || "",
+//       account_number: operator.account_number || "",
+//       ifsc_code: operator.ifsc_code || "",
+//       adhar_number: operator.adhar_number || "",
+//       pan_number: operator.pan_number || "",
+
+//       address: operator.address || "",
+//       project_id: operator.project_id || "",
+//     });
+//     setEditModal(true);
+//   };
+
+//   const handleChange = (e) => {
+//     const { name, value } = e.target;
+
+//     let updatedValue = value;
+
+//     if (name === "gst_no" || name === "pan_number" || name === "ifsc_code") {
+//       updatedValue = value.toUpperCase();
+//     }
+
+//     if (name === "mobile" || name === "account_number" || name === "adhar_number") {
+//       if (!/^\d*$/.test(value)) return;
+//     }
+
+//     setCurrentOperator(prev => ({
+//       ...prev,
+//       [name]: updatedValue,
+//     }));
+//   };
+
+//   const handleSave = async () => {
+//     if (!currentOperator.name.trim()) {
+//       showToast("danger", "Name is required");
+//       return;
+//     }
+//     if (!currentOperator.mobile || currentOperator.mobile.length !== 10) {
+//       showToast("danger", "Mobile must be 10 digits");
+//       return;
+//     }
+//     if (!currentOperator.gst_no.trim()) {
+//       showToast("danger", "GST number required");
+//       return;
+//     }
+
+//     try {
+//       await put(`/api/operators/${currentOperator.id}`, currentOperator);
+//       showToast("success", "Vendor updated successfully");
+//       setEditModal(false);
+//       fetchOperators();
+//     } catch (err) {
+//       showToast("danger", "Failed to update vendor");
+//     }
+//   };
+
+//   return (
+//     <CCard className="mb-4">
+//       <CCardHeader className="d-flex justify-content-between align-items-center">
+//         <strong>Purches Vendor List</strong>
+//         <CButton color="danger" onClick={() => navigate("/NewPurchesVendor")}>
+//           Add Purches Vendor
+//         </CButton>
+//       </CCardHeader>
+
+//       <CCardBody>
+//         {loading && <CSpinner />}
+//         {error && <CAlert color="danger">{error}</CAlert>}
+//         {!loading && !error && (
+//           <CTable striped hover responsive>
+//             <CTableHead>
+//               <CTableRow>
+//                 <CTableHeaderCell>#</CTableHeaderCell>
+//                 <CTableHeaderCell>Name</CTableHeaderCell>
+//                 <CTableHeaderCell>Mobile</CTableHeaderCell>
+//                 <CTableHeaderCell>GST No</CTableHeaderCell>
+//                 <CTableHeaderCell>Bank Details</CTableHeaderCell>
+//                  <CTableHeaderCell>Project</CTableHeaderCell>
+//                 <CTableHeaderCell>Action</CTableHeaderCell>
+//               </CTableRow>
+//             </CTableHead>
+
+//             <CTableBody>
+//               {operators.map((op, index) => (
+//                 <CTableRow key={op.id}>
+//                   <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+//                   <CTableDataCell>{op.name}</CTableDataCell>
+//                   <CTableDataCell>{op.mobile}</CTableDataCell>
+//                   <CTableDataCell>{op.gst_no || "-"}</CTableDataCell>
+//                   <CTableDataCell>
+//                     {op.bank_name && `${op.bank_name}, Acc: ${op.account_number}, ${op.ifsc_code}`}
+//                   </CTableDataCell>
+//                   <CTableDataCell>{op?.project?.project_name || "-"}</CTableDataCell>
+//                   <CTableDataCell>
+//                     <CButton color="info" size="sm" onClick={() => handleEditClick(op)}>
+//                       Edit
+//                     </CButton> 
+//                   </CTableDataCell>
+//                 </CTableRow>
+//               ))}
+//             </CTableBody>
+//           </CTable>
+//         )}
+//       </CCardBody>
+
+//       {/* EDIT MODAL */}
+//       <CModal visible={editModal} onClose={() => setEditModal(false)} size="lg">
+//         <CModalHeader>Edit Purches Vendor</CModalHeader>
+//         <CModalBody>
+//           {currentOperator && (
+//             <CForm>
+//               <CRow>
+//                 <CCol md={6}>
+//                   <CFormInput label="Name" name="name" value={currentOperator.name} onChange={handleChange} />
+//                 </CCol>
+//                 <CCol md={6}>
+//                   <CFormInput label="Mobile" maxLength={10} name="mobile" value={currentOperator.mobile} onChange={handleChange} />
+//                 </CCol>
+//               </CRow>
+
+
+// <CRow className="mt-3">
+//                 <CCol md={12}>
+//                   <CFormTextarea
+//                     label="Address *"
+//                     name="address"
+//                     value={currentOperator.address}
+//                     onChange={handleChange}
+//                     rows={3}
+//                   />
+//                 </CCol>
+//               </CRow>
+
+//               <CRow className="mt-3">
+//                 <CCol md={6}>
+//                   <CFormLabel>Project <span style={{ color: 'red' }}>*</span></CFormLabel>
+//                   <CFormSelect
+//                     name="project_id"
+//                     value={currentOperator.project_id}
+//                     onChange={handleChange}
+//                   >
+//                     <option value="">Select Project</option>
+//                     {projects.map(proj => (
+//                       <option key={proj.id} value={proj.id}>
+//                         {proj.project_name}
+//                       </option>
+//                     ))}
+//                   </CFormSelect>
+//                 </CCol>
+//                  </CRow>
+
+
+//               <CRow className="mt-3">
+//                 <CCol md={6}>
+//                   <CFormInput label="GST Number" name="gst_no" value={currentOperator.gst_no} maxLength={15} onChange={handleChange} />
+//                 </CCol>
+//                 <CCol md={6}>
+//                   <CFormInput label="Aadhar Number" name="adhar_number" maxLength={12} value={currentOperator.adhar_number} onChange={handleChange} />
+//                 </CCol>
+//               </CRow>
+
+
+//               <CRow className="mt-3">
+//                 <CCol md={6}>
+//                   <CFormInput label="Bank Name" name="bank_name" value={currentOperator.bank_name} onChange={handleChange} />
+//                 </CCol>
+//                 <CCol md={6}>
+//                   <CFormInput label="Account Number" name="account_number" value={currentOperator.account_number} onChange={handleChange} />
+//                 </CCol>
+//               </CRow>
+
+//               <CRow className="mt-3">
+//                 <CCol md={6}>
+//                   <CFormInput label="IFSC Code" name="ifsc_code" value={currentOperator.ifsc_code} onChange={handleChange} />
+//                 </CCol>
+//                 <CCol md={6}>
+//                   <CFormInput label="PAN Number" name="pan_number" value={currentOperator.pan_number} onChange={handleChange} />
+//                 </CCol>
+//               </CRow>
+//             </CForm>
+//           )}
+//         </CModalBody>
+
+//         <CModalFooter>
+//           <CButton color="secondary" onClick={() => setEditModal(false)}>Close</CButton>
+//           <CButton color="primary" onClick={handleSave}>Save</CButton>
+//         </CModalFooter>
+//       </CModal>
+//     </CCard>
+//   );
+// };
+
+// export default OperatorList;
+
+
+
+
+
 import React, { useEffect, useState } from "react";
 import {
   CCard,
@@ -24,6 +293,7 @@ import {
   CFormLabel,
   CFormSelect,
 } from "@coreui/react";
+import Select from "react-select";
 import { getAPICall, put } from "../../../util/api";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../common/toast/ToastContext";
@@ -34,30 +304,38 @@ const OperatorList = () => {
   const [error, setError] = useState("");
   const [editModal, setEditModal] = useState(false);
   const [currentOperator, setCurrentOperator] = useState(null);
+  const [projects, setProjects] = useState([]);
+
+  // ── Filter state ──
+  const [filterProject, setFilterProject] = useState(null); // { value, label } | null
 
   const navigate = useNavigate();
   const { showToast } = useToast();
-const [projects, setProjects] = useState([]);
 
+  // Fetch projects once
   useEffect(() => {
-    getAPICall('/api/projects')
-      .then(res => setProjects(Array.isArray(res) ? res : []))
-      .catch(err => console.error("Failed to load projects", err));
+    getAPICall("/api/projects")
+      .then((res) => setProjects(Array.isArray(res) ? res : []))
+      .catch((err) => console.error("Failed to load projects", err));
   }, []);
 
- 
-
+  // Fetch operators (re-runs whenever filterProject changes)
   useEffect(() => {
     fetchOperators();
-  }, []);
+  }, [filterProject]);
 
   const fetchOperators = () => {
-    getAPICall("/api/operatorsByCompanyId")
+    setLoading(true);
+
+    // Build URL with optional project_id query param
+    const url = filterProject
+      ? `/api/operatorsByCompanyId?project_id=${filterProject.value}`
+      : "/api/operatorsByCompanyId";
+
+    getAPICall(url)
       .then((res) => {
         if (!res) throw new Error("Failed to fetch operators");
-
-        // SHOW ONLY TYPE = 3
-        setOperators(res.filter(op => op.type === "3"));
+        setOperators(res.filter((op) => op.type === "3"));
         setLoading(false);
       })
       .catch((err) => {
@@ -75,7 +353,6 @@ const [projects, setProjects] = useState([]);
       ifsc_code: operator.ifsc_code || "",
       adhar_number: operator.adhar_number || "",
       pan_number: operator.pan_number || "",
-
       address: operator.address || "",
       project_id: operator.project_id || "",
     });
@@ -84,21 +361,16 @@ const [projects, setProjects] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     let updatedValue = value;
 
     if (name === "gst_no" || name === "pan_number" || name === "ifsc_code") {
       updatedValue = value.toUpperCase();
     }
-
     if (name === "mobile" || name === "account_number" || name === "adhar_number") {
       if (!/^\d*$/.test(value)) return;
     }
 
-    setCurrentOperator(prev => ({
-      ...prev,
-      [name]: updatedValue,
-    }));
+    setCurrentOperator((prev) => ({ ...prev, [name]: updatedValue }));
   };
 
   const handleSave = async () => {
@@ -125,56 +397,106 @@ const [projects, setProjects] = useState([]);
     }
   };
 
+  // Build options for the searchable project dropdown
+  const projectOptions = projects.map((p) => ({
+    value: p.id,
+    label: p.project_name,
+  }));
+
   return (
     <CCard className="mb-4">
-      <CCardHeader className="d-flex justify-content-between align-items-center">
+      <CCardHeader className="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <strong>Purches Vendor List</strong>
-        <CButton color="danger" onClick={() => navigate("/NewPurchesVendor")}>
-          Add Purches Vendor
-        </CButton>
+
+        {/* ── RIGHT SIDE: Filter dropdown + Add button ── */}
+        <div className="d-flex align-items-center gap-3 flex-wrap">
+          {/* Searchable project filter */}
+          <div style={{ minWidth: 220 }}>
+            <Select
+              placeholder="Filter by Project..."
+              options={projectOptions}
+              value={filterProject}
+              onChange={(selected) => setFilterProject(selected)} // null when cleared
+              isClearable
+              isSearchable
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minHeight: '36px',
+                  fontSize: '14px',
+                }),
+                menu: (base) => ({ ...base, zIndex: 9999 }),
+              }}
+            />
+          </div>
+
+          <CButton color="danger" onClick={() => navigate("/NewPurchesVendor")}>
+            Add Purches Vendor
+          </CButton>
+        </div>
       </CCardHeader>
 
       <CCardBody>
         {loading && <CSpinner />}
         {error && <CAlert color="danger">{error}</CAlert>}
         {!loading && !error && (
-          <CTable striped hover responsive>
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell>#</CTableHeaderCell>
-                <CTableHeaderCell>Name</CTableHeaderCell>
-                <CTableHeaderCell>Mobile</CTableHeaderCell>
-                <CTableHeaderCell>GST No</CTableHeaderCell>
-                <CTableHeaderCell>Bank Details</CTableHeaderCell>
-                 <CTableHeaderCell>Project</CTableHeaderCell>
-                <CTableHeaderCell>Action</CTableHeaderCell>
-              </CTableRow>
-            </CTableHead>
+          <>
+            {/* Show active filter label */}
+            {filterProject && (
+              <p className="text-muted small mb-2">
+                Showing vendors for project:{" "}
+                <strong>{filterProject.label}</strong>
+              </p>
+            )}
 
-            <CTableBody>
-              {operators.map((op, index) => (
-                <CTableRow key={op.id}>
-                  <CTableHeaderCell>{index + 1}</CTableHeaderCell>
-                  <CTableDataCell>{op.name}</CTableDataCell>
-                  <CTableDataCell>{op.mobile}</CTableDataCell>
-                  <CTableDataCell>{op.gst_no || "-"}</CTableDataCell>
-                  <CTableDataCell>
-                    {op.bank_name && `${op.bank_name}, Acc: ${op.account_number}, ${op.ifsc_code}`}
-                  </CTableDataCell>
-                  <CTableDataCell>{op?.project?.project_name || "-"}</CTableDataCell>
-                  <CTableDataCell>
-                    <CButton color="info" size="sm" onClick={() => handleEditClick(op)}>
-                      Edit
-                    </CButton> 
-                  </CTableDataCell>
+            <CTable striped hover responsive>
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell>#</CTableHeaderCell>
+                  <CTableHeaderCell>Name</CTableHeaderCell>
+                  <CTableHeaderCell>Mobile</CTableHeaderCell>
+                  <CTableHeaderCell>GST No</CTableHeaderCell>
+                  <CTableHeaderCell>Bank Details</CTableHeaderCell>
+                  <CTableHeaderCell>Project</CTableHeaderCell>
+                  <CTableHeaderCell>Action</CTableHeaderCell>
                 </CTableRow>
-              ))}
-            </CTableBody>
-          </CTable>
+              </CTableHead>
+
+              <CTableBody>
+                {operators.length === 0 ? (
+                  <CTableRow>
+                    <CTableDataCell colSpan={7} className="text-center text-muted py-4">
+                      No vendors found{filterProject ? ` for "${filterProject.label}"` : ""}.
+                    </CTableDataCell>
+                  </CTableRow>
+                ) : (
+                  operators.map((op, index) => (
+                    <CTableRow key={op.id}>
+                      <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+                      <CTableDataCell>{op.name}</CTableDataCell>
+                      <CTableDataCell>{op.mobile}</CTableDataCell>
+                      <CTableDataCell>{op.gst_no || "-"}</CTableDataCell>
+                      <CTableDataCell>
+                        {op.bank_name
+                          ? `${op.bank_name}, Acc: ${op.account_number}, ${op.ifsc_code}`
+                          : "-"}
+                      </CTableDataCell>
+                      <CTableDataCell>{op?.project?.project_name || "-"}</CTableDataCell>
+                      <CTableDataCell>
+                        <CButton color="info" size="sm" onClick={() => handleEditClick(op)}>
+                          Edit
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))
+                )}
+              </CTableBody>
+            </CTable>
+          </>
         )}
       </CCardBody>
 
-      {/* EDIT MODAL */}
+      {/* ── EDIT MODAL ── */}
       <CModal visible={editModal} onClose={() => setEditModal(false)} size="lg">
         <CModalHeader>Edit Purches Vendor</CModalHeader>
         <CModalBody>
@@ -189,8 +511,7 @@ const [projects, setProjects] = useState([]);
                 </CCol>
               </CRow>
 
-
-<CRow className="mt-3">
+              <CRow className="mt-3">
                 <CCol md={12}>
                   <CFormTextarea
                     label="Address *"
@@ -204,22 +525,19 @@ const [projects, setProjects] = useState([]);
 
               <CRow className="mt-3">
                 <CCol md={6}>
-                  <CFormLabel>Project <span style={{ color: 'red' }}>*</span></CFormLabel>
-                  <CFormSelect
-                    name="project_id"
-                    value={currentOperator.project_id}
-                    onChange={handleChange}
-                  >
+                  <CFormLabel>
+                    Project <span style={{ color: "red" }}>*</span>
+                  </CFormLabel>
+                  <CFormSelect name="project_id" value={currentOperator.project_id} onChange={handleChange}>
                     <option value="">Select Project</option>
-                    {projects.map(proj => (
+                    {projects.map((proj) => (
                       <option key={proj.id} value={proj.id}>
                         {proj.project_name}
                       </option>
                     ))}
                   </CFormSelect>
                 </CCol>
-                 </CRow>
-
+              </CRow>
 
               <CRow className="mt-3">
                 <CCol md={6}>
@@ -229,7 +547,6 @@ const [projects, setProjects] = useState([]);
                   <CFormInput label="Aadhar Number" name="adhar_number" maxLength={12} value={currentOperator.adhar_number} onChange={handleChange} />
                 </CCol>
               </CRow>
-
 
               <CRow className="mt-3">
                 <CCol md={6}>

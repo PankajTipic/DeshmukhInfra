@@ -55,7 +55,8 @@ class MachineryStockUpdateController extends Controller
             'initialQty'  => (float) $s->issued_qty,
             'currentQty'  => (float) $s->remaining_qty,
             'minQty'      => (float) ($s->issued_qty * 0.2), // Low stock alert at 20%
-            'category'    => $this->guessCategory($s->stock_name),
+            // 'category'    => $this->guessCategory($s->stock_name),
+            'category'    => $s->category ?? $this->guessCategory($s->stock_name),
             'createdAt'   => optional($s->created_at)->toDateString(),
         ];
     }
@@ -187,13 +188,25 @@ class MachineryStockUpdateController extends Controller
             'created_by'  => auth()->id(),
         ]);
 
-        $stockItem = MachineryStockItem::create([
+        // $stockItem = MachineryStockItem::create([
+        //     'machinery_stock_update_id' => $update->id,
+        //     'stock_name'                => $request->item_name,
+        //     'issued_qty'                => $request->initial_qty,
+        //     'used_qty'                  => 0,
+        //     'remaining_qty'             => $request->initial_qty,
+        //     'remarks'                   => 'Initial stock added',
+        // ]);
+
+                $stockItem = MachineryStockItem::create([
             'machinery_stock_update_id' => $update->id,
             'stock_name'                => $request->item_name,
             'issued_qty'                => $request->initial_qty,
             'used_qty'                  => 0,
             'remaining_qty'             => $request->initial_qty,
+            'min_qty'                   => $request->min_qty ?? ($request->initial_qty * 0.2), // ← Added
+            'category'                  => $request->category,        // ← FIXED
             'remarks'                   => 'Initial stock added',
+            'unit'                      => $request->unit ?? 'NOS',   // ← Better to save unit too
         ]);
 
         // Record the initial "issued" log entry
@@ -704,6 +717,7 @@ class MachineryStockUpdateController extends Controller
             'stock_name'    => $request->item_name,
             'issued_qty'    => $request->initial_qty,
             'remaining_qty' => $request->initial_qty - $stockItem->used_qty,
+            'category'      => $request->category,
         ]);
 
         return response()->json([

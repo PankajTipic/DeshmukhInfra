@@ -374,12 +374,12 @@ className: 'ms-2',
                 className: 'ms-2',
               },
 
-              {
-                component: CNavItem,
-                name: "Machinary Stock Updation",
-                to: '/machineryStockUpdate',
-                className: 'ms-2',
-              },
+              // {
+              //   component: CNavItem,
+              //   name: "Machinary Stock Updation",
+              //   to: '/machineryStockUpdate',
+              //   className: 'ms-2',
+              // },
 
                  {
                 component: CNavItem,

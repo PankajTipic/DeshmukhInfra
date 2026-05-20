@@ -1,6 +1,6 @@
 {
   "name": "nurseryseva",
-  "version": "1.1.59",
+  "version": "1.1.60",
   "description": "Nursery Seva",
   "private": true,
   "type": "module",
@@ -60,6 +60,7 @@
     "react-select": "^5.10.2",
     "redux": "5.0.1",
     "simplebar-react": "^3.2.4",
+    "sweetalert2": "^11.26.24",
     "tabler-icons-react": "^1.56.0",
     "use-places-autocomplete": "^4.0.1",
     "uuid": "^10.0.0",

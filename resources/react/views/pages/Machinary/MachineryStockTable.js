@@ -1,614 +1,13 @@
 
-// import React, { useEffect, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-
-// import {
-//   CCard,
-//   CCardBody,
-//   CCardHeader,
-//   CTable,
-//   CTableHead,
-//   CTableRow,
-//   CTableHeaderCell,
-//   CTableBody,
-//   CTableDataCell,
-//   CButton,
-//   CCollapse,
-//   CModal,
-//   CModalHeader,
-//   CModalTitle,
-//   CModalBody,
-//   CModalFooter,
-//   CFormInput,
-//   CFormSelect,
-//   CFormTextarea,
-//   CRow,
-//   CCol,
-//   CBadge,
-// } from '@coreui/react';
-
-// import { getAPICall, postAPICall, put } from '../../../util/api';
-// import { useToast } from '../../common/toast/ToastContext';
-// import * as XLSX from 'xlsx';
-
-// function MachineryStockList() {
-//   const navigate = useNavigate();
-//   const { showToast } = useToast();
-
-//   const [data, setData] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [expandedRows, setExpandedRows] = useState({});
-
-//   // Filters
-//   const [projects, setProjects] = useState([]);
-//   const [machines, setMachines] = useState([]);
-//   const [supervisors, setSupervisors] = useState([]);
-//   const [filterProject, setFilterProject] = useState('');
-//   const [filterMachine, setFilterMachine] = useState('');
-
-//   // Modals
-//   const [showMainEditModal, setShowMainEditModal] = useState(false);
-//   const [editingMainRecord, setEditingMainRecord] = useState(null);
-//   const [mainEditForm, setMainEditForm] = useState({});
-
-//   const [showStockEditModal, setShowStockEditModal] = useState(false);
-//   const [editingStockItem, setEditingStockItem] = useState(null);
-//   const [stockEditForm, setStockEditForm] = useState({});
-
-//   const [showTransferModal, setShowTransferModal] = useState(false);
-//   const [selectedStockForTransfer, setSelectedStockForTransfer] = useState(null);
-//   const [transferData, setTransferData] = useState({
-//     to_project_id: '',
-//     to_machine_id: '',
-//     quantity: '',
-//     reason: ''
-//   });
-
-//   const [showLogsModal, setShowLogsModal] = useState(false);
-//   const [selectedStockForLogs, setSelectedStockForLogs] = useState(null);
-//   const [logs, setLogs] = useState([]);
-//   const [logsLoading, setLogsLoading] = useState(false);
-
-//   // Fetch Dropdowns
-//   const fetchDropdowns = async () => {
-//     try {
-//       const [pRes, mRes, supRes] = await Promise.all([
-//         getAPICall('/api/projects'),
-//         getAPICall('/api/machineries'),
-//         getAPICall('/api/operatorsByType')
-//       ]);
-//       setProjects(pRes || []);
-//       setMachines(mRes?.data || mRes || []);
-//       setSupervisors(supRes || []);
-//     } catch (err) {
-//       console.error('Dropdown fetch error:', err);
-//     }
-//   };
-
-//   // Fetch Data
-//   const fetchData = async () => {
-//     try {
-//       setLoading(true);
-//       let url = '/api/machinery-stock-update';
-//       const params = new URLSearchParams();
-//       if (filterProject) params.append('project_id', filterProject);
-//       if (filterMachine) params.append('machine_id', filterMachine);
-//       const qs = params.toString();
-//       if (qs) url += `?${qs}`;
-
-//       const res = await getAPICall(url);
-//       setData(res || []);
-//     } catch (error) {
-//       console.error('Error fetching data:', error);
-//       setData([]);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => { fetchDropdowns(); }, []);
-//   useEffect(() => { fetchData(); }, [filterProject, filterMachine]);
-
-//   const toggleExpand = (id) => {
-//     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
-//   };
-
-//   // Prevent negative sign in number inputs
-//   const preventNegative = (e) => {
-//     if (e.key === '-') e.preventDefault();
-//   };
-
-//   // ====================== LOGS ======================
-//   const openLogsModal = async (stockItem) => {
-//     setSelectedStockForLogs(stockItem);
-//     setLogs([]);
-//     setLogsLoading(true);
-//     setShowLogsModal(true);
-//     try {
-//       const res = await getAPICall(`/api/machinery-stock-logs/${stockItem.id}`);
-//       setLogs(Array.isArray(res) ? res : []);
-//     } catch (error) {
-//       console.error('Error fetching logs:', error);
-//     } finally {
-//       setLogsLoading(false);
-//     }
-//   };
-
-//   // ====================== MAIN EDIT ======================
-//   const openMainEditModal = (record) => {
-//     setEditingMainRecord(record);
-//     setMainEditForm({ ...record });
-//     setShowMainEditModal(true);
-//   };
-
-//   const handleMainEditChange = (e) => {
-//     const { name, value } = e.target;
-//     setMainEditForm(prev => ({ ...prev, [name]: value }));
-//   };
-
-//   const handleMainEditSave = async () => {
-//     try {
-//       await put(`/api/machinery-stock-update/${editingMainRecord.id}`, mainEditForm);
-//       showToast('success', 'Main Record Updated Successfully!');
-//       setShowMainEditModal(false);
-//       fetchData();
-//     } catch (err) {
-//       showToast('danger', 'Failed to update main record');
-//     }
-//   };
-
-//   // ====================== STOCK EDIT ======================
-//   const openStockEditModal = (stockItem) => {
-//     setEditingStockItem(stockItem);
-//     setStockEditForm({
-//       ...stockItem,
-//       used_qty: '',
-//       remarks: stockItem.remarks || ''
-//     });
-//     setShowStockEditModal(true);
-//   };
-
-//   const handleStockEditChange = (e) => {
-//     const { name, value } = e.target;
-//     setStockEditForm(prev => ({ ...prev, [name]: value }));
-//   };
-
-//   const handleStockEditSave = async () => {
-//     const addUsed = parseFloat(stockEditForm.used_qty) || 0;
-//     if (addUsed <= 0) return showToast('danger', 'Used quantity must be greater than 0');
-
-//     const currentUsed = parseFloat(editingStockItem.used_qty) || 0;
-//     const issued = parseFloat(editingStockItem.issued_qty) || 0;
-//     const transferred = parseFloat(editingStockItem.transferred_qty) || 0;
-
-//     if (currentUsed + addUsed > issued - transferred) {
-//       return showToast('danger', 'Used quantity cannot exceed remaining stock');
-//     }
-
-//     try {
-//       await put(`/api/machinery-stock-items/${editingStockItem.id}`, stockEditForm);
-//       showToast('success', 'Stock Item Updated Successfully!');
-//       setShowStockEditModal(false);
-//       fetchData();
-//     } catch (err) {
-//       showToast('danger', 'Failed to update stock item');
-//     }
-//   };
-
-//   // ====================== TRANSFER ======================
-//   const openTransferModal = (stockItem) => {
-//     setSelectedStockForTransfer(stockItem);
-//     setTransferData({ to_project_id: '', to_machine_id: '', quantity: '', reason: '' });
-//     setShowTransferModal(true);
-//   };
-
-//   const handleTransfer = async () => {
-//     const qty = parseFloat(transferData.quantity) || 0;
-//     const remaining = parseFloat(selectedStockForTransfer.remaining_qty) || 0;
-
-//     if (!transferData.to_project_id || !transferData.to_machine_id) {
-//       return showToast('danger', 'Please select Project and Machine');
-//     }
-//     if (qty <= 0) return showToast('danger', 'Transfer quantity must be greater than 0');
-//     if (qty > remaining) return showToast('danger', 'Transfer quantity cannot exceed remaining quantity');
-
-//     try {
-//       await postAPICall('/api/machinery-stock-transfer', {
-//         stock_item_id: selectedStockForTransfer.id,
-//         to_project_id: transferData.to_project_id,
-//         to_machine_id: transferData.to_machine_id,
-//         quantity: transferData.quantity,
-//         reason: transferData.reason || 'Stock transferred after work'
-//       });
-//       showToast('success', 'Stock Transferred Successfully!');
-//       setShowTransferModal(false);
-//       fetchData();
-//     } catch (err) {
-//       showToast('danger', 'Transfer Failed');
-//     }
-//   };
-
-//   // ====================== EXCEL ======================
-//   const downloadExcel = () => {
-//     const exportData = [];
-//     data.forEach((record) => {
-//       if (record.stock_items?.length > 0) {
-//         record.stock_items.forEach((stock) => {
-//           exportData.push({
-//             'SR No': record.sr_no || '-',
-//             'Project': record.project?.project_name || '-',
-//             'Machine': record.machine?.machine_name || '-',
-//             'Hours': record.hrs || 0,
-//             'Update Date': record.update_date || '-',
-//             'Supervisor': record.supervisor?.name || '-',
-//             'Stock Name': stock.stock_name || '-',
-//             'Issued Qty': stock.issued_qty || 0,
-//             'Used Qty': stock.used_qty || 0,
-//             'Transferred Qty': stock.transferred_qty || 0,
-//             'Remaining Qty': stock.remaining_qty || 0,
-//           });
-//         });
-//       }
-//     });
-
-//     const ws = XLSX.utils.json_to_sheet(exportData);
-//     const wb = XLSX.utils.book_new();
-//     XLSX.utils.book_append_sheet(wb, ws, "Machinery Stock");
-//     XLSX.writeFile(wb, `Machinery_Stock_${new Date().toISOString().slice(0,10)}.xlsx`);
-//   };
-
-//   return (
-//     <>
-//       <CCard className="mb-4">
-//         <CCardHeader className="d-flex justify-content-between align-items-center" style={{ background: '#1e3a5f', color: '#fff' }}>
-//           <strong>Machinery Stock Update List</strong>
-//           <div>
-//             <CButton color="primary" className="me-2" onClick={() => navigate('/machineryStockUpdate')}>
-//               + Add New Stock
-//             </CButton>
-//             <CButton color="success" onClick={downloadExcel}>
-//               ≡ƒôÑ Download Excel
-//             </CButton>
-//           </div>
-//         </CCardHeader>
-
-//         <CCardBody>
-//           {/* Filters */}
-//           <CRow className="mb-3 g-3">
-//             <CCol md={4}>
-//               <CFormSelect value={filterProject} onChange={(e) => setFilterProject(e.target.value)}>
-//                 <option value="">All Projects</option>
-//                 {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormSelect value={filterMachine} onChange={(e) => setFilterMachine(e.target.value)}>
-//                 <option value="">All Machines</option>
-//                 {machines.map(m => <option key={m.id} value={m.id}>{m.machine_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={4}>
-//               <CButton color="secondary" onClick={() => { setFilterProject(''); setFilterMachine(''); }}>
-//                 Clear Filters
-//               </CButton>
-//             </CCol>
-//           </CRow>
-
-//           {loading ? (
-//             <div className="text-center py-5">Loading...</div>
-//           ) : (
-//             <CTable bordered hover responsive>
-//               <CTableHead>
-//                 <CTableRow>
-//                   <CTableHeaderCell>Project</CTableHeaderCell>
-//                   <CTableHeaderCell>Machine</CTableHeaderCell>
-//                   <CTableHeaderCell>HRS</CTableHeaderCell>
-//                   <CTableHeaderCell>Update Date</CTableHeaderCell>
-//                   <CTableHeaderCell>Supervisor</CTableHeaderCell>
-//                   <CTableHeaderCell>Action</CTableHeaderCell>
-//                 </CTableRow>
-//               </CTableHead>
-//               <CTableBody>
-//                 {data.length === 0 ? (
-//                   <CTableRow>
-//                     <CTableDataCell colSpan="6" className="text-center">No Records Found</CTableDataCell>
-//                   </CTableRow>
-//                 ) : (
-//                   data.map((record) => (
-//                     <React.Fragment key={record.id}>
-//                       <CTableRow>
-//                         <CTableDataCell>{record.project?.project_name || '-'}</CTableDataCell>
-//                         <CTableDataCell>{record.machine?.machine_name || '-'}</CTableDataCell>
-//                         <CTableDataCell>{record.hrs || 0}</CTableDataCell>
-//                         <CTableDataCell>{record.update_date}</CTableDataCell>
-//                         <CTableDataCell>{record.supervisor?.name || '-'}</CTableDataCell>
-//                         <CTableDataCell>
-//                           <CButton size="sm" color="info" onClick={() => toggleExpand(record.id)} className="me-2">
-//                             {expandedRows[record.id] ? 'Hide' : 'View'}
-//                           </CButton>
-//                           <CButton size="sm" color="warning" onClick={() => openMainEditModal(record)} className="me-2">
-//                             Edit
-//                           </CButton>
-//                         </CTableDataCell>
-//                       </CTableRow>
-
-//                       <CTableRow>
-//                         <CTableDataCell colSpan="6" className="p-0">
-//                           <CCollapse visible={expandedRows[record.id]}>
-//                             <div className="p-3 bg-light">
-//                               <h6 className="mb-3">Stock Items</h6>
-//                               <CTable bordered small responsive>
-//                                 <CTableHead>
-//                                   <CTableRow>
-//                                     <CTableHeaderCell>Stock Name</CTableHeaderCell>
-//                                     <CTableHeaderCell>Issued</CTableHeaderCell>
-//                                     <CTableHeaderCell>Used</CTableHeaderCell>
-//                                     <CTableHeaderCell>Transferred</CTableHeaderCell>
-//                                     <CTableHeaderCell>Remaining</CTableHeaderCell>
-//                                     <CTableHeaderCell>Action</CTableHeaderCell>
-//                                   </CTableRow>
-//                                 </CTableHead>
-//                                 <CTableBody>
-//                                   {record.stock_items?.map((stock) => (
-//                                     <CTableRow key={stock.id}>
-//                                       <CTableDataCell><strong>{stock.stock_name}</strong></CTableDataCell>
-//                                       <CTableDataCell>{stock.issued_qty}</CTableDataCell>
-//                                       <CTableDataCell>{stock.used_qty}</CTableDataCell>
-//                                       <CTableDataCell>{stock.transferred_qty || 0}</CTableDataCell>
-//                                       <CTableDataCell className="text-success fw-bold">
-//                                         {stock.remaining_qty}
-//                                       </CTableDataCell>
-//                                       <CTableDataCell>
-//                                         <CButton size="sm" color="warning" className="me-2" onClick={() => openStockEditModal(stock)}>
-//                                           Edit
-//                                         </CButton>
-//                                         {parseFloat(stock.remaining_qty) > 0 && (
-//                                           <CButton size="sm" color="primary" className="me-2" onClick={() => openTransferModal(stock)}>
-//                                             Transfer
-//                                           </CButton>
-//                                         )}
-//                                         <CButton size="sm" color="info" onClick={() => openLogsModal(stock)}>
-//                                           View Logs
-//                                         </CButton>
-//                                       </CTableDataCell>
-//                                     </CTableRow>
-//                                   ))}
-//                                 </CTableBody>
-//                               </CTable>
-//                             </div>
-//                           </CCollapse>
-//                         </CTableDataCell>
-//                       </CTableRow>
-//                     </React.Fragment>
-//                   ))
-//                 )}
-//               </CTableBody>
-//             </CTable>
-//           )}
-//         </CCardBody>
-//       </CCard>
-
-//       {/* LOGS MODAL */}
-//       <CModal visible={showLogsModal} onClose={() => setShowLogsModal(false)} size="lg">
-//         <CModalHeader style={{ background: '#1e3a5f', color: '#fff' }}>
-//           <CModalTitle>≡ƒôï Stock History - {selectedStockForLogs?.stock_name}</CModalTitle>
-//         </CModalHeader>
-//         <CModalBody>
-//           {logsLoading ? (
-//             <div className="text-center py-5">Loading logs...</div>
-//           ) : logs.length === 0 ? (
-//             <p className="text-center text-muted py-5">No activity logs found for this stock item.</p>
-//           ) : (
-//             <CTable bordered hover responsive>
-//               <CTableHead color="dark">
-//                 <CTableRow>
-//                   <CTableHeaderCell>Date</CTableHeaderCell>
-//                   <CTableHeaderCell>Type</CTableHeaderCell>
-//                   <CTableHeaderCell>Quantity</CTableHeaderCell>
-//                   <CTableHeaderCell>Remaining After</CTableHeaderCell>
-//                   <CTableHeaderCell>Destination</CTableHeaderCell>
-//                   <CTableHeaderCell>Remarks</CTableHeaderCell>
-//                 </CTableRow>
-//               </CTableHead>
-//               <CTableBody>
-//                 {logs.map((log, index) => (
-//                   <CTableRow key={index}>
-//                     <CTableDataCell>{log.log_date}</CTableDataCell>
-//                     <CTableDataCell>
-//                       <CBadge color={log.type === 'used' ? 'warning' : 'danger'}>
-//                         {log.type.toUpperCase()}
-//                       </CBadge>
-//                     </CTableDataCell>
-//                     <CTableDataCell className="fw-bold text-center">{log.quantity}</CTableDataCell>
-//                     <CTableDataCell className="text-success fw-bold text-center">{log.remaining_after}</CTableDataCell>
-//                     <CTableDataCell>
-//                       {log.type === 'transferred' && (log.to_project || log.to_machine) ? (
-//                         <div>
-//                           <strong>To:</strong><br />
-//                           {log.to_project && <span>{log.to_project}</span>}<br />
-//                           {log.to_machine && <small className="text-muted">{log.to_machine}</small>}
-//                         </div>
-//                       ) : '-'}
-//                     </CTableDataCell>
-//                     <CTableDataCell>{log.remarks || '-'}</CTableDataCell>
-//                   </CTableRow>
-//                 ))}
-//               </CTableBody>
-//             </CTable>
-//           )}
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton color="secondary" onClick={() => setShowLogsModal(false)}>Close</CButton>
-//         </CModalFooter>
-//       </CModal>
-
-//       {/* MAIN EDIT MODAL */}
-//       <CModal visible={showMainEditModal} onClose={() => setShowMainEditModal(false)} size="xl">
-//         <CModalHeader style={{ background: '#1e3a5f', color: '#fff' }}>
-//           <CModalTitle>Edit Main Stock Update</CModalTitle>
-//         </CModalHeader>
-//         <CModalBody>
-//           <CRow className="g-3">
-//             <CCol md={4}>
-//               <CFormSelect label="Project" name="project_id" value={mainEditForm.project_id || ''} onChange={handleMainEditChange}>
-//                 {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormSelect label="Machine" name="machine_id" value={mainEditForm.machine_id || ''} onChange={handleMainEditChange}>
-//                 {machines.map(m => <option key={m.id} value={m.id}>{m.machine_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormSelect label="Supervisor" name="supervisor_id" value={mainEditForm.supervisor_id || ''} onChange={handleMainEditChange}>
-//                 <option value="">Select Supervisor</option>
-//                 {supervisors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={3}>
-//               <CFormInput type="number" label="HRS" name="hrs" value={mainEditForm.hrs || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={3}>
-//               <CFormInput type="date" label="Update Date" name="update_date" value={mainEditForm.update_date || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={3}>
-//               <CFormInput type="date" label="Maintenance Date" name="maintenance_date" value={mainEditForm.maintenance_date || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={3}>
-//               <CFormInput type="number" label="Oil Balance" name="oil_bal" value={mainEditForm.oil_bal || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Hammer" name="hammer" value={mainEditForm.hammer || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Template" name="tamplet" value={mainEditForm.tamplet || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Capping" name="capping" value={mainEditForm.capping || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Damage Part" name="damage_part" value={mainEditForm.damage_part || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Bit" name="bit" value={mainEditForm.bit || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={4}>
-//               <CFormInput label="Used Bit" name="used_bit" value={mainEditForm.used_bit || ''} onChange={handleMainEditChange} />
-//             </CCol>
-//             <CCol md={12}>
-//               <CFormTextarea label="Stock Details" name="stock_details" value={mainEditForm.stock_details || ''} onChange={handleMainEditChange} rows={2} />
-//             </CCol>
-//           </CRow>
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton color="secondary" onClick={() => setShowMainEditModal(false)}>Cancel</CButton>
-//           <CButton color="primary" onClick={handleMainEditSave}>Save Changes</CButton>
-//         </CModalFooter>
-//       </CModal>
-
-//       {/* STOCK EDIT MODAL */}
-//       <CModal visible={showStockEditModal} onClose={() => setShowStockEditModal(false)}>
-//         <CModalHeader style={{ background: '#1e3a5f', color: '#fff' }}>
-//           <CModalTitle>Update Used Quantity</CModalTitle>
-//         </CModalHeader>
-//         <CModalBody>
-//           {editingStockItem && (
-//             <div className="mb-3 p-3 bg-light rounded">
-//               <strong>Stock:</strong> {editingStockItem.stock_name}<br />
-//               <strong>Current Used:</strong> {editingStockItem.used_qty} | 
-//               <strong> Remaining:</strong> {editingStockItem.remaining_qty}
-//             </div>
-//           )}
-//           <CRow className="g-3">
-//             <CCol md={12}>
-//               <CFormInput label="Stock Name" name="stock_name" value={stockEditForm.stock_name || ''} onChange={handleStockEditChange} />
-//             </CCol>
-//             <CCol md={12}>
-//               <CFormInput 
-//                 type="number" 
-//                 min="0"
-//                 label="Add Used Qty (Today)" 
-//                 name="used_qty" 
-//                 value={stockEditForm.used_qty || ''} 
-//                 onChange={handleStockEditChange} 
-//                 onKeyDown={preventNegative}
-//                 placeholder="Enter quantity used today"
-//               />
-//             </CCol>
-//             <CCol md={12}>
-//               <CFormTextarea label="Remarks" name="remarks" value={stockEditForm.remarks || ''} onChange={handleStockEditChange} rows={3} />
-//             </CCol>
-//           </CRow>
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton color="secondary" onClick={() => setShowStockEditModal(false)}>Cancel</CButton>
-//           <CButton color="primary" onClick={handleStockEditSave}>Save Used Quantity</CButton>
-//         </CModalFooter>
-//       </CModal>
-
-//       {/* TRANSFER MODAL */}
-//       <CModal visible={showTransferModal} onClose={() => setShowTransferModal(false)}>
-//         <CModalHeader style={{ background: '#1e3a5f', color: '#fff' }}>
-//           <CModalTitle>Transfer Remaining Stock</CModalTitle>
-//         </CModalHeader>
-//         <CModalBody>
-//           {selectedStockForTransfer && (
-//             <div className="mb-3 p-3 bg-light rounded">
-//               <strong>Stock:</strong> {selectedStockForTransfer.stock_name}<br />
-//               <strong>Remaining:</strong> {selectedStockForTransfer.remaining_qty}
-//             </div>
-//           )}
-//           <CRow className="g-3">
-//             <CCol md={6}>
-//               <CFormSelect label="To Project" value={transferData.to_project_id} onChange={e => setTransferData({...transferData, to_project_id: e.target.value})}>
-//                 <option value="">Select Project</option>
-//                 {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={6}>
-//               <CFormSelect label="To Machine" value={transferData.to_machine_id} onChange={e => setTransferData({...transferData, to_machine_id: e.target.value})}>
-//                 <option value="">Select Machine</option>
-//                 {machines.map(m => <option key={m.id} value={m.id}>{m.machine_name}</option>)}
-//               </CFormSelect>
-//             </CCol>
-//             <CCol md={12}>
-//               <CFormInput 
-//                 type="number" 
-//                 min="0"
-//                 label="Transfer Quantity" 
-//                 value={transferData.quantity} 
-//                 onChange={e => setTransferData({...transferData, quantity: e.target.value})} 
-//                 onKeyDown={preventNegative}
-//               />
-//             </CCol>
-//             <CCol md={12}>
-//               <CFormTextarea label="Reason" value={transferData.reason} onChange={e => setTransferData({...transferData, reason: e.target.value})} placeholder="Reason for transfer (optional)" />
-//             </CCol>
-//           </CRow>
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton color="secondary" onClick={() => setShowTransferModal(false)}>Cancel</CButton>
-//           <CButton color="primary" onClick={handleTransfer}>Confirm Transfer</CButton>
-//         </CModalFooter>
-//       </CModal>
-//     </>
-//   );
-// }
-
-// export default MachineryStockList;
-
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getAPICall, postAPICall, put, deleteAPICall } from '../../../util/api';
 import { useToast } from '../../common/toast/ToastContext';
+import { CButton, CModal, CModalBody, CModalFooter, CModalHeader, CModalTitle } from '@coreui/react';
 
-/* ΓöÇΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+
 const today = () => new Date().toISOString().split('T')[0];
-const fmt   = (v) => (v == null || v === '' ? 'ΓÇö' : v);
-const money = (v) => `Γé╣${Number(v).toLocaleString('en-IN')}`;
+const fmt   = (v) => (v == null || v === '' ? '-' : v);
+const money = (v) => `${Number(v).toLocaleString('en-IN')}`;
 
 function pct(current, initial) {
   if (!initial) return 0;
@@ -629,7 +28,7 @@ function Modal({ title, onClose, children, wide }) {
       <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth: wide ? 760 : 520,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
         <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 22px',borderBottom:'1px solid #F1F5F9' }}>
           <h3 style={{ margin:0,fontSize:16,fontWeight:700,color:'#0F172A' }}>{title}</h3>
-          <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#94A3B8',lineHeight:1 }}>├ù</button>
+          <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#94A3B8',lineHeight:1 }}>×</button>
         </div>
         <div style={{ padding:'20px 22px' }}>{children}</div>
       </div>
@@ -659,10 +58,8 @@ const Bar = ({ pct: p, color }) => (
   </div>
 );
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   STOCK MASTER TAB
-ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-function StockMasterTab({ state, onRefresh }) {
+
+function StockMasterTab({ state, onRefresh, openDeleteModal}) {
   const { stockMaster, projects, machines, dashboardStats } = state;
   const { showToast } = useToast();
   
@@ -690,7 +87,7 @@ function StockMasterTab({ state, onRefresh }) {
   const cats = [...new Set(stockMaster.map(s => s.category))];
 
   const submitAdd = async () => {
-    if (!addForm.projectId || !addForm.itemName || !addForm.initialQty) return alert('Fill required fields');
+    if (!addForm.projectId || !addForm.itemName || !addForm.initialQty) return showToast('danger', 'Fill required fields'); //alert('Fill required fields');
     try {
       await postAPICall('/api/machinery/stock', {
         project_id: Number(addForm.projectId),
@@ -706,12 +103,12 @@ function StockMasterTab({ state, onRefresh }) {
       setAddForm({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', minQty:'', category:'Consumable' });
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to add stock item');
+     showToast('danger', err.message || 'Failed to add stock item'); //alert(err.message || 'Failed to add stock item');
     }
   };
 
   const submitEdit = async () => {
-    if (!editForm.projectId || !editForm.itemName || !editForm.initialQty) return alert('Fill required fields');
+    if (!editForm.projectId || !editForm.itemName || !editForm.initialQty) return showToast('danger', 'Fill required fields');  //alert('Fill required fields');
     try {
       await put(`/api/machinery/stock/${showEdit.id}`, {
         project_id: Number(editForm.projectId),
@@ -726,7 +123,7 @@ function StockMasterTab({ state, onRefresh }) {
       setShowEdit(null);
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to update stock item');
+     showToast('danger', err.message || 'Failed to Update stock item'); // alert(err.message || 'Failed to update stock item');
     }
   };
 
@@ -737,14 +134,14 @@ function StockMasterTab({ state, onRefresh }) {
       showToast('success', 'Stock item deleted successfully!');
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to delete stock item');
+     showToast('danger', err.message || 'Failed to delete stock item'); // alert(err.message || 'Failed to delete stock item');
     }
   };
 
   const submitUsage = async () => {
     const qty = Number(usageForm.qty);
-    if (!qty || qty <= 0) return alert('Enter valid qty');
-    if (qty > showUsage.currentQty) return alert('Insufficient stock');
+    if (!qty || qty <= 0) return  showToast('danger', 'Enter valid qty'); //alert('Enter valid qty');
+    if (qty > showUsage.currentQty) return   showToast('danger', 'Insufficient stock'); //alert('Insufficient stock');
     try {
       await postAPICall('/api/machinery/stock/use', {
         stock_item_id: showUsage.id,
@@ -756,14 +153,14 @@ function StockMasterTab({ state, onRefresh }) {
       setUsageForm({ qty:'', note:'' });
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to record usage');
+      showToast('danger', err.message || 'Failed to record usage');//alert(err.message || 'Failed to record usage');
     }
   };
 
   const submitTransfer = async () => {
     const qty = Number(tfForm.qty);
-    if (!qty || !tfForm.toProjectId) return alert('Fill all fields');
-    if (qty > showTransfer.currentQty) return alert('Insufficient stock');
+    if (!qty || !tfForm.toProjectId) return showToast('danger', 'Fill all fields'); //alert('Fill all fields');
+    if (qty > showTransfer.currentQty) return showToast('danger', 'Insufficient stock'); //alert('Insufficient stock');
     try {
       await postAPICall('/api/machinery/stock/transfer', {
         stock_item_id: showTransfer.id,
@@ -777,7 +174,8 @@ function StockMasterTab({ state, onRefresh }) {
       setTfForm({ toProjectId:'', toMachineId:'', qty:'', note:'' });
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to transfer stock');
+     // alert(err.message || 'Failed to transfer stock');
+     showToast('danger', err.message || 'Failed to transfer stock');
     }
   };
 
@@ -798,7 +196,16 @@ function StockMasterTab({ state, onRefresh }) {
   const proj = (id) => projects.find(p => p.id === id)?.name || id;
   const mach = (id) => machines.find(m => m.id === id)?.name || id;
 
+
+
+
+
+
+
+
   return (
+
+    <>
     <div>
       <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:20,alignItems:'center' }}>
         <select style={{ ...sel, width:170 }} value={filterProject} onChange={e=>setFilterProject(e.target.value)}>
@@ -873,7 +280,14 @@ function StockMasterTab({ state, onRefresh }) {
                           minQty: s.minQty || ''
                         });
                       }} style={{ background:'#3B82F6', color:'#fff' }}>Edit</Btn>
-                      <Btn small onClick={() => deleteItem(s.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn>
+                      {/* <Btn small onClick={() => deleteItem(s.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn> */}
+  <Btn 
+  small 
+  onClick={() => openDeleteModal(s, 'stock')}
+  style={{ background: '#EF4444', color: '#fff' }}
+>
+  Delete
+</Btn>
                     </div>
                   </td>
                 </tr>
@@ -884,7 +298,7 @@ function StockMasterTab({ state, onRefresh }) {
       </div>
 
       {showHistory && (
-        <Modal wide title={`Stock History ΓÇö ${showHistory.itemName}`} onClose={()=>setShowHistory(null)}>
+        <Modal wide title={`Stock History - ${showHistory.itemName}`} onClose={()=>setShowHistory(null)}>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%',borderCollapse:'collapse',fontSize:13 }}>
               <thead><tr style={{ background:'#F8FAFC' }}>
@@ -932,7 +346,7 @@ function StockMasterTab({ state, onRefresh }) {
           <FRow label="Category *">
             <select style={sel} value={addForm.category} onChange={e=>setAddForm({...addForm, category:e.target.value})}>
               <option value="Consumable">Consumable</option>
-              <option value="Spare">Spare</option>
+              <option value="Spare Part">SparePart</option>
               <option value="Tool">Tool</option>
               <option value="Lubricant">Lubricant</option>
             </select>
@@ -947,10 +361,27 @@ function StockMasterTab({ state, onRefresh }) {
             </select>
           </FRow>
           <FRow label="Initial Qty *">
-            <input type="number" min="0" placeholder="e.g. 10" style={inp} value={addForm.initialQty} onChange={e=>setAddForm({...addForm, initialQty:e.target.value})} />
+            <input type="number" min="0" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}}
+ placeholder="e.g. 10" style={inp} value={addForm.initialQty} onChange={e=>setAddForm({...addForm, initialQty:e.target.value})} />
           </FRow>
           <FRow label="Min Qty (Low Alert Level)">
-            <input type="number" min="0" placeholder="e.g. 2" style={inp} value={addForm.minQty} onChange={e=>setAddForm({...addForm, minQty:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" placeholder="e.g. 2" style={inp} value={addForm.minQty} onChange={e=>setAddForm({...addForm, minQty:e.target.value})} />
           </FRow>
           <div style={{ display:'flex',justifyContent:'flex-end',gap:8,marginTop:20 }}>
             <Btn gray onClick={()=>setShowAdd(false)}>Cancel</Btn>
@@ -994,7 +425,15 @@ function StockMasterTab({ state, onRefresh }) {
             </select>
           </FRow>
           <FRow label="Initial Qty *">
-            <input type="number" min="0" placeholder="e.g. 10" style={inp} value={editForm.initialQty} onChange={e=>setEditForm({...editForm, initialQty:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" placeholder="e.g. 10" style={inp} value={editForm.initialQty} onChange={e=>setEditForm({...editForm, initialQty:e.target.value})} />
           </FRow>
           <FRow label="Min Qty (Low Alert Level)">
             <input type="number" min="0" placeholder="e.g. 2" style={inp} value={editForm.minQty} onChange={e=>setEditForm({...editForm, minQty:e.target.value})} />
@@ -1013,7 +452,15 @@ function StockMasterTab({ state, onRefresh }) {
             <div>Project: <strong>{proj(showUsage.projectId)}</strong></div>
           </div>
           <FRow label="Usage Qty *">
-            <input type="number" min="0" max={showUsage.currentQty} placeholder="e.g. 2" style={inp} value={usageForm.qty} onChange={e=>setUsageForm({...usageForm, qty:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" max={showUsage.currentQty} placeholder="e.g. 2" style={inp} value={usageForm.qty} onChange={e=>setUsageForm({...usageForm, qty:e.target.value})} />
           </FRow>
           <FRow label="Remarks / Purpose">
             <textarea placeholder="e.g. Used for maintenance work" rows={3} style={{ ...inp, resize:'vertical' }} value={usageForm.note} onChange={e=>setUsageForm({...usageForm, note:e.target.value})} />
@@ -1044,7 +491,15 @@ function StockMasterTab({ state, onRefresh }) {
             </select>
           </FRow>
           <FRow label="Transfer Qty *">
-            <input type="number" min="0" max={showTransfer.currentQty} placeholder="e.g. 2" style={inp} value={tfForm.qty} onChange={e=>setTfForm({...tfForm, qty:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" max={showTransfer.currentQty} placeholder="e.g. 2" style={inp} value={tfForm.qty} onChange={e=>setTfForm({...tfForm, qty:e.target.value})} />
           </FRow>
           <FRow label="Reason / Notes">
             <textarea placeholder="Reason for transfer..." rows={3} style={{ ...inp, resize:'vertical' }} value={tfForm.note} onChange={e=>setTfForm({...tfForm, note:e.target.value})} />
@@ -1056,13 +511,28 @@ function StockMasterTab({ state, onRefresh }) {
         </Modal>
       )}
     </div>
+
+
+
+
+
+
+
+    
+
+
+
+
+
+</>
+
   );
 }
 
 /* ╔══════════════════════════════════════════════════════════════════════════
    DAILY LOG TAB
    ╚══════════════════════════════════════════════════════════════════════════ */
-function DailyLogTab({ state, onRefresh }) {
+function DailyLogTab({ state, onRefresh, openDeleteModal }) {
   const { dailyLogs, projects, machines, supervisors } = state;
   const { showToast } = useToast();
   
@@ -1108,7 +578,7 @@ function DailyLogTab({ state, onRefresh }) {
   ).sort((a,b)=>b.date.localeCompare(a.date));
 
   const submit = async () => {
-    if (!form.projectId || !form.machineId || !form.hoursWorked) return alert('Fill required fields');
+    if (!form.projectId || !form.machineId || !form.hoursWorked) return showToast('danger', 'Fill required fields'); //alert('Fill required fields');
     try {
       await postAPICall('/api/machinery/daily-logs', {
         project_id: Number(form.projectId),
@@ -1144,12 +614,12 @@ function DailyLogTab({ state, onRefresh }) {
       });
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to add daily log');
+    showToast('danger', err.message || 'Failed to add daily log'); // alert(err.message || 'Failed to add daily log');
     }
   };
 
   const submitEdit = async () => {
-    if (!editForm.projectId || !editForm.machineId || !editForm.hoursWorked) return alert('Fill required fields');
+    if (!editForm.projectId || !editForm.machineId || !editForm.hoursWorked) return showToast('danger', 'Fill required fields'); //alert('Fill required fields');
     try {
       await put(`/api/machinery/daily-logs/${showEdit.id}`, {
         project_id: Number(editForm.projectId),
@@ -1170,7 +640,7 @@ function DailyLogTab({ state, onRefresh }) {
       setShowEdit(null);
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to update daily log');
+      showToast('danger', err.message || 'Failed to update daily log'); //alert(err.message || 'Failed to update daily log');
     }
   };
 
@@ -1181,7 +651,7 @@ function DailyLogTab({ state, onRefresh }) {
       showToast('success', 'Daily log deleted successfully!');
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to delete daily log');
+     showToast('danger', err.message || 'Failed to delete daily log'); //alert(err.message || 'Failed to delete daily log');
     }
   };
 
@@ -1253,7 +723,14 @@ function DailyLogTab({ state, onRefresh }) {
                         tamplet: l.tamplet || ''
                       });
                     }} style={{ background:'#3B82F6', color:'#fff' }}>Edit</Btn>
-                    <Btn small onClick={() => deleteLog(l.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn>
+                    {/* <Btn small onClick={() => deleteLog(l.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn> */}
+                     <Btn 
+  small 
+  onClick={() => openDeleteModal(l, 'log')}
+  style={{ background: '#EF4444', color: '#fff' }}
+>
+  Delete
+</Btn>
                   </div>
                 </td>
               </tr>
@@ -1395,7 +872,7 @@ function DailyLogTab({ state, onRefresh }) {
 /* ╔══════════════════════════════════════════════════════════════════════════
    MAINTENANCE TAB
    ╚══════════════════════════════════════════════════════════════════════════ */
-function MaintenanceTab({ state, onRefresh }) {
+function MaintenanceTab({ state, onRefresh, openDeleteModal }) {
   const { maintenanceLogs, machines, projects } = state;
   const { showToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
@@ -1405,7 +882,7 @@ function MaintenanceTab({ state, onRefresh }) {
   const [filterMachine, setFilterMachine] = useState('');
 
   const submit = async () => {
-    if (!form.machineId || !form.desc) return alert('Fill required fields');
+    if (!form.machineId || !form.desc) return showToast('danger', 'Fill required fields'); //alert('Fill required fields');
     try {
       await postAPICall('/api/machinery/maintenance', {
         machine_id: Number(form.machineId),
@@ -1422,12 +899,12 @@ function MaintenanceTab({ state, onRefresh }) {
       setForm({ machineId:'', projectId:'', date:today(), type:'Preventive', desc:'', cost:'', nextDue:'', by:'' });
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to add maintenance record');
+      showToast('danger', err.message || 'Failed to add maintenance record'); //alert(err.message || 'Failed to add maintenance record');
     }
   };
 
   const submitEdit = async () => {
-    if (!editForm.machineId || !editForm.desc) return alert('Fill required fields');
+    if (!editForm.machineId || !editForm.desc) return showToast('danger', 'Fill required fields'); //alert('Fill required fields');
     try {
       await put(`/api/machinery/maintenance/${showEdit.id}`, {
         machine_id: Number(editForm.machineId),
@@ -1443,7 +920,7 @@ function MaintenanceTab({ state, onRefresh }) {
       setShowEdit(null);
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to update maintenance record');
+    showToast('danger', err.message || 'Failed to update maintenance record'); // alert(err.message || 'Failed to update maintenance record');
     }
   };
 
@@ -1454,7 +931,7 @@ function MaintenanceTab({ state, onRefresh }) {
       showToast('success', 'Maintenance record deleted successfully!');
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to delete record');
+      showToast('danger', err.message || 'Failed to delete record');//alert(err.message || 'Failed to delete record');
     }
   };
 
@@ -1521,7 +998,15 @@ function MaintenanceTab({ state, onRefresh }) {
                           by: l.by || ''
                         });
                       }} style={{ background:'#3B82F6', color:'#fff' }}>Edit</Btn>
-                      <Btn small onClick={() => deleteRecord(l.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn>
+                      {/* <Btn small onClick={() => deleteRecord(l.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn> */}
+
+                      <Btn 
+  small 
+  onClick={() => openDeleteModal(l, 'maintenance')}
+  style={{ background: '#EF4444', color: '#fff' }}
+>
+  Delete
+</Btn>
                     </div>
                   </td>
                 </tr>
@@ -1565,7 +1050,15 @@ function MaintenanceTab({ state, onRefresh }) {
             <input type="text" placeholder="e.g. Changed engine oil, replaced hydraulic seal" style={inp} value={form.desc} onChange={e=>setForm({...form, desc:e.target.value})} />
           </FRow>
           <FRow label="Cost (₹)">
-            <input type="number" min="0" placeholder="e.g. 4500" style={inp} value={form.cost} onChange={e=>setForm({...form, cost:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" placeholder="e.g. 4500" style={inp} value={form.cost} onChange={e=>setForm({...form, cost:e.target.value})} />
           </FRow>
           <FRow label="Next Due Date">
             <input type="date" style={inp} value={form.nextDue} onChange={e=>setForm({...form, nextDue:e.target.value})} />
@@ -1609,7 +1102,15 @@ function MaintenanceTab({ state, onRefresh }) {
             <input type="text" placeholder="e.g. Changed engine oil, replaced hydraulic seal" style={inp} value={editForm.desc} onChange={e=>setEditForm({...editForm, desc:e.target.value})} />
           </FRow>
           <FRow label="Cost (₹)">
-            <input type="number" min="0" placeholder="e.g. 4500" style={inp} value={editForm.cost} onChange={e=>setEditForm({...editForm, cost:e.target.value})} />
+            <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0" placeholder="e.g. 4500" style={inp} value={editForm.cost} onChange={e=>setEditForm({...editForm, cost:e.target.value})} />
           </FRow>
           <FRow label="Next Due Date">
             <input type="date" style={inp} value={editForm.nextDue} onChange={e=>setEditForm({...editForm, nextDue:e.target.value})} />
@@ -1630,7 +1131,7 @@ function MaintenanceTab({ state, onRefresh }) {
 /* ╔══════════════════════════════════════════════════════════════════════════
    MASTERS TAB
    ╚══════════════════════════════════════════════════════════════════════════ */
-function MastersTab({ state, onRefresh }) {
+function MastersTab({ state, onRefresh, openDeleteModal }) {
   const { projects, machines, supervisors } = state;
   const { showToast } = useToast();
   const [tab, setTab] = useState('projects');
@@ -1663,14 +1164,14 @@ function MastersTab({ state, onRefresh }) {
           title="Projects" items={projects} fields={[['name','Project Name','text']]}
           form={pForm} setForm={setPForm}
           onAdd={async ()=>{
-            if(!pForm.name) return alert('Enter name');
+            if(!pForm.name) return showToast('danger', 'Enter name'); //alert('Enter name');
             try {
               await postAPICall('/api/storeManually', { project_name: pForm.name });
               showToast('success', 'Project added successfully!');
               setPForm({name:''});
               onRefresh();
             } catch (err) {
-              alert(err.message || 'Failed to add project');
+            showToast('danger', err.message || 'Failed to add project'); // alert(err.message || 'Failed to add project');
             }
           }}
           renderRow={p=><><td style={td}>{p.name}</td></>}
@@ -1682,7 +1183,7 @@ function MastersTab({ state, onRefresh }) {
           title="Machines" items={machines} fields={[['name','Machine Name','text'],['type','Machine Type','text']]}
           form={mForm} setForm={setMForm}
           onAdd={async ()=>{
-            if(!mForm.name) return alert('Enter name');
+            if(!mForm.name) return showToast('danger', err.message || 'Enter name'); //alert('Enter name');
             try {
               await postAPICall('/api/machineries', { 
                 machine_name: mForm.name, 
@@ -1694,7 +1195,7 @@ function MastersTab({ state, onRefresh }) {
               setMForm({name:'',type:''});
               onRefresh();
             } catch (err) {
-              alert(err.message || 'Failed to add machine');
+             showToast('danger', err.message || 'Failed to add machine'); // alert(err.message || 'Failed to add machine');
             }
           }}
           renderRow={m=><><td style={td}>{m.name}</td><td style={td}><Badge label={m.type||'—'} color="#2563EB" bg="#EFF6FF" /></td></>}
@@ -1706,7 +1207,7 @@ function MastersTab({ state, onRefresh }) {
           title="Supervisors" items={supervisors} fields={[['name','Supervisor Name','text']]}
           form={sForm} setForm={setSForm}
           onAdd={async ()=>{
-            if(!sForm.name) return alert('Enter name');
+            if(!sForm.name) return  showToast('danger', 'Enter name'); //alert('Enter name');
             try {
               await postAPICall('/api/operators', { 
                 name: sForm.name, 
@@ -1719,7 +1220,7 @@ function MastersTab({ state, onRefresh }) {
               setSForm({name:''});
               onRefresh();
             } catch (err) {
-              alert(err.message || 'Failed to add supervisor');
+               showToast('danger', err.message || 'Failed to add supervisor');//alert(err.message || 'Failed to add supervisor');
             }
           }}
           renderRow={s=><><td style={td}>{s.name}</td></>}
@@ -1777,7 +1278,7 @@ function MasterSection({ title, items, fields, form, setForm, onAdd, renderRow, 
 /* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
    TRANSFER LOG TAB
 ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-function TransferLogTab({ state, onRefresh }) {
+function TransferLogTab({ state, onRefresh , openDeleteModal}) {
   const { transferLogs, stockMaster, projects } = state;
   const { showToast } = useToast();
   const [showEdit, setShowEdit] = useState(null);
@@ -1789,7 +1290,7 @@ function TransferLogTab({ state, onRefresh }) {
 
   const submitEdit = async () => {
     const qty = Number(editForm.qty);
-    if (!qty || qty <= 0) return alert('Enter valid quantity');
+    if (!qty || qty <= 0) return  showToast('danger', 'Enter valid quantity'); //alert('Enter valid quantity');
     try {
       await put(`/api/machinery/transfers/${showEdit.id}`, {
         qty: qty,
@@ -1799,7 +1300,7 @@ function TransferLogTab({ state, onRefresh }) {
       setShowEdit(null);
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to update transfer log');
+       showToast('danger', err.message || 'Failed to update transfer log'); //alert(err.message || 'Failed to update transfer log');
     }
   };
 
@@ -1810,9 +1311,19 @@ function TransferLogTab({ state, onRefresh }) {
       showToast('success', 'Transfer record deleted successfully!');
       onRefresh();
     } catch (err) {
-      alert(err.message || 'Failed to delete transfer record');
+      showToast('danger', err.message || 'Failed to delete transfer record'); // alert(err.message || 'Failed to delete transfer record');
     }
   };
+
+
+
+
+
+  
+
+
+
+
 
   return (
     <div>
@@ -1841,7 +1352,14 @@ function TransferLogTab({ state, onRefresh }) {
                         note: log.note || ''
                       });
                     }} style={{ background:'#3B82F6', color:'#fff' }}>Edit</Btn>
-                    <Btn small onClick={() => deleteTransfer(log.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn>
+                    {/* <Btn small onClick={() => deleteTransfer(log.id)} style={{ background:'#EF4444', color:'#fff' }}>Delete</Btn> */}
+                    <Btn 
+  small 
+  onClick={() => openDeleteModal(log, 'transfer')}
+  style={{ background: '#EF4444', color: '#fff' }}
+>
+  Delete
+</Btn>
                   </div>
                 </td>
               </tr>
@@ -1861,7 +1379,15 @@ function TransferLogTab({ state, onRefresh }) {
               <div>To Project: <strong>{proj(showEdit.toProjectId)}</strong></div>
             </div>
             <FRow label={`Transfer Qty (${unit(showEdit.stockId)}) *`}>
-              <input type="number" min="0.01" step="any" placeholder="e.g. 2" style={inp} value={editForm.qty} onChange={e=>setEditForm({...editForm, qty:e.target.value})} />
+              <input type="number" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} min="0.01" step="any" placeholder="e.g. 2" style={inp} value={editForm.qty} onChange={e=>setEditForm({...editForm, qty:e.target.value})} />
             </FRow>
             <FRow label="Reason / Notes">
               <textarea placeholder="Reason for transfer..." rows={3} style={{ ...inp, resize:'vertical' }} value={editForm.note} onChange={e=>setEditForm({...editForm, note:e.target.value})} />
@@ -2027,6 +1553,84 @@ export default function MachineryTracker() {
   });
   const [loading, setLoading] = useState(true);
 
+
+const { showToast } = useToast();
+  
+
+const [deleteModal, setDeleteModal] = useState(false);
+const [itemToDelete, setItemToDelete] = useState(null);
+const [deleteType, setDeleteType] = useState(''); // 'stock', 'log', 'maintenance', 'transfer'
+
+
+
+
+  // const { showToast } = useToast();
+
+// Open Delete Modal
+const openDeleteModal = (item, type) => {
+  setItemToDelete(item);
+  setDeleteType(type);
+  setDeleteModal(true);
+};
+
+// Confirm Delete
+const confirmDelete = async () => {
+  if (!itemToDelete) return;
+
+  try {
+    let endpoint = '';
+    let successMessage = '';
+
+    switch (deleteType) {
+      case 'stock':
+        endpoint = `/api/machinery/stock/${itemToDelete.id}`;
+        successMessage = 'Stock item deleted successfully!';
+        break;
+
+      case 'log':
+        endpoint = `/api/machinery/daily-logs/${itemToDelete.id}`;
+        successMessage = 'Daily log deleted successfully!';
+        break;
+
+      case 'maintenance':
+        endpoint = `/api/machinery/maintenance/${itemToDelete.id}`;
+        successMessage = 'Maintenance record deleted successfully!';
+        break;
+
+      case 'transfer':
+        endpoint = `/api/machinery/transfers/${itemToDelete.id}`;
+        successMessage = 'Transfer record deleted successfully!';
+        break;
+
+      default:
+        throw new Error('Unknown delete type');
+    }
+
+    await deleteAPICall(endpoint);
+    
+    setDeleteModal(false);
+    setItemToDelete(null);
+    
+    showToast('success', successMessage);
+    // onRefresh();           // or fetch again depending on your setup
+    refreshData();
+
+  } catch (err) {
+    console.error("Delete error:", err);
+   showToast('danger', err.message || 'Failed to delete'); // alert(err.message || 'Failed to delete'); // or use your toast/error state
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
   const refreshData = useCallback(async () => {
     try {
       const [mastersRes, stockRes, dailyRes, maintRes, transRes, dashRes] = await Promise.all([
@@ -2079,6 +1683,7 @@ export default function MachineryTracker() {
   }
 
   return (
+    <>
     <div style={{ minHeight:'100vh',background:'#F8FAFC',fontFamily:"'Outfit','Segoe UI',sans-serif",color:'#1E293B' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -2123,8 +1728,8 @@ export default function MachineryTracker() {
           </h1>
           <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>
             {activeTab==='dashboard'   && 'Overview of all machinery stock and daily operations'}
-            {activeTab==='stock'       && 'Master stock items ΓÇö create once, track daily usage & transfers'}
-            {activeTab==='daily'       && 'Daily work logs appended as history ΓÇö no duplicates'}
+            {activeTab==='stock'       && 'Master stock items - create once, track daily usage & transfers'}
+            {activeTab==='daily'       && 'Daily work logs appended as history - no duplicates'}
             {activeTab==='maintenance' && 'Machine maintenance records with cost and next due tracking'}
             {activeTab==='transfers'   && 'Full audit trail of all stock transfers between projects'}
             {activeTab==='masters'     && 'Manage projects, machines and supervisors'}
@@ -2132,13 +1737,63 @@ export default function MachineryTracker() {
         </div>
 
         {activeTab==='dashboard'   && <Dashboard       state={state} />}
-        {activeTab==='stock'       && <StockMasterTab  state={state} onRefresh={refreshData} />}
-        {activeTab==='daily'       && <DailyLogTab     state={state} onRefresh={refreshData} />}
-        {activeTab==='maintenance' && <MaintenanceTab  state={state} onRefresh={refreshData} />}
-        {activeTab==='transfers'   && <TransferLogTab  state={state} onRefresh={refreshData} />}
+        {/* {activeTab==='stock'       && <StockMasterTab  state={state} onRefresh={refreshData} />} */}
+        {/* {activeTab==='daily'       && <DailyLogTab     state={state} onRefresh={refreshData} />} */}
+        {/* {activeTab==='maintenance' && <MaintenanceTab  state={state} onRefresh={refreshData} />} */}
+        {/* {activeTab==='transfers'   && <TransferLogTab  state={state} onRefresh={refreshData} />} */}
         {activeTab==='masters'     && <MastersTab      state={state} onRefresh={refreshData} />}
+
+        {activeTab==='stock'       && <StockMasterTab  state={state} onRefresh={refreshData} openDeleteModal={openDeleteModal} />}
+{activeTab==='daily'       && <DailyLogTab     state={state} onRefresh={refreshData} openDeleteModal={openDeleteModal} />}
+{activeTab==='maintenance' && <MaintenanceTab  state={state} onRefresh={refreshData} openDeleteModal={openDeleteModal} />}
+{activeTab==='transfers'   && <TransferLogTab  state={state} onRefresh={refreshData} openDeleteModal={openDeleteModal} />}
       </div>
     </div>
+
+
+
+
+
+  <CModal visible={deleteModal} onClose={() => setDeleteModal(false)}>
+        <CModalHeader closeButton>
+          <CModalTitle>
+            Delete {deleteType === 'stock' && 'Stock Item'}
+            {deleteType === 'log' && 'Daily Log'}
+            {deleteType === 'maintenance' && 'Maintenance Record'}
+            {deleteType === 'transfer' && 'Transfer Record'}?
+          </CModalTitle>
+        </CModalHeader>
+
+        <CModalBody>
+          <p style={{ fontSize: "16px" }}>
+            Do you really want to{" "}
+            <span style={{ color: "red", fontWeight: "bold" }}>Delete</span> this{' '}
+            {deleteType === 'stock' && 'stock item'}
+            {deleteType === 'log' && 'daily log'}
+            {deleteType === 'maintenance' && 'maintenance record'}
+            {deleteType === 'transfer' && 'transfer record'}?
+          </p>
+        </CModalBody>
+
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setDeleteModal(false)}>
+            Cancel
+          </CButton>
+          <CButton color="danger" onClick={confirmDelete}>
+            Yes, Delete
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+
+
+
+
+
+      
+
+</>
+
   );
 }
 

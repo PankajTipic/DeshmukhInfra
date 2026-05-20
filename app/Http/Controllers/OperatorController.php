@@ -63,15 +63,32 @@ public function store(Request $request)
      * Display a Company ID.
      */
 
-    public function showComapnyIdWise()
+//     public function showComapnyIdWise()
+// {
+//    $userCompanyId = auth()->user()->company_id;
+
+//     // $operators = Operator::where('company_id', $userCompanyId)->get();
+//     $operators = Operator::with('project:id,project_name')   // eager load project name
+//         ->where('company_id', $userCompanyId)
+//         ->get();
+
+
+//     return response()->json($operators);
+// }
+
+public function showComapnyIdWise(Request $request)
 {
-   $userCompanyId = auth()->user()->company_id;
+    $userCompanyId = auth()->user()->company_id;
 
-    // $operators = Operator::where('company_id', $userCompanyId)->get();
-    $operators = Operator::with('project:id,project_name')   // eager load project name
-        ->where('company_id', $userCompanyId)
-        ->get();
+    $query = Operator::with('project:id,project_name')
+        ->where('company_id', $userCompanyId);
 
+    // Project Filter
+    if ($request->filled('project_id')) {
+        $query->where('project_id', $request->project_id);
+    }
+
+    $operators = $query->get();
 
     return response()->json($operators);
 }
