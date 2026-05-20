@@ -17,6 +17,8 @@ import {
   CModalHeader,
   CModalTitle,
   CBadge,
+  CModalBody,
+  CModalFooter,
 } from '@coreui/react';
 import Select from 'react-select';
 import { getAPICall, deleteAPICall } from '../../../util/api';
@@ -28,6 +30,8 @@ import EditPurchaseModal from './EditPurchaseModal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { host } from '../../../util/constants';
+import CIcon from '@coreui/icons-react';
+import { cilCloudDownload, cilImage } from '@coreui/icons';
 
 const PurchaseList = () => {
   const [purchases, setPurchases] = useState([]);
@@ -45,6 +49,10 @@ const PurchaseList = () => {
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);
+
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedPurchaseTitle, setSelectedPurchaseTitle] = useState('');
 
   const { showToast } = useToast();
   const usertype = getUserType();
@@ -146,6 +154,24 @@ const PurchaseList = () => {
     setShowEditModal(true);
   };
 
+  const openImageModal = (purchase) => {
+    setSelectedImages(purchase.images || []);
+    setSelectedPurchaseTitle(
+      `${purchase.project?.project_name || ''} - ${purchase.material_name}`
+    );
+    setShowImageModal(true);
+  };
+
+  const downloadImage = (image) => {
+    const fullUrl = `${host}/${image.image_path}`;
+    const link = document.createElement('a');
+    link.href = fullUrl;
+    link.download = image.original_name || `purchase-image-${image.id}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDelete = async () => {
     if (!deleteItemId) return;
     try {
@@ -203,220 +229,7 @@ const formatDate = (date) => {
   // ───────────────────────────────────────────────
   // DOWNLOAD PDF - With repeating header + border on every page
   // ───────────────────────────────────────────────
-  // const downloadPDF = () => {
-  //   const doc = new jsPDF('landscape', 'pt', 'a4');
-  //   const pageWidth = doc.internal.pageSize.getWidth();
-  //   const pageHeight = doc.internal.pageSize.getHeight();
-  //   const margin = 40;
-
-  //   const user = getUserData();
-  //   const companyInfo = user?.company_info || {};
-
-  //   // Approximate header height (tune after testing)
-  //   const headerHeight = 110; // pt
-
-  //   // Function to draw full header + border (called on every page)
-  //   const drawHeaderAndBorder = () => {
-  //     // 1. Outer border
-  //     doc.setDrawColor(80, 80, 80);
-  //     doc.setLineWidth(1);
-  //     doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
-
-  //     // 2. Logo (top-right)
-  //     const logoSize = 70; // pt (~25mm)
-  //     const logoX = pageWidth - margin - logoSize - 15;
-  //     const logoY = margin + 15;
-
-  //     let logoUrl = null;
-  //     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-  //       logoUrl = `${host}/img/${companyInfo.logo}`;
-  //     }
-
-  //     if (logoUrl) {
-  //       try {
-  //         doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
-  //       } catch (err) {
-  //         console.warn("Logo failed to load:", err);
-  //         doc.setFillColor(220, 220, 240);
-  //         doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-  //         doc.setFontSize(12);
-  //         doc.setTextColor(100);
-  //         doc.text("LOGO", logoX + 15, logoY + 40);
-  //       }
-  //     } else {
-  //       doc.setFillColor(220, 220, 240);
-  //       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-  //       doc.setFontSize(12);
-  //       doc.setTextColor(100);
-  //       doc.text("LOGO", logoX + 15, logoY + 40);
-  //     }
-
-  //     // 3. Company name & details (top-left)
-  //     const textX = margin + 15;
-  //     let textY = margin + 30;
-
-  //     doc.setFontSize(20);
-  //     doc.setFont("helvetica", "bold");
-  //     doc.setTextColor(40, 40, 60);
-  //     doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, textY);
-
-  //     textY += 22;
-
-  //     doc.setFontSize(11);
-  //     doc.setFont("helvetica", "normal");
-  //     doc.setTextColor(60);
-
-  //     const details = [
-  //       companyInfo.land_mark || "Urali Kanchan, Pune",
-  //       `Phone: ${companyInfo.phone_no || "9173635656"}`,
-  //       `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-  //       `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-  //     ];
-
-  //     details.forEach(line => {
-  //       if (line && line.trim()) {
-  //         doc.text(line, textX, textY);
-  //         textY += 15;
-  //       }
-  //     });
-
-  //     // 4. Horizontal separator
-  //     doc.setLineWidth(1.5);
-  //     doc.setDrawColor(0, 0, 0);
-  //     doc.line(margin + 10, textY + 10, pageWidth - margin - 10, textY + 10);
-
-  //     // 5. Title
-  //     doc.setFontSize(18);
-  //     doc.setFont("helvetica", "bold");
-  //     doc.setTextColor(0);
-  //     doc.text('PURCHASE REPORT', pageWidth / 2, textY + 35, { align: 'center' });
-
-  //     // 6. Generated date
-  //     doc.setFontSize(10);
-  //     doc.setFont("helvetica", "normal");
-  //     doc.setTextColor(70);
-  //     const generatedDate = new Date().toLocaleDateString('en-GB');
-  //     doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, textY + 55, { align: 'center' });
-
-  //     // Return next content Y
-  //     return textY + 70;
-  //   }
-
-  //   // Draw header on first page
-  //   let yPosition = drawHeaderAndBorder();
-  //   let currentPage = 1;
-
-  //   // Grand Total summary
-  //   if (yPosition > pageHeight - 100) {
-  //     doc.addPage();
-  //     currentPage++;
-  //     yPosition = drawHeaderAndBorder();
-  //   }
-
-  //   const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-  //   const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
-  //   const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
-
-  //   doc.setFillColor(231, 76, 60);
-  //   doc.setDrawColor(192, 57, 43);
-  //   doc.setLineWidth(2);
-  //   doc.rect(margin, yPosition, pageWidth - margin * 2, 35, 'FD');
-
-  //   doc.setFontSize(10);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setTextColor(255, 255, 255);
-  //   const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
-  //   doc.text(grandText, pageWidth / 2, yPosition + 23, { align: 'center' });
-
-  //   yPosition += 50;
-
-  //   // Table columns
-  //   const tableColumn = [
-  //     "Sr No", "Project", "Vendor", "Material",
-  //     "Price/Unit", "Qty", "Total", "Date", "About"
-  //   ];
-
-  //   const tableRows = filteredData.map((p, index) => [
-  //     index + 1,
-  //     p.project?.project_name || "—",
-  //     p.vendor?.name || "—",
-  //     p.material_name,
-  //     formatIndianNumber(parseFloat(p.price_per_unit || 0)),
-  //     p.qty || "—",
-  //     formatIndianNumber(parseFloat(p.total || 0)),
-  //     formatDate(p.date),
-  //     p.about || "—"
-  //   ]);
-
-  //   // Total row
-  //   tableRows.push([
-  //     { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
-  //     formatIndianNumber(totalPricePerUnit),
-  //     totalQty,
-  //     formatIndianNumber(totalAmount),
-  //     "",
-  //     ""
-  //   ]);
-
-  //   doc.autoTable({
-  //     head: [tableColumn],
-  //     body: tableRows,
-  //     startY: yPosition,
-  //     theme: "grid",
-  //     headStyles: {
-  //       fillColor: [30, 115, 120],
-  //       textColor: 255,
-  //       fontSize: 10,
-  //       halign: "center",
-  //     },
-  //     bodyStyles: {
-  //       fontSize: 9,
-  //       halign: "center",
-  //     },
-  //     styles: {
-  //       lineWidth: 0.25,
-  //       lineColor: [120, 120, 120],
-  //     },
-  //     alternateRowStyles: {
-  //       fillColor: [245, 245, 245],
-  //     },
-  //     margin: { left: margin, right: margin },
-  //     didDrawPage: (data) => {
-  //       // Redraw full header + border when table creates new page
-  //       if (data.pageNumber > currentPage) {
-  //         currentPage = data.pageNumber;
-  //         drawHeaderAndBorder();
-  //       }
-  //       // Page number
-  //       doc.setFontSize(8);
-  //       doc.setTextColor(128, 128, 128);
-  //       doc.text(
-  //         `Page ${currentPage}`,
-  //         pageWidth / 2,
-  //         pageHeight - 20,
-  //         { align: 'center' }
-  //       );
-  //     },
-  //   });
-
-  //   // Final footer text on all pages
-  //   const totalPages = doc.internal.getNumberOfPages();
-  //   for (let i = 1; i <= totalPages; i++) {
-  //     doc.setPage(i);
-  //     doc.setFontSize(8);
-  //     doc.setTextColor(128, 128, 128);
-  //     doc.text(
-  //       `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
-  //       pageWidth / 2,
-  //       pageHeight - 35,
-  //       { align: 'center' }
-  //     );
-  //   }
-
-  //   const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-  //   doc.save(fileName);
-  //   showToast('success', 'PDF file downloaded successfully!');
-  // };
+ 
 
 
 const downloadPDF = () => {
@@ -670,21 +483,6 @@ let nextY = lineY + 3;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // ───────────────────────────────────────────────
   // EXCEL DOWNLOAD (unchanged - already good)
   // ───────────────────────────────────────────────
@@ -799,6 +597,7 @@ let nextY = lineY + 3;
                       <CTableHeaderCell>Include GST</CTableHeaderCell>
                       <CTableHeaderCell>Date</CTableHeaderCell>
                       <CTableHeaderCell>About</CTableHeaderCell>
+                      <CTableHeaderCell>Images</CTableHeaderCell>
                       <CTableHeaderCell>Action</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
@@ -824,6 +623,22 @@ let nextY = lineY + 3;
                         </CTableDataCell>
                         <CTableDataCell>{new Date(p.date).toLocaleDateString()}</CTableDataCell>
                         <CTableDataCell>{p.about || '—'}</CTableDataCell>
+
+<CTableDataCell>
+                        {p.images && p.images.length > 0 ? (
+                          <CButton 
+                            color="info" 
+                            size="sm" 
+                            onClick={() => openImageModal(p)}
+                          >
+                            <CIcon icon={cilImage} className="me-1" />
+                            View ({p.images.length})
+                          </CButton>
+                        ) : (
+                          <CBadge color="secondary">No Images</CBadge>
+                        )}
+                      </CTableDataCell>
+
                         <CTableDataCell>
                           <div className="d-flex gap-2">
                             <CButton color="warning" size="sm" onClick={() => openEdit(p)}>
@@ -865,6 +680,75 @@ let nextY = lineY + 3;
         </CCardBody>
       </CCard>
 
+
+
+{/* ===================== IMAGE PREVIEW MODAL with Download ===================== */}
+      <CModal visible={showImageModal} onClose={() => setShowImageModal(false)} size="xl" scrollable>
+        <CModalHeader>
+          <CModalTitle>Images - {selectedPurchaseTitle}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {selectedImages.length > 0 ? (
+            <div className="row g-3">
+              {selectedImages.map((img, index) => (
+                <div key={img.id || index} className="col-md-6 col-lg-4">
+                  <CCard className="h-100 shadow-sm">
+                    <div 
+                      className="d-flex align-items-center justify-content-center bg-light" 
+                      style={{ height: '220px', overflow: 'hidden' }}
+                    >
+                      {img.type === 'pdf' ? (
+                        <div className="text-center">
+                          <CIcon icon={cilCloudUpload} size="5xl" className="text-danger" />
+                          <div className="mt-2"><CBadge color="danger">PDF</CBadge></div>
+                        </div>
+                      ) : (
+                        <img 
+                          src={`${host}/${img.image_path}`} 
+                          alt={img.original_name} 
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                          onError={(e) => { e.target.src = '/placeholder-image.png'; }}
+                        />
+                      )}
+                    </div>
+
+                    <CCardBody>
+                      <small className="text-muted d-block mb-2">
+                        <strong>{img.original_name}</strong>
+                      </small>
+                      {img.remark && <small className="text-info d-block">Remark: {img.remark}</small>}
+
+                      <CButton 
+                        color="primary" 
+                        size="sm" 
+                        className="w-100 mt-2"
+                        onClick={() => downloadImage(img)}
+                      >
+                        <CIcon icon={cilCloudDownload} className="me-1" />
+                        Download
+                      </CButton>
+                    </CCardBody>
+                  </CCard>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5">
+              <CIcon icon={cilImage} size="4xl" className="text-muted mb-3" />
+              <p className="text-muted">No images available for this purchase.</p>
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setShowImageModal(false)}>
+            Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+
+
+
       {/* Modals */}
       <CModal size="xl" visible={showAddModal} onClose={() => setShowAddModal(false)} backdrop="static">
         <CModalHeader closeButton>
@@ -904,3 +788,25 @@ let nextY = lineY + 3;
 };
 
 export default PurchaseList;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

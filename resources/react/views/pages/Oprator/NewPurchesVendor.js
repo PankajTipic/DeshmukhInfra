@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CCard,
   CCardBody,
@@ -8,13 +8,30 @@ import {
   CForm,
   CFormInput,
   CFormTextarea,
-  CButton
+  CButton,
+  CFormLabel,
+  CFormSelect
 } from "@coreui/react";
-import { post } from "../../../util/api";
+import { getAPICall, post } from "../../../util/api";
 import { useToast } from "../../common/toast/ToastContext";
 import { useNavigate } from "react-router-dom";
 
 const OperatorForm = () => {
+
+const [projects, setProjects] = useState([]);
+
+ useEffect(() => {
+    getAPICall('/api/projects')
+      .then(res => setProjects(Array.isArray(res) ? res : []))
+      .catch(err => {
+        console.error(err);
+        setProjects([]);
+      });
+  }, []);
+
+
+
+
   const [formData, setFormData] = useState({
     type: "3", // FIXED TYPE = 3 (Purches Vendor)
     name: "",
@@ -27,7 +44,7 @@ const OperatorForm = () => {
     adhar_number: "",
     pan_number: "",
     show: true,
-    project_id: "0", // always 0 for type 3
+    project_id: "", // always 0 for type 3
     payment: "0"    // always 0 for type 3
   });
 
@@ -73,8 +90,7 @@ const OperatorForm = () => {
       ...formData,
       project_id:
         formData.type === "1" ||
-        formData.type === "2" ||
-        formData.type === "3"
+        formData.type === "2" 
           ? "0"
           : formData.project_id,
 
@@ -127,7 +143,7 @@ const OperatorForm = () => {
 
           {/* Address */}
           <CRow className="mt-3">
-            <CCol md={12}>
+            <CCol md={6}>
               <CFormTextarea
                 label="Address *"
                 name="address"
@@ -136,6 +152,24 @@ const OperatorForm = () => {
                 onChange={handleChange}
               />
             </CCol>
+
+<CCol md={6}>
+                <CFormLabel>Select Project <span style={{color: 'red'}}>*</span></CFormLabel>
+                <CFormSelect
+                  name="project_id"
+                  value={formData.project_id}
+                  onChange={handleChange}
+                
+                >
+                  <option value="">Select Project</option>
+                  {projects.map(proj => (
+                    <option key={proj.id} value={String(proj.id)}>
+                      {proj.project_name}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </CCol>
+
           </CRow>
 
           {/* GST + Aadhar */}
@@ -207,6 +241,10 @@ const OperatorForm = () => {
                 onChange={handleChange}
               />
             </CCol>
+
+
+
+
           </CRow>
 
           {/* Submit + Close */}

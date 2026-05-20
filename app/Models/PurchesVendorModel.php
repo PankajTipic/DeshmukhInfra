@@ -64,6 +64,16 @@ public function operator()
         );
     }
 
+    public function images()
+    {
+        return $this->hasMany(PurchaseVendorImage::class, 'purches_vendor_id');
+    }
+
+    // Optional: You can also add this for easier access
+    public function getImagesAttribute()
+    {
+        return $this->images()->get();
+    }
 
 
 }

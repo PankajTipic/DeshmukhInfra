@@ -8,7 +8,8 @@ use App\Models\PurchesVendorModel;
 use App\Models\Operator;
 use App\Models\Project;
 use App\Models\PurchesVendorPayment;
-use App\Models\PurchesVendorPaymentLog;
+use App\Models\PurchesVendorPaymentLog; 
+use App\Models\PurchaseVendorImage;
 use App\Helpers\ImageCompressor;
 
 class PurchesVendorController extends Controller
@@ -17,47 +18,117 @@ class PurchesVendorController extends Controller
 /*-----------------------------------------
 | 1️⃣ STORE PURCHASE VENDOR + PAYMENT MASTER
 ------------------------------------------*/
+// public function store(Request $request)
+// {
+//     $user = auth()->user();
+
+//     // Validate input
+//     $validated = $request->validate([
+//         'project_id'      => 'required|numeric',
+//         'vendor_id'       => 'required|numeric',
+//         'material_name'   => 'required|string|max:255',
+//         'about'           => 'nullable|string|max:255',
+//         'price_per_unit'  => 'required|numeric',
+//         'qty'             => 'required|numeric',
+//         'total'           => 'required|numeric',
+//         'date'            => 'required|date',
+
+//                 // NEW GST FIELDS
+//         'gst_included'    => 'nullable|boolean',
+//         'gst_percent'     => 'nullable|numeric|min:0',
+//         'cgst_percent'    => 'nullable|numeric|min:0',
+//         'sgst_percent'    => 'nullable|numeric|min:0',
+
+//     ]);
+
+//     $validated['company_id'] = $user->company_id ?? null;
+//     $validated['created_by'] = $user->id ?? null;
+
+//     // 1️⃣ Create purchase vendor entry
+//     $purchaseVendor = PurchesVendorModel::create($validated);
+
+//     // 2️⃣ Create payment master entry
+//     $payment = PurchesVendorPayment::create([
+//         'purches_vendor_id' => $purchaseVendor->id,
+//         'amount'            => $validated['total'],  // total = amount
+//         'paid_amount'       => 0,                    // no payment at creation
+//         'balance_amount'    => $validated['total'],  // full amount pending
+//     ]);
+
+//     return response()->json([
+//         'message'          => 'Purchase vendor and payment stored successfully.',
+//         'purchase_vendor'  => $purchaseVendor,
+//         'payment'          => $payment
+//     ], 201);
+// }
+
 public function store(Request $request)
 {
     $user = auth()->user();
 
-    // Validate input
     $validated = $request->validate([
         'project_id'      => 'required|numeric',
         'vendor_id'       => 'required|numeric',
         'material_name'   => 'required|string|max:255',
-        'about'           => 'nullable|string|max:255',
-        'price_per_unit'  => 'required|numeric',
-        'qty'             => 'required|numeric',
-        'total'           => 'required|numeric',
+        'about'           => 'nullable|string|max:500',
+        'price_per_unit'  => 'required|numeric|min:0',
+        'qty'             => 'required|numeric|min:0',
+        'total'           => 'required|numeric|min:0',
         'date'            => 'required|date',
 
-                // NEW GST FIELDS
         'gst_included'    => 'nullable|boolean',
         'gst_percent'     => 'nullable|numeric|min:0',
         'cgst_percent'    => 'nullable|numeric|min:0',
         'sgst_percent'    => 'nullable|numeric|min:0',
 
+        'photoAvailable'  => 'nullable|boolean',
+        'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        'photo_remarks.*' => 'nullable|string|max:255',
     ]);
 
     $validated['company_id'] = $user->company_id ?? null;
     $validated['created_by'] = $user->id ?? null;
 
-    // 1️⃣ Create purchase vendor entry
+    // Create Purchase
     $purchaseVendor = PurchesVendorModel::create($validated);
 
-    // 2️⃣ Create payment master entry
+    // Create Payment Master
     $payment = PurchesVendorPayment::create([
         'purches_vendor_id' => $purchaseVendor->id,
-        'amount'            => $validated['total'],  // total = amount
-        'paid_amount'       => 0,                    // no payment at creation
-        'balance_amount'    => $validated['total'],  // full amount pending
+        'amount'            => $validated['total'],
+        'paid_amount'       => 0,
+        'balance_amount'    => $validated['total'],
     ]);
+
+    // Handle Multiple Images
+    if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+        foreach ($request->file('photos') as $index => $file) {
+            $uploadedPath = ImageCompressor::compressAndSave(
+                $file,
+                'purchase-vendors',
+                1024
+            );
+
+            $remark = $request->input("photo_remarks.{$index}");
+
+            PurchaseVendorImage::create([
+                'purches_vendor_id' => $purchaseVendor->id,
+                'image_path'        => $uploadedPath,
+                'original_name'     => $file->getClientOriginalName(),
+                'remark'            => $remark,
+                'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+            ]);
+        }
+    }
+
+    // Reload with images
+    $purchaseVendor->load('images');
 
     return response()->json([
         'message'          => 'Purchase vendor and payment stored successfully.',
         'purchase_vendor'  => $purchaseVendor,
-        'payment'          => $payment
+        'payment'          => $payment,
+        'images'           => $purchaseVendor->images
     ], 201);
 }
 
@@ -172,10 +243,12 @@ public function index(Request $request)
 {
     $operatorVendorIds = Operator::pluck('id');
     $projectDetailsIds = Project::pluck('id');
+     
 
-    $data = PurchesVendorModel::with(['vendor', 'project'])
+    $data = PurchesVendorModel::with(['vendor', 'project', 'images'])
         ->whereIn('vendor_id', $operatorVendorIds)
         ->whereIn('project_id', $projectDetailsIds)
+       
         ->get();
 
     return response()->json([
@@ -370,29 +443,143 @@ public function getPurchesVedorPayment(Request $request)
 
 
 
+// public function updatePurchesVendorPayment(Request $request)
+// {
+//     // 1️⃣ Validate request
+//     $validated = $request->validate([
+//         'payment_id'       => 'required|numeric',
+//         'price_per_unit'   => 'required|numeric',
+//         'qty'              => 'required|numeric',
+//         'material_name'    => 'required|string|max:255',
+//         'about'            => 'nullable|string|max:255',
+//         'date'             => 'required|date',
+//         'vendor_id'        => 'required|numeric',
+//         'project_id'       => 'required|numeric',
+
+//          // GST Fields Added
+//         'gst_included'     => 'nullable|boolean',
+//         'gst_percent'      => 'nullable|numeric|min:0',
+//         'cgst_percent'     => 'nullable|numeric|min:0',
+//         'sgst_percent'     => 'nullable|numeric|min:0',
+//     ]);
+
+//     // 2️⃣ Fetch payment record
+//     $payment = PurchesVendorPayment::find($request->payment_id);
+
+//     if (!$payment) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Payment record not found'
+//         ], 404);
+//     }
+
+//     // 3️⃣ Fetch linked purchase record
+//     $purchase = PurchesVendorModel::find($payment->purches_vendor_id);
+
+//     if (!$purchase) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Purchase data not found'
+//         ], 404);
+//     }
+
+//     // 4️⃣ Recalculate total
+//     // $newTotal = $request->price_per_unit * $request->qty;
+
+
+//         // 4. Calculate Base Amount & GST
+//     $pricePerUnit = (float) $request->price_per_unit;
+//     $qty          = (float) $request->qty;
+//     $baseAmount   = $pricePerUnit * $qty;
+
+//     $gstIncluded  = (bool) $request->gst_included;
+//     $gstPercent   = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
+
+//     // Calculate GST Amount and Final Total
+//     $gstAmount = $gstIncluded && $gstPercent > 0 
+//         ? round($baseAmount * ($gstPercent / 100), 2) 
+//         : 0;
+
+//     $newTotal = round($baseAmount + $gstAmount, 2);
+
+//     // Auto-calculate CGST & SGST (50-50 split)
+//     $cgstPercent = $gstIncluded && $gstPercent > 0 ? round($gstPercent / 2, 2) : 0;
+//     $sgstPercent = $cgstPercent; // Always equal
+
+
+
+
+  
+//      $purchase->update([
+//         'vendor_id'       => $request->vendor_id,
+//         'project_id'      => $request->project_id,
+//         'material_name'   => $request->material_name,
+//         'about'           => $request->about ?? null,
+//         'price_per_unit'  => $pricePerUnit,
+//         'qty'             => $qty,
+//         'total'           => $newTotal,
+//         'date'            => $request->date,
+
+//         // GST Fields
+//         'gst_included'    => $gstIncluded ? 1 : 0,
+//         'gst_percent'     => $gstIncluded ? $gstPercent : 0,
+//         'cgst_percent'    => $gstIncluded ? $cgstPercent : 0,
+//         'sgst_percent'    => $gstIncluded ? $sgstPercent : 0,
+//     ]);
+
+//     // 6️⃣ Update payment table (purches_vendor_payment)
+//     // $newBalance = $newTotal - $payment->paid_amount;
+
+//         // 6. Update payment record (amount & balance)
+//     $paidAmount = (float) $payment->paid_amount; // Already paid should not change
+//     $newBalance = $newTotal - $paidAmount;
+
+//     // Prevent negative balance (optional safety)
+//     $newBalance = $newBalance < 0 ? 0 : $newBalance;
+
+//     $payment->update([
+//         'amount'         => $newTotal,
+//         'balance_amount' => $newBalance
+//     ]);
+
+//     // 7️⃣ Return response
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Purchase & Payment updated successfully.',
+//         'purchase' => $purchase,
+//         'payment'  => $payment
+//     ]);
+// }
+
 public function updatePurchesVendorPayment(Request $request)
 {
-    // 1️⃣ Validate request
+    $user = auth()->user();
+
+    // 1️⃣ Validation
     $validated = $request->validate([
         'payment_id'       => 'required|numeric',
-        'price_per_unit'   => 'required|numeric',
-        'qty'              => 'required|numeric',
+        'price_per_unit'   => 'required|numeric|min:0',
+        'qty'              => 'required|numeric|min:0',
         'material_name'    => 'required|string|max:255',
-        'about'            => 'nullable|string|max:255',
+        'about'            => 'nullable|string|max:500',
         'date'             => 'required|date',
         'vendor_id'        => 'required|numeric',
         'project_id'       => 'required|numeric',
 
-         // GST Fields Added
+        // GST Fields
         'gst_included'     => 'nullable|boolean',
         'gst_percent'      => 'nullable|numeric|min:0',
         'cgst_percent'     => 'nullable|numeric|min:0',
         'sgst_percent'     => 'nullable|numeric|min:0',
+
+        // Image Fields
+        'photoAvailable'   => 'nullable|boolean',
+        'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        'photo_remarks.*'  => 'nullable|string|max:255',
     ]);
 
-    // 2️⃣ Fetch payment record
+    // 2️⃣ Fetch Payment Record
     $payment = PurchesVendorPayment::find($request->payment_id);
-
     if (!$payment) {
         return response()->json([
             'success' => false,
@@ -400,9 +587,8 @@ public function updatePurchesVendorPayment(Request $request)
         ], 404);
     }
 
-    // 3️⃣ Fetch linked purchase record
+    // 3️⃣ Fetch Purchase Record
     $purchase = PurchesVendorModel::find($payment->purches_vendor_id);
-
     if (!$purchase) {
         return response()->json([
             'success' => false,
@@ -410,34 +596,25 @@ public function updatePurchesVendorPayment(Request $request)
         ], 404);
     }
 
-    // 4️⃣ Recalculate total
-    // $newTotal = $request->price_per_unit * $request->qty;
-
-
-        // 4. Calculate Base Amount & GST
+    // 4️⃣ Calculate New Total with GST
     $pricePerUnit = (float) $request->price_per_unit;
     $qty          = (float) $request->qty;
     $baseAmount   = $pricePerUnit * $qty;
 
-    $gstIncluded  = (bool) $request->gst_included;
-    $gstPercent   = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
+    $gstIncluded = (bool) $request->gst_included;
+    $gstPercent  = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
 
-    // Calculate GST Amount and Final Total
     $gstAmount = $gstIncluded && $gstPercent > 0 
         ? round($baseAmount * ($gstPercent / 100), 2) 
         : 0;
 
     $newTotal = round($baseAmount + $gstAmount, 2);
 
-    // Auto-calculate CGST & SGST (50-50 split)
     $cgstPercent = $gstIncluded && $gstPercent > 0 ? round($gstPercent / 2, 2) : 0;
-    $sgstPercent = $cgstPercent; // Always equal
+    $sgstPercent = $cgstPercent;
 
-
-
-
-  
-     $purchase->update([
+    // 5️⃣ Update Purchase Record
+    $purchase->update([
         'vendor_id'       => $request->vendor_id,
         'project_id'      => $request->project_id,
         'material_name'   => $request->material_name,
@@ -454,27 +631,70 @@ public function updatePurchesVendorPayment(Request $request)
         'sgst_percent'    => $gstIncluded ? $sgstPercent : 0,
     ]);
 
-    // 6️⃣ Update payment table (purches_vendor_payment)
-    // $newBalance = $newTotal - $payment->paid_amount;
 
-        // 6. Update payment record (amount & balance)
-    $paidAmount = (float) $payment->paid_amount; // Already paid should not change
+
+       // 6b. Delete images that the user removed in the Edit modal
+    $deletedImageIds = json_decode($request->input('deleted_image_ids', '[]'), true);
+ 
+    if (!empty($deletedImageIds) && is_array($deletedImageIds)) {
+        $imagesToDelete = PurchaseVendorImage::whereIn('id', $deletedImageIds)
+            ->where('purches_vendor_id', $purchase->id) // ← security: only delete images belonging to THIS purchase
+            ->get();
+ 
+        foreach ($imagesToDelete as $image) {
+            // Delete the physical file from storage
+            $filePath = public_path($image->image_path); // adjust to storage_path() if using storage/app
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+ 
+            // Delete the DB record
+            $image->delete();
+        }
+    }
+
+
+
+    // 6️⃣ Update Payment Record
+    $paidAmount = (float) $payment->paid_amount;
     $newBalance = $newTotal - $paidAmount;
-
-    // Prevent negative balance (optional safety)
-    $newBalance = $newBalance < 0 ? 0 : $newBalance;
+    $newBalance = max(0, $newBalance); // Prevent negative balance
 
     $payment->update([
         'amount'         => $newTotal,
         'balance_amount' => $newBalance
     ]);
 
-    // 7️⃣ Return response
+    // 7️⃣ Handle New Images (Add only - existing images remain)
+    if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+        foreach ($request->file('photos') as $index => $file) {
+            $uploadedPath = ImageCompressor::compressAndSave(
+                $file,
+                'purchase-vendors',
+                1024
+            );
+
+            $remark = $request->input("photo_remarks.{$index}");
+
+            PurchaseVendorImage::create([
+                'purches_vendor_id' => $purchase->id,
+                'image_path'        => $uploadedPath,
+                'original_name'     => $file->getClientOriginalName(),
+                'remark'            => $remark,
+                'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+            ]);
+        }
+    }
+
+    // Reload purchase with latest images
+    $purchase->load('images');
+
     return response()->json([
-        'success' => true,
-        'message' => 'Purchase & Payment updated successfully.',
+        'success'  => true,
+        'message'  => 'Purchase & Payment updated successfully.',
         'purchase' => $purchase,
-        'payment'  => $payment
+        'payment'  => $payment,
+        'images'   => $purchase->images
     ]);
 }
 
@@ -538,131 +758,6 @@ public function deleteLog($id)
 | VENDOR WISE → PROJECT → PAYMENT + LOGS
 ------------------------------------------*/
 
-
-// public function getVendorWisePayments(Request $request)
-// {
-//     $vendorId  = $request->vendor_id;
-//     $projectId = $request->project_id;
-//     $fromDate  = $request->from_date;
-//     $toDate    = $request->to_date;
-
-//     $query = PurchesVendorModel::with([
-//         'vendor',
-//         'project',
-//         'payment.logs' => function ($q) use ($fromDate, $toDate) {
-//             if ($fromDate && $toDate) {
-//                 $q->whereBetween('payment_date', [$fromDate, $toDate]);
-//             }
-//         }
-//     ]);
-
-//     // 🔍 Filters
-//     if ($vendorId) {
-//         $query->where('vendor_id', $vendorId);
-//     }
-
-//     if ($projectId) {
-//         $query->where('project_id', $projectId);
-//     }
-
-//     if ($fromDate && $toDate) {
-//         $query->whereBetween('date', [$fromDate, $toDate]);
-//     }
-
-//     $purchases = $query->orderBy('date', 'DESC')->get();
-
-//     if ($purchases->isEmpty()) {
-//         return response()->json([
-//             'success' => true,
-//             'data' => []
-//         ], 200);
-//     }
-
-//     // 🔁 Vendor wise grouping
-//     $result = $purchases->groupBy('vendor_id')->map(function ($vendorPurchases) {
-
-//         $vendor = $vendorPurchases->first()->vendor;
-
-//         // 🔢 Vendor totals
-//         $vendorTotalAmount = 0;
-//         $vendorPaidAmount  = 0;
-//         $vendorBalance     = 0;
-
-//         foreach ($vendorPurchases as $purchase) {
-//             if ($purchase->payment) {
-//                 $vendorTotalAmount += $purchase->payment->amount;
-//                 $vendorPaidAmount  += $purchase->payment->paid_amount;
-//                 $vendorBalance     += $purchase->payment->balance_amount;
-//             }
-//         }
-
-//         return [
-//             'vendor_details' => [
-//                 'vendor_id'   => $vendor->id ?? null,
-//                 'vendor_name' => $vendor->name ?? null,
-//                 'mobile'      => $vendor->mobile ?? null,
-//                 'address'     => $vendor->address ?? null,
-//             ],
-
-//             // ✅ VENDOR SUMMARY
-//             'vendor_summary' => [
-//                 'total_amount'   => round($vendorTotalAmount, 2),
-//                 'paid_amount'    => round($vendorPaidAmount, 2),
-//                 'balance_amount' => round($vendorBalance, 2),
-//             ],
-
-//             'projects' => $vendorPurchases->groupBy('project_id')->map(function ($projectPurchases) {
-
-//                 $project = $projectPurchases->first()->project;
-
-//                 return [
-//                     'project_details' => [
-//                         'project_id'   => $project->id ?? null,
-//                         'project_name' => $project->project_name ?? null,
-//                         'location'     => $project->location ?? null,
-//                         'start_date'   => $project->start_date ?? null,
-//                     ],
-
-//                     'purchases' => $projectPurchases->map(function ($purchase) {
-
-//                         $payment = $purchase->payment;
-
-//                         return [
-//                             'purchase_details' => [
-//                                 'purchase_id'    => $purchase->id,
-//                                 'material_name'  => $purchase->material_name,
-//                                 'qty'            => $purchase->qty,
-//                                 'price_per_unit' => $purchase->price_per_unit,
-//                                 'total'          => $purchase->total,
-//                                 'date'           => $purchase->date,
-//                                 'gst_included'   => $purchase->gst_included,
-//                                 'gst_percent'    => $purchase->gst_percent,
-//                             ],
-
-//                             'payment_master' => $payment ? [
-//                                 'payment_id'     => $payment->id,
-//                                 'total_amount'   => $payment->amount,
-//                                 'paid_amount'    => $payment->paid_amount,
-//                                 'balance_amount' => $payment->balance_amount,
-//                             ] : null,
-
-//                             // ✅ Date-filtered logs
-//                             'payment_logs' => $payment
-//                                 ? $payment->logs->values()
-//                                 : []
-//                         ];
-//                     })->values()
-//                 ];
-//             })->values()
-//         ];
-//     })->values();
-
-//     return response()->json([
-//         'success' => true,
-//         'message' => 'Vendor wise payment details fetched successfully.',
-//         'data' => $result
-//     ], 200);
-// }
 
 
 public function getVendorWisePayments(Request $request)
@@ -797,122 +892,6 @@ public function getVendorWisePayments(Request $request)
 }
 
 
-
-
-// public function getVendorLedgerReport(Request $request)
-// {
-//     $vendorId  = $request->vendor_id;
-//     $projectId = $request->project_id;
-//     $fromDate  = $request->from_date;
-//     $toDate    = $request->to_date;
-
-//     if (!$vendorId) {
-//         return response()->json([
-//             'success' => false,
-//             'message' => 'Vendor ID is required'
-//         ], 422);
-//     }
-
-//     // =========================
-//     // FETCH PURCHASES
-//     // =========================
-//     $purchaseQuery = PurchesVendorModel::with(['project', 'payment.logs'])
-//         ->where('vendor_id', $vendorId);
-
-//     if ($projectId) {
-//         $purchaseQuery->where('project_id', $projectId);
-//     }
-
-//     if ($fromDate && $toDate) {
-//         $purchaseQuery->whereBetween('date', [$fromDate, $toDate]);
-//     }
-
-//     $purchases = $purchaseQuery->get();
-
-//     $vendor = optional($purchases->first())->vendor;
-
-//     if (!$vendor) {
-//         return response()->json([
-//             'success' => true,
-//             'data' => []
-//         ], 200);
-//     }
-
-//     // =========================
-//     // LEDGER BUILD
-//     // =========================
-//     $ledger = collect();
-
-//     foreach ($purchases as $purchase) {
-
-//         // 🟢 PURCHASE ENTRY (DEBIT)
-//         $ledger->push([
-//             'date'        => $purchase->date,
-//             'type'        => 'Purchase',
-//             'reference'   => 'PUR-' . $purchase->id,
-//             'project'     => optional($purchase->project)->project_name,
-//             'material'    => $purchase->material_name,
-//             'qty'         => $purchase->qty,
-//             'rate'        => $purchase->price_per_unit,
-//             'gst_percent' => $purchase->gst_percent,
-//             'description' => 'Material purchase',
-//             'debit'       => $purchase->total,
-//             'credit'      => 0,
-//         ]);
-
-//         // 🔵 PAYMENT ENTRIES (CREDIT)
-//         if ($purchase->payment) {
-//             foreach ($purchase->payment->logs as $log) {
-//                 $ledger->push([
-//                     'date'        => $log->payment_date,
-//                     'type'        => 'Payment',
-//                     'reference'   => 'PAY-' . $log->id,
-//                     'project'     => optional($purchase->project)->project_name,
-//                     'material'    => $purchase->material_name,
-//                     'qty'         => $purchase->qty,
-//                     'rate'        => $purchase->price_per_unit,
-//                     'gst_percent' => $purchase->gst_percent,
-//                     'description' => 'Payment against material',
-//                     'debit'       => 0,
-//                     'credit'      => $log->amount,
-//                 ]);
-//             }
-//         }
-//     }
-
-//     // =========================
-//     // SORT + RUNNING BALANCE
-//     // =========================
-//     $runningBalance = 0;
-
-//     $ledger = $ledger->sortBy('date')->values()->map(function ($row) use (&$runningBalance) {
-//         $runningBalance += ($row['debit'] - $row['credit']);
-//         $row['balance'] = round($runningBalance, 2);
-//         return $row;
-//     });
-
-//     // =========================
-//     // FINAL RESPONSE
-//     // =========================
-//     return response()->json([
-//         'success' => true,
-//         'message' => 'Vendor ledger report generated successfully',
-//         'data' => [
-//             'vendor_details' => [
-//                 'vendor_id'   => $vendor->id,
-//                 'vendor_name' => $vendor->name,
-//                 'mobile'      => $vendor->mobile,
-//                 'address'     => $vendor->address,
-//             ],
-//             'ledger_summary' => [
-//                 'total_debit'      => $ledger->sum('debit'),
-//                 'total_credit'     => $ledger->sum('credit'),
-//                 'closing_balance'  => $ledger->last()['balance'] ?? 0,
-//             ],
-//             'ledger_entries' => $ledger
-//         ]
-//     ], 200);
-// }
 
 
 
@@ -1093,6 +1072,10 @@ public function materialList()
 
     return $materials;   // returns: ["Cement", "Sand", "Steel Rod", "Bricks", ...]
 }
+
+
+
+
 
 }
 

@@ -206,43 +206,6 @@ public function store(Request $request)
         return $project;
     }
 
-//     public function update(Request $request, $id)
-// {
-//     $project = Project::findOrFail($id);
-
-//     if ($request->has('is_visible')) {
-//         $request->validate([
-//             'is_visible' => 'required|boolean'
-//         ]);
-//         $project->is_visible = $request->is_visible;
-//         $project->save();
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => 'Visibility updated successfully',
-//             'project' => $project
-//         ]);
-//     }
-
-//     // existing full update logic for other fields
-//     $request->validate([
-//           'customer_name' => 'required|string|max:255',
-//         'mobile_number' => 'required|string|max:255',
-//         'project_name'  => 'required|string|max:255', 
-//         'project_cost'  => 'required|string|max:255',
-//         'work_place'    => 'nullable|string|max:255',
-//         'start_date'    => 'nullable|date',
-//         'end_date'      => 'nullable|date',
-//         'is_visible'    => 'boolean',
-//         'remark'        => 'nullable|string',
-//         'supervisor_id' => 'nullable|numeric',   // numeric field
-//         'commission'    => 'nullable|numeric',   // numeric field
-//         'gst_number'    => 'nullable|string|max:255',
-//     ]);
-//     $project->update($request->all());
-
-//     return response()->json(['success' => true, 'message' => 'Project updated']);
-// }
 
 public function update(Request $request, $id)
 {

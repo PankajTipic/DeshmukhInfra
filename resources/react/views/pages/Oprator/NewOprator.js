@@ -112,7 +112,7 @@ const OperatorForm = () => {
 
     const payload = {
       ...formData,
-      project_id: formData.type === "1" || formData.type === "2" || formData.type === "3" ? "0" : formData.project_id,
+      project_id: formData.type === "1" || formData.type === "2" ? "0" : formData.project_id,
       payment: formData.type === "2" || formData.type === "3" ? "0" : formData.payment
     };
 
@@ -301,6 +301,8 @@ const OperatorForm = () => {
             </CCol>
           </CRow>
 
+
+
           {/* 4. Payment and Project for Supervisor side by side */}
           {formData.type === "0" && (
             <CRow className="mb-3">
@@ -374,8 +376,36 @@ const OperatorForm = () => {
                   required
                 />
               </CCol>
+
+
+                   <CCol md={6}>
+                <CFormLabel>Select Project <span style={{color: 'red'}}>*</span></CFormLabel>
+                <CFormSelect
+                  name="project_id"
+                  value={formData.project_id}
+                  onChange={handleChange}
+                
+                >
+                  <option value="">Select Project</option>
+                  {projects.map(proj => (
+                    <option key={proj.id} value={String(proj.id)}>
+                      {proj.project_name}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </CCol>
+
+
+
+
             </CRow>
           )}
+
+
+
+ 
+
+
 
           {/* Submit / Close */}
           <CRow className="mt-3">

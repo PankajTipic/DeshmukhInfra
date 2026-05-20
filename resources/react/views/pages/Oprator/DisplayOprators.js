@@ -338,6 +338,8 @@ const OperatorList = () => {
               {/* GST Number for Vendor */}
               {(currentOperator.type === "2" || currentOperator.type === "3" ) && (
                 
+ <CRow className="mb-3">
+
                   <CCol md={4}>
                     <CFormInput
                       label="GST Number *"
@@ -348,6 +350,25 @@ const OperatorList = () => {
                       required
                     />
                   </CCol>
+
+                  <CCol md={6}>
+                    <CFormSelect
+                      label="Project *"
+                      name="project_id"
+                      value={currentOperator.project_id}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.project_name}
+                        </option>
+                      ))}
+                    </CFormSelect>
+                  </CCol>
+
+                  </CRow>
               
               )}
 

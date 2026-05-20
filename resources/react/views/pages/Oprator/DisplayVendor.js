@@ -20,6 +20,9 @@ import {
   CFormInput,
   CRow,
   CCol,
+  CFormTextarea,
+  CFormLabel,
+  CFormSelect,
 } from "@coreui/react";
 import { getAPICall, put } from "../../../util/api";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +37,15 @@ const OperatorList = () => {
 
   const navigate = useNavigate();
   const { showToast } = useToast();
+const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    getAPICall('/api/projects')
+      .then(res => setProjects(Array.isArray(res) ? res : []))
+      .catch(err => console.error("Failed to load projects", err));
+  }, []);
+
+ 
 
   useEffect(() => {
     fetchOperators();
@@ -63,6 +75,9 @@ const OperatorList = () => {
       ifsc_code: operator.ifsc_code || "",
       adhar_number: operator.adhar_number || "",
       pan_number: operator.pan_number || "",
+
+      address: operator.address || "",
+      project_id: operator.project_id || "",
     });
     setEditModal(true);
   };
@@ -131,6 +146,7 @@ const OperatorList = () => {
                 <CTableHeaderCell>Mobile</CTableHeaderCell>
                 <CTableHeaderCell>GST No</CTableHeaderCell>
                 <CTableHeaderCell>Bank Details</CTableHeaderCell>
+                 <CTableHeaderCell>Project</CTableHeaderCell>
                 <CTableHeaderCell>Action</CTableHeaderCell>
               </CTableRow>
             </CTableHead>
@@ -145,10 +161,11 @@ const OperatorList = () => {
                   <CTableDataCell>
                     {op.bank_name && `${op.bank_name}, Acc: ${op.account_number}, ${op.ifsc_code}`}
                   </CTableDataCell>
+                  <CTableDataCell>{op?.project?.project_name || "-"}</CTableDataCell>
                   <CTableDataCell>
                     <CButton color="info" size="sm" onClick={() => handleEditClick(op)}>
                       Edit
-                    </CButton>
+                    </CButton> 
                   </CTableDataCell>
                 </CTableRow>
               ))}
@@ -172,6 +189,38 @@ const OperatorList = () => {
                 </CCol>
               </CRow>
 
+
+<CRow className="mt-3">
+                <CCol md={12}>
+                  <CFormTextarea
+                    label="Address *"
+                    name="address"
+                    value={currentOperator.address}
+                    onChange={handleChange}
+                    rows={3}
+                  />
+                </CCol>
+              </CRow>
+
+              <CRow className="mt-3">
+                <CCol md={6}>
+                  <CFormLabel>Project <span style={{ color: 'red' }}>*</span></CFormLabel>
+                  <CFormSelect
+                    name="project_id"
+                    value={currentOperator.project_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map(proj => (
+                      <option key={proj.id} value={proj.id}>
+                        {proj.project_name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+                 </CRow>
+
+
               <CRow className="mt-3">
                 <CCol md={6}>
                   <CFormInput label="GST Number" name="gst_no" value={currentOperator.gst_no} maxLength={15} onChange={handleChange} />
@@ -180,6 +229,7 @@ const OperatorList = () => {
                   <CFormInput label="Aadhar Number" name="adhar_number" maxLength={12} value={currentOperator.adhar_number} onChange={handleChange} />
                 </CCol>
               </CRow>
+
 
               <CRow className="mt-3">
                 <CCol md={6}>

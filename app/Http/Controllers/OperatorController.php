@@ -47,42 +47,6 @@ public function store(Request $request)
         'data'    => $operator
     ], 201);
 }
-// public function store(Request $request)
-// {
-//     $validated = $request->validate([
-//         'name'       => 'required|string|max:255',
-//         'mobile'     => 'nullable|string|max:20',
-//         'address'    => 'nullable|string',
-//         'payment'    => 'nullable|numeric',
-//         'show'       => 'boolean',
-//         'type'       => 'required|string|in:0,1',   // 0 = Supervisor, 1 = Operator
-//         'project'    => 'nullable|integer',        // frontend sends "project" key
-//     ]);
-
-//     // Always attach company of logged user
-//     $validated['company_id'] = auth()->user()->company_id;
-
-//     // Handle project_id logic based on type
-//     if ($validated['type'] === '0') {
-//         // Supervisor MUST have a project
-//         $request->validate([
-//             'project' => 'required|integer|exists:projects,id',
-//         ]);
-//         $validated['project_id'] = $validated['project'];
-//     } else {
-//         // Operator → project_id forced to 0 (or null if you prefer)
-//         $validated['project_id'] = 0;
-//     }
-
-//     unset($validated['project']); // remove temp field
-
-//     $operator = Operator::create($validated);
-
-//     return response()->json([
-//         'message' => 'Operator created successfully!',
-//         'data'    => $operator
-//     ], 201);
-// }
 
 
 
@@ -127,37 +91,6 @@ public function showTypeWise()
 
 
 
-    /**
-     * Update a specific operator.
-     */
-    // public function update(Request $request, $id)
-    // {
-    //     $operator = Operator::findOrFail($id);
-
-    //     $validated = $request->validate([
-    //         'name'       => 'sometimes|required|string|max:255',
-    //         'mobile'     => 'nullable|string|max:20',
-    //         'address'    => 'nullable|string',
-    //         'payment'    => 'nullable|numeric',
-    //         'company_id' => 'integer',
-    //         'show'       => 'boolean',
-    //         'type'       => 'required | string',
-    //         'project_id' => 'required | string',
-    //         'bank_name'=> 'nullable | string',
-    //           'account_number'=> 'nullable|string',
-    //     'ifsc_code'  => 'nullable|string',
-    //     'adhar_number'  => 'nullable|string',
-    //     'pan_number' => 'nullable|string',
-    //     'gst_no' => 'nullable|string'
-    //     ]);
-
-    //     $operator->update($validated);
-
-    //     return response()->json([
-    //         'message' => 'Operator updated successfully!',
-    //         'data'    => $operator
-    //     ]);
-    // }
         public function update(Request $request, $id)
 {
     $operator = Operator::findOrFail($id);
@@ -186,6 +119,7 @@ public function showTypeWise()
             'ifsc_code'      => 'nullable|string',
             'adhar_number'   => 'nullable|string',
             'pan_number'     => 'nullable|string',
+            'project_id' => 'required|string',
         ]);
     } elseif ($type == '0') {
         // For type 0 (supervisor)
