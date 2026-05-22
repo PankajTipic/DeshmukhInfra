@@ -75,9 +75,9 @@ function CategoryCard({ catKey, cat, maxCount }) {
       <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, marginTop: 4, color: hasData ? meta.color : '#CBD5E1' }}>
         {cat.count}
       </div>
-      <div style={{ fontSize: 11, color: '#64748B', marginTop: 5 }}>
+      {/* <div style={{ fontSize: 11, color: '#64748B', marginTop: 5 }}>
         {cat.last_entry_time ? `🕐 Last: ${cat.last_entry_time}` : '— no entry today'}
-      </div>
+      </div> */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, background: '#F1F5F9' }}>
         {hasData && <div style={{ height: 4, width: `${pct}%`, background: meta.color, transition: 'width 1s ease' }} />}
       </div>

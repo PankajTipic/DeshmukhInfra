@@ -336,7 +336,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
           </FRow>
           <FRow label="Machine">
             <select style={sel} value={addForm.machineId} onChange={e=>setAddForm({...addForm, machineId:e.target.value})}>
-              <option value="">Select Machine (optional)</option>
+              <option value="">Select Machine</option>
               {machines.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </FRow>
@@ -400,7 +400,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
           </FRow>
           <FRow label="Machine">
             <select style={sel} value={editForm.machineId} onChange={e=>setEditForm({...editForm, machineId:e.target.value})}>
-              <option value="">Select Machine (optional)</option>
+              <option value="">Select Machine</option>
               {machines.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </FRow>
@@ -486,7 +486,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
           </FRow>
           <FRow label="Transfer To Machine">
             <select style={sel} value={tfForm.toMachineId} onChange={e=>setTfForm({...tfForm, toMachineId:e.target.value})}>
-              <option value="">Select Machine (optional)</option>
+              <option value="">Select Machine </option>
               {machines.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </FRow>
@@ -1031,7 +1031,7 @@ function MaintenanceTab({ state, onRefresh, openDeleteModal }) {
           </FRow>
           <FRow label="Project">
             <select style={sel} value={form.projectId} onChange={e=>setForm({...form, projectId:e.target.value})}>
-              <option value="">Select Project (optional)</option>
+              <option value="">Select Project</option>
               {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </FRow>
@@ -1083,7 +1083,7 @@ function MaintenanceTab({ state, onRefresh, openDeleteModal }) {
           </FRow>
           <FRow label="Project">
             <select style={sel} value={editForm.projectId} onChange={e=>setEditForm({...editForm, projectId:e.target.value})}>
-              <option value="">Select Project (optional)</option>
+              <option value="">Select Project</option>
               {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </FRow>

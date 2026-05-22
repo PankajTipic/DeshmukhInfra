@@ -29,6 +29,8 @@ class PurchesVendorModel extends Model
         'cgst_percent',
         'sgst_percent',
 
+        'created_by'
+
     ];
 
 
