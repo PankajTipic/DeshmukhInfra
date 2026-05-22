@@ -903,31 +903,123 @@ class MachineryStockUpdateController extends Controller
     // TRANSFER CRUD ACTIONS (EDIT/DELETE)
     // ══════════════════════════════════════════════════════════
 
+    // public function updateTransferLog(Request $request, $id)
+    // {
+    //     $companyId = auth()->user()->company_id;
+    //     $movement = MachineryStockMovement::findOrFail($id);
+
+    //     if ($movement->stockUpdate->company_id !== $companyId) {
+    //         return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
+    //     }
+
+    //     $request->validate([
+    //         'qty'  => 'required|numeric|min:0.01',
+    //         'note' => 'nullable|string|max:500',
+    //     ]);
+
+    //     $movement->update([
+    //         'quantity' => $request->qty,
+    //         'reason'   => $request->note,
+    //     ]);
+
+    //     return response()->json([
+    //         'status'  => true,
+    //         'message' => 'Transfer record updated successfully',
+    //         'data'    => $this->formatTransfer($movement),
+    //     ]);
+    // }
+
+
+
     public function updateTransferLog(Request $request, $id)
-    {
-        $companyId = auth()->user()->company_id;
-        $movement = MachineryStockMovement::findOrFail($id);
+{
+    $companyId = auth()->user()->company_id;
+    $movement = MachineryStockMovement::with(['stockUpdate.stockItems'])->findOrFail($id);
 
-        if ($movement->stockUpdate->company_id !== $companyId) {
-            return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $request->validate([
-            'qty'  => 'required|numeric|min:0.01',
-            'note' => 'nullable|string|max:500',
-        ]);
-
-        $movement->update([
-            'quantity' => $request->qty,
-            'reason'   => $request->note,
-        ]);
-
-        return response()->json([
-            'status'  => true,
-            'message' => 'Transfer record updated successfully',
-            'data'    => $this->formatTransfer($movement),
-        ]);
+    if ($movement->stockUpdate->company_id !== $companyId) {
+        return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
     }
+
+    $request->validate([
+        'qty'  => 'required|numeric|min:0.01',
+        'note' => 'nullable|string|max:500',
+    ]);
+
+    $oldQty = $movement->quantity;
+    $newQty = $request->qty;
+    $difference = $newQty - $oldQty;   // positive = increase transfer, negative = decrease
+
+    $stockName = $movement->stock_name;
+
+    // Get source and destination stock items
+    $sourceStockItem = MachineryStockItem::where('machinery_stock_update_id', $movement->machinery_stock_update_id)
+        ->where('stock_name', $stockName)
+        ->first();
+
+    // Find destination stock update (this is tricky - you need to find the correct destination record)
+    $destinationStockUpdate = MachineryStockUpdate::where('project_id', $movement->to_project_id)
+        ->where('machine_id', $movement->to_machine_id)
+        ->latest('update_date') // or use specific date if you have it
+        ->first();
+
+    $destinationStockItem = $destinationStockUpdate 
+        ? MachineryStockItem::where('machinery_stock_update_id', $destinationStockUpdate->id)
+            ->where('stock_name', $stockName)
+            ->first()
+        : null;
+
+    if (!$sourceStockItem) {
+        return response()->json(['status' => false, 'message' => 'Source stock item not found'], 404);
+    }
+
+    // === Validation: Can we increase the transfer? ===
+    if ($newQty > $oldQty) {
+        $additionalNeeded = $difference;
+        if ($sourceStockItem->remaining_qty < $additionalNeeded) {
+            return response()->json([
+                'status' => false,
+                'message' => "Insufficient stock at source. Available: {$sourceStockItem->remaining_qty}"
+            ], 422);
+        }
+    }
+
+    // === Step 1: Reverse Old Transfer ===
+    if ($sourceStockItem) {
+        $sourceStockItem->increment('remaining_qty', $oldQty);
+        $sourceStockItem->decrement('transferred_qty', $oldQty);
+    }
+
+    if ($destinationStockItem) {
+        $destinationStockItem->decrement('remaining_qty', $oldQty); // or however you track received stock
+        // You might also have a 'received_qty' field - adjust as per your logic
+    }
+
+    // === Step 2: Apply New Transfer ===
+    if ($sourceStockItem) {
+        $sourceStockItem->decrement('remaining_qty', $newQty);
+        $sourceStockItem->increment('transferred_qty', $newQty);
+    }
+
+    if ($destinationStockItem) {
+        $destinationStockItem->increment('remaining_qty', $newQty);
+    }
+
+    // Update the movement log
+    $movement->update([
+        'quantity' => $newQty,
+        'reason'   => $request->note,
+    ]);
+
+    // Optional: Create new log entries in MachineryStockLog if you have audit trail
+
+    return response()->json([
+        'status'  => true,
+        'message' => 'Transfer updated successfully',
+        'data'    => $this->formatTransfer($movement->fresh()),
+    ]);
+}
+
+
 
     public function deleteTransferLog($id)
     {

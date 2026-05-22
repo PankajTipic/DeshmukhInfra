@@ -21,16 +21,42 @@ function stockStatus(item) {
   return                                      { label: 'OK',       color: '#0F6E56', bg: '#E1F5EE', dot: '#1D9E75' };
 }
 
-/* ΓöÇΓöÇΓöÇ tiny modal helper ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
-function Modal({ title, onClose, children, wide }) {
+
+// function Modal({ title, onClose, children, wide }) {
+//   return (
+//     <div style={{ position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+//       <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth: wide ? 760 : 520,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+//         <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 22px',borderBottom:'1px solid #F1F5F9' }}>
+//           <h3 style={{ margin:0,fontSize:16,fontWeight:700,color:'#0F172A' }}>{title}</h3>
+//           <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#94A3B8',lineHeight:1 }}>×</button>
+//         </div>
+//         <div style={{ padding:'20px 22px' }}>{children}</div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+/* ==================== RESPONSIVE MODAL ==================== */
+function Modal({ title, onClose, children, wide = false }) {
   return (
-    <div style={{ position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth: wide ? 760 : 520,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
-        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 22px',borderBottom:'1px solid #F1F5F9' }}>
-          <h3 style={{ margin:0,fontSize:16,fontWeight:700,color:'#0F172A' }}>{title}</h3>
-          <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#94A3B8',lineHeight:1 }}>×</button>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 14, width: '100%', maxWidth: wide ? 780 : 520,
+        maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 70px rgba(0,0,0,0.25)'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 22px', borderBottom: '1px solid #F1F5F9', position: 'sticky',
+          top: 0, background: '#fff', zIndex: 10
+        }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 26, color: '#94A3B8' }}>×</button>
         </div>
-        <div style={{ padding:'20px 22px' }}>{children}</div>
+        <div style={{ padding: '22px 24px' }}>{children}</div>
       </div>
     </div>
   );
@@ -43,8 +69,19 @@ const FRow = ({ label, children }) => (
     {children}
   </div>
 );
-const inp = { width:'100%',padding:'8px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:13,fontFamily:'inherit',color:'#1E293B',outline:'none',boxSizing:'border-box' };
+
+
+// const inp = { width:'100%',padding:'8px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:13,fontFamily:'inherit',color:'#1E293B',outline:'none',boxSizing:'border-box' };
+// const sel = { ...inp };
+
+const inp = { 
+  width: '100%', padding: '10px 14px', borderRadius: 8, 
+  border: '1.5px solid #E2E8F0', fontSize: 14, color: '#1E293B', 
+  outline: 'none', boxSizing: 'border-box' 
+};
 const sel = { ...inp };
+
+
 
 /* ΓöÇΓöÇΓöÇ badge ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 const Badge = ({ label, color, bg }) => (
@@ -207,7 +244,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
 
     <>
     <div>
-      <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:20,alignItems:'center' }}>
+      {/* <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:20,alignItems:'center' }}>
         <select style={{ ...sel, width:170 }} value={filterProject} onChange={e=>setFilterProject(e.target.value)}>
           <option value="">All Projects</option>
           {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
@@ -220,9 +257,38 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
         <button onClick={()=>setShowAdd(true)} style={{ padding:'8px 18px',background:'#0F172A',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit' }}>
           + Add Stock Item
         </button>
-      </div>
+      </div> */}
 
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:20 }}>
+{/* Responsive Filters */}
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, alignItems: 'center' }}>
+  <select style={{ ...sel, flex: 1, minWidth: 160 }} value={filterProject} onChange={e => setFilterProject(e.target.value)}>
+    <option value="">All Projects</option>
+    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+  </select>
+  <select style={{ ...sel, flex: 1, minWidth: 140 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+    <option value="">All Categories</option>
+    {cats.map(c => <option key={c} value={c}>{c}</option>)}
+  </select>
+  <button 
+    onClick={() => setShowAdd(true)} 
+    style={{ 
+      padding: '10px 20px', background: '#0F172A', color: '#fff', 
+      border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    + Add Stock Item
+  </button>
+</div>
+
+
+      {/* <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:20 }}> */}
+      <div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+  gap: 14, 
+  marginBottom: 28 
+}}>
         {[
           { label:'Total Items',    val: stockMaster.length,     color:'#2563EB' },
           { label:'Critical',       val: dashboardStats.criticalAlerts || 0, color:'#E24B4A' },
