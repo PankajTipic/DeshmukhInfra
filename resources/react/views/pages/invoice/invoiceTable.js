@@ -22,10 +22,13 @@ import { deleteAPICall, getAPICall, put } from '../../../util/api'
 import { cilArrowRight, cilPencil, cilPlus, cilHistory, cilNotes, cilCloudDownload, cilChart, cilAperture, cilTrash } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
 import CombinedPaymentModal from './CombinedPaymentModal'
+import SubcontractPaymentModal from './SubcontractPaymentModal'
 import UpdateProjectModal from '../projects/UpdateProjectModal'
 import DateRangeModal from './DateRangeModal'
 import { generateWorkOrdersPDF } from './pdfGenerator'
 import { generateIncomeReportPDF } from './incomeReportGenerator'
+import { Select } from 'tabler-icons-react'
+
 
 const OrderList = () => {
   const [orders, setOrders] = useState([])
@@ -56,6 +59,9 @@ const [newAmount, setNewAmount] = useState('')
 const [adjustLoading, setAdjustLoading] = useState(false)
 
 const [adjustmentReason, setAdjustmentReason] = useState('');
+
+const [showSubcontractPaymentModal, setShowSubcontractPaymentModal] = useState(false)
+  const [selectedSubcontract, setSelectedSubcontract] = useState(null)
 
 
  const [filters, setFilters] = useState({
@@ -106,6 +112,8 @@ const getPoNumber = (order) => {
         return { text: 'Quotation', color: 'secondary', nextAction: 'Convert to Work Order' }
       case 2:
         return { text: 'Work Order', color: 'success', nextAction: null }
+        case 3:
+        return { text: 'Sub Contract', color: 'info', nextAction: null }
       case 0:
         return { text: 'Cancelled', color: 'danger', nextAction: null }
       default:
@@ -434,41 +442,6 @@ const handleDeleteOrder = async (orderId) => {
 
 
 
-
-
-// const handleAdjustClick = (order) => {
-//   setSelectedAdjustOrder(order)
-//   setNewAmount(order.finalAmount || 0)
-//   setShowAdjustModal(true)
-// }
-
-// const handleAdjustSubmit = async () => {
-//   try {
-//     setAdjustLoading(true)
-
-//     await put(`/api/orders/${selectedAdjustOrder.id}/adjust-income`, {
-//       new_final_amount: newAmount
-//     })
-
-//     showAlert('Income adjusted successfully', 'success')
-//     setShowAdjustModal(false)
-//     fetchOrders()
-
-//   } catch (error) {
-//     console.error(error)
-//     showAlert('Failed to adjust income', 'danger')
-//   } finally {
-//     setAdjustLoading(false)
-//   }
-// }
-
-
-
-
-
-
-
-
 const handleAdjustClick = (order) => {
   setSelectedAdjustOrder(order);
   setNewAmount(order.finalAmount || 0);
@@ -507,6 +480,28 @@ const handleAdjustSubmit = async () => {
 
 
 
+const handleSubcontractPaymentLog = async (order) => {
+  try {
+    setActionLoading(prev => ({ ...prev, [`sub_log_${order.id}`]: true }));
+
+    const response = await getAPICall(`/api/subcontract-vendor?order_id=${order.id}`);
+
+    if (response.success && response.data && response.data.length > 0) {
+      setSelectedSubcontract({
+        order: order,
+        subcontract: response.data[0]
+      });
+      setShowSubcontractPaymentModal(true);
+    } else {
+      showAlert('No subcontract record found for this order', 'warning');
+    }
+  } catch (error) {
+    console.error(error);
+    showAlert('Failed to load subcontract details', 'danger');
+  } finally {
+    setActionLoading(prev => ({ ...prev, [`sub_log_${order.id}`]: false }));
+  }
+};
 
 
 
@@ -526,7 +521,10 @@ const handleAdjustSubmit = async () => {
       {orders.length} invoice{orders.length !== 1 ? 's' : ''} loaded
       {hasMore && ' (scroll for more)'}
     </div>
-  </div>
+  </div>  
+
+ 
+
 </CCardHeader>
         <CCardBody>
 
@@ -567,14 +565,17 @@ const handleAdjustSubmit = async () => {
     }
   >
     <option value="">All Projects</option>
-
+    
     {projects.map((p) => (
       <option key={p.id} value={p.id}>
-        {p.project_name}
+        {p.project_name}  - {p.customer_name}
       </option>
     ))}
   </select>
 </div>
+
+
+
 
 
       {/* From Date */}
@@ -736,7 +737,7 @@ const handleAdjustSubmit = async () => {
                       const paidAmount = order.paidAmount || 0
                       const remainingAmount = totalAmount - paidAmount
                       const isWorkOrder = order.invoiceType === 2
-
+                      const isSubcontract = order.invoiceType === 3
                       return (
                        
                         <CTableRow key={order.id}>
@@ -807,11 +808,17 @@ const handleAdjustSubmit = async () => {
                             <CBadge color={statusInfo.color} className="mb-1">
                               {statusInfo.text}
                             </CBadge>
-                            {remainingAmount > 0 && isWorkOrder && (
+                            {/* {remainingAmount > 0 && isWorkOrder && (
                               <div className="text-danger small">
                                 <strong>Rs {remainingAmount.toLocaleString()}</strong>
                               </div>
-                            )}
+                            )} */}
+
+                            {remainingAmount > 0 && (isWorkOrder || isSubcontract) && (
+  <div className="text-danger small">
+    <strong>Pending: Rs {remainingAmount.toLocaleString()}</strong>
+  </div>
+)}
                           </CTableDataCell>
                           <CTableDataCell>
                             <div className="d-flex gap-1 flex-wrap">
@@ -824,6 +831,21 @@ const handleAdjustSubmit = async () => {
 
 
 
+{isSubcontract && (
+                <CButton
+                  color="warning"
+                  size="sm"
+                  onClick={() => handleSubcontractPaymentLog(order)}
+                  disabled={actionLoading[`sub_log_${order.id}`]}
+                  title="Subcontract Payment Log"
+                >
+                  {actionLoading[`sub_log_${order.id}`] ? (
+                    <CSpinner size="sm" />
+                  ) : (
+                    <CIcon icon={cilHistory} />
+                  )}
+                </CButton>
+              )}
                           
 
 
@@ -940,6 +962,17 @@ const handleAdjustSubmit = async () => {
         onPaymentUpdated={handlePaymentUpdated}
       />
 
+
+      <SubcontractPaymentModal
+        visible={showSubcontractPaymentModal}
+        onClose={() => {
+          setShowSubcontractPaymentModal(false)
+          setSelectedSubcontract(null)
+        }}
+        subcontractData={selectedSubcontract}
+        onPaymentUpdated={() => fetchOrders()}
+      />
+
       {/* Date Range Modal for Income Report - ALL PROJECTS */}
       <DateRangeModal
         visible={showDateRangeModal}
@@ -948,15 +981,7 @@ const handleAdjustSubmit = async () => {
         isAllProjects={true}
       />
 
-      {/* <UpdateProjectModal
-        visible={showUpdateProjectModal}
-        onClose={() => { setShowUpdateProjectModal(false); setSelectedOrderForUpdate(null) }}
-        orderData={selectedOrderForUpdate}
-        onUpdated={() => {
-          showAlert('Status & project updated successfully', 'success')
-          fetchOrders()
-        }}
-      /> */}
+   
 
 
 
@@ -1044,64 +1069,7 @@ const handleAdjustSubmit = async () => {
 
 
 
-{/* {showAdjustModal && selectedAdjustOrder && (
-  <div 
-    className="modal fade show" 
-    style={{ display: 'block', background: 'rgba(0,0,0,0.5)' }}
-  >
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
 
-        <div className="modal-header">
-          <h5 className="modal-title">
-            Adjust Income - {selectedAdjustOrder.invoice_number}
-          </h5>
-          <button 
-            type="button" 
-            className="btn-close" 
-            onClick={() => setShowAdjustModal(false)}
-          />
-        </div>
-
-        <div className="modal-body">
-          <p className="mb-2">
-            Current Bill: <strong>₹ {selectedAdjustOrder.finalAmount}</strong>
-          </p>
-
-          <label className="form-label">New Bill Amount</label>
-          <input
-            type="number"
-            className="form-control"
-            value={newAmount}
-            onChange={(e) => setNewAmount(e.target.value)}
-          />
-
-          <small className="text-muted">
-            If reduced, adjustment entry will be created automatically.
-          </small>
-        </div>
-
-        <div className="modal-footer">
-          <CButton 
-            color="secondary" 
-            onClick={() => setShowAdjustModal(false)}
-          >
-            Cancel
-          </CButton>
-
-          <CButton 
-            color="primary" 
-            onClick={handleAdjustSubmit}
-            disabled={adjustLoading}
-          >
-            {adjustLoading ? <CSpinner size="sm" /> : 'Confirm'}
-          </CButton>
-        </div>
-
-      </div>
-    </div>
-  </div>
-)} */}
 
 {/* IMPROVED ADJUST INCOME MODAL */}
 {showAdjustModal && selectedAdjustOrder && (

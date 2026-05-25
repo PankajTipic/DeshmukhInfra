@@ -377,20 +377,47 @@ class DashboardController extends Controller
             }
 
             // ====================== DRILLING ======================
-            $drillings = DrillingRecord::where('company_id', $companyId)
-                ->where('user_id', $user->id)
-                ->whereDate('created_at', $date)
-                ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                ->with(['project:id,project_name', 'operator:id,name'])
-                ->latest('created_at')
-                ->get();
+            // $drillings = DrillingRecord::where('company_id', $companyId)
+            //     ->where('user_id', $user->id)
+            //     ->whereDate('created_at', $date)
+            //     ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            //     ->with(['project:id,project_name', 'operator:id,name'])
+            //     ->latest('created_at')
+            //     ->get();
 
-            if ($drillings->count() > 0) {
-                $userActivity['details'][] = ['type' => 'Drilling / Work Log', 'count' => $drillings->count()];
-                $userActivity['total_entries'] += $drillings->count();
-                $userActivity['entries']['drilling'] = $drillings->map(fn($d) => $d->toArray());
-                $hasActivity = true;
-            }
+            // if ($drillings->count() > 0) {
+            //     $userActivity['details'][] = ['type' => 'Drilling / Work Log', 'count' => $drillings->count()];
+            //     $userActivity['total_entries'] += $drillings->count();
+            //     $userActivity['entries']['drilling'] = $drillings->map(fn($d) => $d->toArray());
+            //     $hasActivity = true;
+            // }
+
+
+            // ====================== DRILLING ======================
+// ====================== DRILLING ======================
+$drillings = DrillingRecord::where('company_id', $companyId)
+    ->where('user_id', $user->id)
+    ->whereDate('created_at', $date)
+    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+    ->with([
+        'project:id,project_name',
+        'operator:id,name',
+        'workPoints',
+        'surveys',
+        'compressorRpm',
+        'machineReading.operator',
+        'uses_raw_material'
+    ])
+    ->latest('created_at')
+    ->get();
+
+if ($drillings->count() > 0) {
+    $userActivity['details'][] = ['type' => 'Work Logs', 'count' => $drillings->count()];
+    $userActivity['total_entries'] += $drillings->count();
+    $userActivity['entries']['drilling'] = $drillings->map(fn($d) => $d->toArray());
+    $hasActivity = true;
+}
+
 
             // ====================== EXPENSE ======================
             $expenses = Expense::where('company_id', $companyId)
@@ -409,20 +436,20 @@ class DashboardController extends Controller
             }
 
             // ====================== MACHINE READING ======================
-            $machineReadings = MachineReading::where('company_id', $companyId)
-                ->where('user_id', $user->id)
-                ->whereDate('created_at', $date)
-                ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                ->with(['drillingRecord', 'operator'])
-                ->latest('created_at')
-                ->get();
+            // $machineReadings = MachineReading::where('company_id', $companyId)
+            //     ->where('user_id', $user->id)
+            //     ->whereDate('created_at', $date)
+            //     ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            //     ->with(['drillingRecord', 'operator'])
+            //     ->latest('created_at')
+            //     ->get();
 
-            if ($machineReadings->count() > 0) {
-                $userActivity['details'][] = ['type' => 'Machine Reading', 'count' => $machineReadings->count()];
-                $userActivity['total_entries'] += $machineReadings->count();
-                $userActivity['entries']['machine_reading'] = $machineReadings->map(fn($m) => $m->toArray());
-                $hasActivity = true;
-            }
+            // if ($machineReadings->count() > 0) {
+            //     $userActivity['details'][] = ['type' => 'Machine Reading', 'count' => $machineReadings->count()];
+            //     $userActivity['total_entries'] += $machineReadings->count();
+            //     $userActivity['entries']['machine_reading'] = $machineReadings->map(fn($m) => $m->toArray());
+            //     $hasActivity = true;
+            // }
 
             // ====================== ORDER ======================
             $orders = Order::where('company_id', $companyId)

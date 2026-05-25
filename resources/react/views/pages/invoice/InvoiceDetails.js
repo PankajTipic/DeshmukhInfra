@@ -367,9 +367,21 @@ Thank you!`)
 
   return (
     <CCard>
-      <CCardHeader>
-        <h5>Invoice {formData.invoice_number}</h5>
-      </CCardHeader>
+     <CCardHeader>
+  <div className="d-flex justify-content-between align-items-center">
+    <h5 className="mb-0">
+      Invoice {formData.invoice_number || ''}
+    </h5>
+    
+    <CButton 
+      color="primary" 
+      onClick={() => navigate('/invoiceTable')}
+      className="d-flex align-items-center"
+    >
+      ← Back
+    </CButton>
+  </div>
+</CCardHeader>
       <CCardBody>
         <CContainer fluid>
           <div className="row section">

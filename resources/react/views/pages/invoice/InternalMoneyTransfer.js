@@ -574,7 +574,7 @@ const InternalMoneyTransfer = () => {
               >
                 <option value="">All Projects</option>
                 {getUniqueProjects().map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
+                  <option key={project.id} value={project.id}>{project.name} - {project.customer_name}</option>
                 ))}
               </CFormSelect>
             </CCol>

@@ -484,7 +484,7 @@ const MachineUsageForm = () => {
               setShowDropdown(false);
             }}
           >
-            {project.project_name}
+            {project.project_name} - {project.customer_name}
           </div>
         ))}
       </div>

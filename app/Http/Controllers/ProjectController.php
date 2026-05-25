@@ -68,7 +68,8 @@ public function index(Request $request)
             'supervisor_id',
             'is_visible',
             'pan_number',
-            'project_type_id'
+            'project_type_id',
+            'is_subcontract'
         )
         ->with('projectType') // Eager load project type
         ->where('company_id', $user->company_id)
@@ -117,6 +118,7 @@ public function index(Request $request)
             ],
             'project_type' => $p->projectType ? $p->projectType->name : null,
             'project_type_id' => $p->project_type_id,
+            'is_subcontract' => $p->is_subcontract,
         ];
     });
 
@@ -146,12 +148,15 @@ public function index(Request $request)
         'pan_number'     => 'nullable|string|max:255',
         'project_type_id' => 'nullable|exists:project_types,id',
         // 'is_confirm'    => 'nullable|numeric',
+        'is_subcontract' => 'nullable|boolean',
     ]);
 
     // Add user and company automatically
     $data['user_id'] = $user->id;
     $data['company_id'] = $user->company_id;
     // $data['is_confirm'] = 1;
+
+    $data['is_subcontract'] = $request->input('is_subcontract', 0);
 
     $project = Project::create($data);
 
@@ -174,6 +179,7 @@ public function store(Request $request)
          'gst_number' => 'nullable|string|max:255',
     'pan_number' => 'nullable|string|max:255',
     'project_type_id' => 'nullable|exists:project_types,id',
+    'is_subcontract' => 'nullable|boolean',
 
     ]);
 
@@ -183,6 +189,8 @@ public function store(Request $request)
     // Add user and company automatically
     $data['user_id']    = $user->id;
     $data['company_id'] = $user->company_id;
+
+    $data['is_subcontract'] = $request->input('is_subcontract', 0);
 
     // Fill remaining fields with null explicitly
     $data['project_cost']  = null;
@@ -243,6 +251,7 @@ public function update(Request $request, $id)
         'gst_number'    => 'nullable|string|max:255',
         'pan_number'     => 'nullable|string|max:255',
         'project_type_id' => 'nullable|exists:project_types,id',
+        'is_subcontract' => 'nullable|boolean',
     ]);
 
     // Update only provided fields (others remain unchanged)
@@ -276,6 +285,7 @@ public function updatedata(Request $request, $id)
         'pan_number'    => 'nullable|string|max:255',
         'project_type_id' => 'nullable|exists:project_types,id',
         // 'is_confirm' => 'nullable|numeric', // if needed later
+        'is_subcontract' => 'nullable|boolean',
     ]);
 
     // Always assign company_id and user_id (to ensure integrity)

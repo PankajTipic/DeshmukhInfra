@@ -12,7 +12,9 @@ use Carbon\Carbon;
 use App\Models\ProformaInvoice; 
 use App\Models\Order;
 use App\Models\ProformaInvoiceDetail;
-use App\Models\AdvancedPayment;
+use App\Models\AdvancedPayment; 
+use App\Models\PurchesVendorPaymentLog; 
+use App\Models\SubcontractVendorPaymentLog;
 
 class IncomeController extends Controller
 {
@@ -709,6 +711,245 @@ public function getMonthlyIncomeSummaries(Request $request)
 
 
 
+
+
+
+
+
+
+
+// public function getNotes(Request $request)
+// {
+//     $projectId = $request->query('project_id'); // optional
+
+//     // ====================== CREDIT NOTES ======================
+//     $creditNotes = Income::with('project')
+//         ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+//         ->where(function($query) {
+//             $query->where('type', 'credit_note')
+//                   ->orWhere('received_amount', '<', 0); // Negative = Credit Note
+//         })
+//         ->select([
+//             'id', 
+//             'project_id', 
+//             'order_id', 
+//             'proforma_invoice_id',
+//             'invoice_no', 
+//             // 'issue_date', 
+//             'basic_amount', 
+//             'gst_amount', 
+//             'billing_amount as total_amount',
+//             // 'reason', 
+//             'remark', 
+//             'type', 
+//             'received_amount',
+//             'invoice_date'   // Make sure this exists for ordering
+//         ])
+//         ->orderBy('invoice_date', 'desc')
+//         ->get()
+//         ->map(function($item) {
+//             $item->note_type = 'credit_note';
+            
+//             // Generate credit note number since column doesn't exist
+//             $item->note_number = 'CN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+            
+//             // Optional: Use invoice_no if available and meaningful
+//             // $item->note_number = $item->invoice_no ?? 'CN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+            
+//             // Ensure total_amount is positive
+//             $item->total_amount = abs($item->total_amount ?? $item->billing_amount ?? 0);
+            
+//             return $item;
+//         });
+
+//     // ====================== DEBIT NOTES ======================
+//     $debitNotes = collect();
+
+//     // 1. Purchase Vendor Payment Logs
+//     $purchaseDebits = PurchesVendorPaymentLog::with('purchase.project', 'purchase.vendor')
+//         ->whereHas('purchase', function($q) use ($projectId) {
+//             if ($projectId) $q->where('project_id', $projectId);
+//         })
+//         ->where(function($q) {
+//             $q->where('amount', '<', 0)
+//               ->orWhere('description', 'like', '%debit%');
+//         })
+//         ->select([
+//             'id', 
+//             'purches_vendor_id', 
+//             'amount', 
+//             'payment_date', 
+//             'description', 
+//             'remark'
+//         ])
+//         ->get()
+//         ->map(function($item) {
+//             $item->note_type = 'debit_note';
+//             $item->note_number = 'DN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+//             $item->project_id = $item->purchase?->project_id;
+//             $item->vendor_name = $item->purchase?->vendor?->name ?? 'Vendor';
+//             $item->project_name = $item->purchase?->project?->project_name;
+//             $item->total_amount = abs($item->amount);
+//             // $item->issue_date = $item->payment_date; // for consistency
+//             return $item;
+//         });
+
+//     // 2. Subcontract Vendor Payment Logs
+//     $subcontractDebits = SubcontractVendorPaymentLog::with('subcontractVendor.project', 'subcontractVendor.vendor')
+//         ->whereHas('subcontractVendor', function($q) use ($projectId) {
+//             if ($projectId) $q->where('project_id', $projectId);
+//         })
+//         ->where(function($q) {
+//             $q->where('amount', '<', 0)
+//               ->orWhere('description', 'like', '%debit%');
+//         })
+//         ->get()
+//         ->map(function($item) {
+//             $item->note_type = 'debit_note';
+//             $item->note_number = 'DN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+//             $item->project_id = $item->subcontractVendor?->project_id;
+//             $item->vendor_name = $item->subcontractVendor?->vendor?->name ?? 'Subcontract Vendor';
+//             $item->project_name = $item->subcontractVendor?->project?->project_name;
+//             $item->total_amount = abs($item->amount);
+//             // $item->issue_date = $item->payment_date;
+//             return $item;
+//         });
+
+//     $debitNotes = $purchaseDebits->merge($subcontractDebits)
+//                     ->sortByDesc('payment_date');
+
+//     return response()->json([
+//         'success' => true,
+//         'data' => [
+//             'credit_notes' => $creditNotes,
+//             'debit_notes'  => $debitNotes,
+//             'total_credit' => $creditNotes->sum('total_amount'),
+//             'total_debit'  => $debitNotes->sum('total_amount')
+//         ]
+//     ]);
+// }
+
+
+
+
+
+
+public function getNotes(Request $request)
+{
+    $projectId = $request->query('project_id');
+
+    // ====================== CREDIT NOTES ======================
+    $creditNotes = Income::with([
+        'project',           // Safe
+        'order',             // Safe
+        'order.project',
+        'order.customer'
+        // Removed proformaInvoice - causing error
+    ])
+    ->when($projectId, function($q) use ($projectId) {
+        $q->where('project_id', $projectId)
+          ->orWhereHas('order', fn($o) => $o->where('project_id', $projectId));
+          // Removed proformaInvoice WhereHas to avoid error
+    })
+    ->select([
+        'id',
+        'project_id',
+        'order_id',
+        'proforma_invoice_id',
+        'invoice_no',
+        'invoice_date',
+        'basic_amount',
+        'gst_amount',
+        'billing_amount',
+        'remark',
+        'type',
+        'received_amount',
+        'created_at'
+    ])
+    ->orderByRaw('COALESCE(invoice_date, created_at) DESC')
+    ->get()
+    ->filter(function($item) {
+        // Show as Credit Note if received < billed (adjustment/credit scenario)
+        return $item->type === 'adjustment' ||
+               $item->received_amount < 0 ||
+               $item->received_amount < ($item->billing_amount - 0.01);
+    })
+    ->map(function($item) {
+        $item->note_type = 'credit_note';
+        
+        $item->note_number = $item->invoice_no 
+            ?? 'CN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+
+        // Credit amount = difference between billed and received
+        $item->total_amount = abs($item->billing_amount - $item->received_amount);
+
+        $item->project_name = $item->project?->project_name 
+                           ?? $item->order?->project?->project_name 
+                           ?? null;
+
+        $item->customer_name = $item->project?->customer_name 
+                            ?? $item->order?->customer?->name 
+                            ?? null;
+
+        $item->reason = $item->remark ?? 'Amount Adjustment';
+
+        return $item;
+    });
+
+    // ====================== DEBIT NOTES ======================
+    $debitNotes = collect();
+
+    // Purchase Debit Notes
+    $purchaseDebits = PurchesVendorPaymentLog::with(['purchase.project', 'purchase.vendor'])
+        ->when($projectId, fn($q) => $q->whereHas('purchase', fn($sub) => $sub->where('project_id', $projectId)))
+        ->where(function($q) {
+            $q->where('amount', '<', 0)
+              ->orWhere('description', 'like', '%debit%');
+        })
+        ->get()
+        ->map(function($item) {
+            $item->note_type = 'debit_note';
+            $item->note_number = 'DN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+            $item->project_id = $item->purchase?->project_id;
+            $item->project_name = $item->purchase?->project?->project_name;
+            $item->vendor_name = $item->purchase?->vendor?->name ?? 'Vendor';
+            $item->total_amount = abs($item->amount);
+            $item->issue_date = $item->payment_date;
+            return $item;
+        });
+
+    // Subcontract Debit Notes
+    $subcontractDebits = SubcontractVendorPaymentLog::with(['subcontractVendor.project', 'subcontractVendor.vendor'])
+        ->when($projectId, fn($q) => $q->whereHas('subcontractVendor', fn($sub) => $sub->where('project_id', $projectId)))
+        ->where(function($q) {
+            $q->where('amount', '<', 0)
+              ->orWhere('description', 'like', '%debit%');
+        })
+        ->get()
+        ->map(function($item) {
+            $item->note_type = 'debit_note';
+            $item->note_number = 'DN-' . str_pad($item->id, 6, '0', STR_PAD_LEFT);
+            $item->project_id = $item->subcontractVendor?->project_id;
+            $item->project_name = $item->subcontractVendor?->project?->project_name;
+            $item->vendor_name = $item->subcontractVendor?->vendor?->name ?? 'Subcontract Vendor';
+            $item->total_amount = abs($item->amount);
+            $item->issue_date = $item->payment_date;
+            return $item;
+        });
+
+    $debitNotes = $purchaseDebits->merge($subcontractDebits)
+                    ->sortByDesc('issue_date');
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'credit_notes' => $creditNotes->values(),
+            'debit_notes'  => $debitNotes,
+            'total_credit' => $creditNotes->sum('total_amount'),
+            'total_debit'  => $debitNotes->sum('total_amount')
+        ]
+    ]);
+}
 
 
 }

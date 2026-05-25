@@ -887,7 +887,7 @@ const handlePDFExport = () => {
                 <option value="">All Projects</option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
-                    {project.project_name}
+                    {project.project_name} -  {project.customer_name} 
                   </option>
                 ))}
               </CFormSelect>

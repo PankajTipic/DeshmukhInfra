@@ -140,6 +140,8 @@ const machineryStockTable  = React.lazy(() => import('./views/pages/Machinary/Ma
 
 const dailyActivityDashboard = React.lazy(() => import('./views/dashboard/DailyActivityDashboard.js'))
 
+const subcontractLadger = React.lazy(() => import('./views/pages/report/SubContractLadger.js'))
+
 
  
 export default function fetchRoutes(){
@@ -300,6 +302,9 @@ export default function fetchRoutes(){
 
 
       { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+     
+     
+      { path: '/subcontractLadger', name: 'Sub Contract Ladger Report', element: subcontractLadger },
 
 
   ]

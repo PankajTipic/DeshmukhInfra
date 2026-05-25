@@ -57,7 +57,7 @@ use App\Http\Controllers\PurchesVendorController;
 use App\Http\Controllers\MachineryStockUpdateController;  
 
 use App\Http\Controllers\DashboardController;
-
+ use App\Http\Controllers\SubcontractVendorController;
 
 
 // New debugging and sync routes
@@ -77,11 +77,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/updateInvoiceStatus/{id}', [OrderController::class, 'updateInvoiceStatus']);
     Route::post('/recordPayment/{id}', [OrderController::class, 'recordPayment']);
     Route::put('/orders/{id}/payment-details', [OrderController::class, 'updatePaymentDetails']);
+Route::post('/subcontract-vendor/{id}/record-payment', [OrderController::class, 'recordSubcontractVendorPayment']);
      // On Behalf Payment Routes (NEW)
     Route::post('/vendor-payments/{vendorPaymentId}/pay-on-behalf', [VendorPaymentController::class, 'storeOnBehalfPayment']);
     Route::get('/vendor-payments/{vendorPaymentId}/on-behalf-logs', [VendorPaymentController::class, 'onBehalfLogs']);
     Route::put('/vendor-on-behalf-payment-logs/{logId}', [VendorPaymentController::class, 'updateOnBehalfLog']);
     Route::delete('/vendor-on-behalf-payment-logs/{logId}', [VendorPaymentController::class, 'deleteOnBehalfLog']);
+
+
+    // Subcontract Vendor Routes
+Route::get('/subcontract-vendor', [SubcontractVendorController::class, 'index']);
+Route::get('/subcontract-vendor/{id}', [SubcontractVendorController::class, 'show']);
+Route::get('/subcontract-vendor/{id}/payments', [SubcontractVendorController::class, 'payments']);
+Route::post('/subcontract-vendor/{id}/record-payment', [SubcontractVendorController::class, 'recordPayment']);
+Route::post('/subcontract-vendor/payment/{id}', [SubcontractVendorController::class, 'updatePayment']);
+Route::get('/subcontract-ledger-report', [SubcontractVendorController::class, 'subcontractLedgerReport']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -224,6 +234,7 @@ Route::put('/income/{id}', [IncomeController::class, 'update']);
 Route::delete('/income/{id}', [IncomeController::class, 'destroy']);
 Route::get('/incomeSummaryReport', [IncomeController::class, 'incomeSummaryReport']);
 Route::get('/monthlyIncomeSummaries', [IncomeController::class, 'getMonthlyIncomeSummaries']);
+Route::get('/getNotes', [IncomeController::class, 'getNotes']);
 
 
 

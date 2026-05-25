@@ -33,6 +33,7 @@ const ProjectForm = () => {
     gst_number:"",
     pan_number:"",
     project_type_id: "", 
+    is_subcontract: 0,
   });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
@@ -214,6 +215,47 @@ const ProjectForm = () => {
                     isClearable
                   />
                 </CCol>
+
+
+
+
+<CCol md={4}>
+  <CFormLabel>Project Category</CFormLabel>
+
+  <div className="d-flex gap-4 mt-2">
+    <CFormCheck
+      type="radio"
+      name="is_subcontract"
+      id="normal_project"
+      label="Normal Project"
+      checked={formData.is_subcontract === 0}
+      onChange={() =>
+        setFormData((prev) => ({
+          ...prev,
+          is_subcontract: 0,
+        }))
+      }
+    />
+
+    <CFormCheck
+      type="radio"
+      name="is_subcontract"
+      id="subcontract_project"
+      label="Subcontract Project"
+      checked={formData.is_subcontract === 1}
+      onChange={() =>
+        setFormData((prev) => ({
+          ...prev,
+          is_subcontract: 1,
+        }))
+      }
+    />
+  </div>
+</CCol>
+
+
+
+
 
               <CCol md={4}>
                 <CFormLabel>Project Name</CFormLabel>

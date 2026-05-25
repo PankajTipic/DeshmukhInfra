@@ -269,6 +269,14 @@ export default function fetchNavItems(t1) {
           },
 
 
+            {
+            component: CNavItem,
+            name: "Sub Contract Ladger",
+            to: '/subcontractLadger',
+            className: 'ms-2',
+          },
+
+
         ],
       },
 

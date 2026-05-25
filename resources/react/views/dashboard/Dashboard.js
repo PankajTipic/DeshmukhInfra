@@ -3913,7 +3913,7 @@ const Dashboard = () => {
             <option value="">All</option>
             {projectTypes.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.name} 
               </option>
             ))}
           </CFormSelect>
@@ -3931,7 +3931,7 @@ const Dashboard = () => {
               .filter((p) => !projectType || p.typeId === Number(projectType))
               .map((p) => (
                 <option key={p.value} value={p.value}>
-                  {p.label}
+                  {p.label} 
                 </option>
               ))}
           </CFormSelect>

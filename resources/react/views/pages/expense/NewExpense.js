@@ -909,7 +909,7 @@ const confirmSubmitAllExpenses = async () => {
           onMouseEnter={(e) => (e.target.style.background = '#f5f5f5')}
           onMouseLeave={(e) => (e.target.style.background = 'white')}
         >
-          {project?.project_name}
+          {project?.project_name} - {project?.customer_name}
         </li>
       ))}
     </ul>

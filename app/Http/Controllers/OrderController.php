@@ -24,6 +24,9 @@ use App\Models\ProformaInvoice;
 use App\Models\ProformaInvoiceDetail;
 use App\Models\Income;
 use App\Models\IncomeSummary;
+use App\Models\SubcontractVendor;
+use App\Models\SubcontractVendorPaymentLog;
+use App\Models\Project;           // ← Add this
 
 
 class OrderController extends Controller
@@ -124,13 +127,6 @@ if (!empty($projectTypeId)) {
 
 
 
-    // public function show($id)
-    // {
-    //     $order = Order::with('project.projectType', 'customer', 'items','invoiceRules.rule')->find($id);
-    //     $order->items = $order->items()->get();
-    //     $order->customer = Customer::find($order->customer_id);
-    //     return $order;
-    // }
 
 
 
@@ -173,150 +169,6 @@ if (!empty($projectTypeId)) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-
-// public function store(Request $request)
-// {
-//     $user        = Auth::user();
-//     $invoiceDate = Carbon::parse($request->invoiceDate)->format('Y-m-d');
-
-//     // Get company info for invoice number
-//     $company = CompanyInfo::findOrFail($user->company_id);
-//     $invoiceNumber = $company->initials . '-' . $company->invoice_counter;
-
-//     // Increment counter for the next invoice
-//     $company->increment('invoice_counter');
-
-//     // No profit calculation (no products/bPrice), set to 0
-//     $profit = 0;
-
-//     // Get paidAmount from request with default value
-//     $paidAmount = $request->paidAmount ?? 0;
-
-//     // Map invoiceType to orderStatus
-//     $orderStatus = match ($request->invoiceType) {
-//         1 => 3,  // Quotation
-//         2 => 2,  // Proforma Invoice
-//         3 => 1,  // Invoice
-//         0 => 0,  // Cancelled
-//         default => 1,
-//     };
-
-//     // ✅ Create Order
-//     $order = Order::create(array_merge(
-//         $request->all(),
-//         [
-//             'project_id'     => $request->project_id,
-//             'customer_id'    => $request->customer_id,
-//             'profit'         => $profit,
-//             'orderStatus'    => $orderStatus,
-//             'company_id'     => $user->company_id,
-//             'invoice_number' => $invoiceNumber,
-//             'paidAmount'     => $paidAmount,
-//             'created_by'     => $user->id,
-//             'updated_by'     => $user->id,
-//             'totalAmount'    => $request->taxableAmount ?? 0,
-//             'gst'            => $request->gstAmount ?? 0,
-//             'cgst'           => $request->cgstAmount ?? 0,
-//             'sgst'           => $request->sgstAmount ?? 0,
-//             'igst'           => $request->igstAmount ?? 0,
-//             'invoiceDate'    => $invoiceDate,
-//             'terms_and_conditions'  => $request->terms_and_conditions,
-//             'payment_terms'         => $request->payment_terms,
-//             'note'                  => $request->note,
-//              'ref_id' => $request->ref_id,
-//              	'po_number' => $request->po_number,
-//         ]
-//     ));
-//     // ✅ Always store work detail items
-//     if (!empty($request->items)) {
-//         foreach ($request->items as $item) {
-//             OrderDetail::create([
-//                 'order_id'    => $order->id,
-//                 'work_type'   => $item['work_type'] ?? '',
-//                 'uom'         => $item['uom'] ?? '',
-//                 // 'qty'         => $item['qty'] ?? 0,
-//                 // 'price'       => $item['price'] ?? 0,
-//                 // 'total_price' => $item['total_price'] ?? 0,
-
-//                 'qty'                  => round((float)($item['qty'] ?? 0), 2),
-//         'price'                => round((float)($item['price'] ?? 0), 2),
-//         'total_price'          => round((float)($item['total_price'] ?? 0), 2),
-
-//                 'remark'      => $item['remark'] ?? null,
-
-//                 'work_sub_description' => $item['work_sub_description'] ?? null,
-
-//                 //  'gst_percent' => $item['gst_percent'] ?? 0,
-//                 // 'cgst_amount' => $item['cgst_amount'] ?? 0,
-//                 // 'sgst_amount' => $item['sgst_amount'] ?? 0,
-
-//                 'gst_percent'          => round((float)($item['gst_percent'] ?? 0), 2),
-//         'cgst_amount'          => round((float)($item['cgst_amount'] ?? 0), 2),
-//         'sgst_amount'          => round((float)($item['sgst_amount'] ?? 0), 2),
-
-
-//             ]);
-//         }
-//     }
-
-//     // ✅ NEW: attach rules to invoice_rules table
-//     if (!empty($request->rule_ids) && is_array($request->rule_ids)) {
-//         foreach ($request->rule_ids as $ruleId) {
-//             InvoiceRule::create([
-//                 'order_id' => $order->id,
-//                 'rules_id' => $ruleId,
-//             ]);
-//         }
-//     }
-
-//     // Payment tracker updates
-//     $finalAmount   = $request->finalAmount ?? 0;
-//     $balanceAmount = $finalAmount - $paidAmount;
-
-//     $paymentDetails = PaymentTracker::firstOrNew(['customer_id' => $request->customer_id]);
-//     $paymentDetails->created_by = $user->id;
-//     $paymentDetails->updated_by = $user->id;
-//     $paymentDetails->amount -= $balanceAmount;
-//     $paymentDetails->save();
-
-//     // ✅ Only update OrderSummary if it's an Invoice
-//     if ($order->invoiceType == 3) {
-//         $summaryDate = Carbon::parse($request->deliveryDate)->format('Y-m-d');
-
-//         OrderSummary::updateOrCreate(
-//             ['invoice_date' => $summaryDate, 'company_id' => $user->company_id],
-//             [
-//                 'order_count'  => DB::raw('order_count + 1'),
-//                 'total_amount' => DB::raw("total_amount + {$finalAmount}"),
-//                 'paid_amount'  => DB::raw("paid_amount + {$paidAmount}")
-//             ]
-//         );
-//     }
-
-//     // Load relations for response
-//     $order->load(['items', 'invoiceRules.rule']); // if you define relationships
-
-//     return response()->json([
-//         'success' => true,
-//         'data'    => $order,
-//         'id'      => $order->id
-//     ], 201);
-// }
 
 
 
@@ -722,92 +574,108 @@ if (!empty($request->items)) {
 
 
 
+
+
+
 // public function update(Request $request, $id)
 // {
-//     $user  = Auth::user();
+//     $user = Auth::user();
 //     $order = Order::with('items')->findOrFail($id);
 
-//     DB::beginTransaction();
+//     // Security check
+//     if ($order->company_id !== $user->company_id) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Unauthorized access to this order'
+//         ], 403);
+//     }
 
+//     DB::beginTransaction();
 //     try {
 //         // ✅ Map invoiceType → orderStatus
 //         $orderStatus = match ($request->invoiceType) {
-//             1 => 3,  // Quotation
-//             2 => 2,  // Proforma Invoice
-//             3 => 1,  // Invoice
-//             0 => 0,  // Cancelled
+//             1 => 3, // Quotation
+//             2 => 2, // Work Order
+//             3 => 1, // Invoice
+//             0 => 0, // Cancelled
 //             default => 1,
 //         };
 
-//         $invoiceDate   = Carbon::parse($request->invoiceDate)->format('Y-m-d');
-//         $finalAmount   = $request->finalAmount ?? 0;   // WITH GST (grand total)
-//         $paidAmount    = $request->paidAmount ?? 0;
+//         $invoiceDate = Carbon::parse($request->invoiceDate)->format('Y-m-d');
+//         $finalAmount = $request->finalAmount ?? 0;
+//         $paidAmount = $request->paidAmount ?? 0;
 //         $balanceAmount = $finalAmount - $paidAmount;
+
+//         // ✅ SMART PO NUMBER HANDLING - This fixes your issue
+//         $poNumber = $order->po_number; // Keep existing PO number by default
+
+//         // Only generate new PO number in these cases:
+//         // 1. It's a Work Order (invoiceType == 2)
+//         // 2. Currently there is NO PO number
+//         // 3. User didn't send any PO number manually
+//         if ($request->invoiceType == 2 && empty($order->po_number) && empty($request->po_number)) {
+//             $lastPo = Order::where('company_id', $user->company_id)
+//                 ->whereNotNull('po_number')
+//                 ->where('po_number', 'LIKE', 'PO/DI/%')
+//                 ->orderByRaw("CAST(SUBSTRING(po_number, 7) AS UNSIGNED) DESC")
+//                 ->value('po_number');
+
+//             $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
+//             $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+//         }
+//         // If user explicitly sent a PO number, use it (manual override)
+//         elseif (!empty($request->po_number)) {
+//             $poNumber = $request->po_number;
+//         }
+//         // Otherwise, keep the existing one (most common case when editing)
 
 //         // ✅ Update main order fields
 //         $order->update(array_merge(
-//             $request->except(['items', 'rule_ids']), // exclude handled separately
+//             $request->except(['items', 'rule_ids']), // exclude items & rules (handled separately)
 //             [
-//                 'project_id'   => $request->project_id,
-//                 'customer_id'  => $request->customer_id,
-//                 'profit'       => $order->profit ?? 0,
-//                 'orderStatus'  => $orderStatus,
-//                 'company_id'   => $user->company_id,
-//                 'paidAmount'   => $paidAmount,
-//                 'updated_by'   => $user->id,
-//                 'totalAmount'  => $request->taxableAmount ?? 0, // WITHOUT GST
-//                 'gst'          => $request->gstAmount ?? 0,
-//                 'cgst'         => $request->cgstAmount ?? 0,
-//                 'sgst'         => $request->sgstAmount ?? 0,
-//                 'igst'         => $request->igstAmount ?? 0,
-//                 'invoiceDate'  => $invoiceDate,
-//                  'terms_and_conditions'  => $request->terms_and_conditions,
-//             'payment_terms'         => $request->payment_terms,
-//             'note'                  => $request->note,
-//             'ref_id'   => $request->ref_id,
-//                 'po_number'   => $request->po_number,
+//                 'project_id' => $request->project_id,
+//                 'customer_id' => $request->customer_id,
+//                 'profit' => $order->profit ?? 0,
+//                 'orderStatus' => $orderStatus,
+//                 'company_id' => $user->company_id,
+//                 'paidAmount' => $paidAmount,
+//                 'updated_by' => $user->id,
+//                 'totalAmount' => $request->taxableAmount ?? 0,
+//                 'gst' => $request->gstAmount ?? 0,
+//                 'cgst' => $request->cgstAmount ?? 0,
+//                 'sgst' => $request->sgstAmount ?? 0,
+//                 'igst' => $request->igstAmount ?? 0,
+//                 'invoiceDate' => $invoiceDate,
+//                 'terms_and_conditions' => $request->terms_and_conditions,
+//                 'payment_terms' => $request->payment_terms,
+//                 'note' => $request->note,
+//                 'ref_id' => $request->ref_id,
+//                 'po_number' => $poNumber,           // ← Smart PO handling applied here
 //             ]
 //         ));
 
 //         // ✅ Replace all order items
 //         OrderDetail::where('order_id', $order->id)->delete();
-
 //         if (!empty($request->items)) {
 //             foreach ($request->items as $item) {
 //                 OrderDetail::create([
-//                     'order_id'    => $order->id,
-//                     'work_type'   => $item['work_type'] ?? '',
-//                     'uom'         => $item['uom'] ?? '',
-//                     // 'qty'         => $item['qty'] ?? 0,
-//                     // 'price'       => $item['price'] ?? 0,
-//                     // 'total_price' => $item['total_price'] ?? 0,
-
-//  'qty'                  => round((float)($item['qty'] ?? 0), 2),
-//         'price'                => round((float)($item['price'] ?? 0), 2),
-//         'total_price'          => round((float)($item['total_price'] ?? 0), 2),
-
-//                     'remark'      => $item['remark'] ?? null,
-//                      'work_sub_description' => $item['work_sub_description'] ?? null,
-
-
-//                     // 'gst_percent' => $item['gst_percent'] ?? 0,
-//                     // 'cgst_amount' => $item['cgst_amount'] ?? 0,
-//                     // 'sgst_amount' => $item['sgst_amount'] ?? 0,
-
-
-
-//                     'gst_percent'          => round((float)($item['gst_percent'] ?? 0), 2),
-//         'cgst_amount'          => round((float)($item['cgst_amount'] ?? 0), 2),
-//         'sgst_amount'          => round((float)($item['sgst_amount'] ?? 0), 2),
-
-
+//                     'order_id' => $order->id,
+//                     'work_type' => $item['work_type'] ?? '',
+//                     'uom' => $item['uom'] ?? '',
+//                     'qty' => round((float)($item['qty'] ?? 0), 2),
+//                     'price' => round((float)($item['price'] ?? 0), 2),
+//                     'total_price' => round((float)($item['total_price'] ?? 0), 2),
+//                     'remark' => $item['remark'] ?? null,
+//                     'work_sub_description' => $item['work_sub_description'] ?? null,
+//                     'gst_percent' => round((float)($item['gst_percent'] ?? 0), 2),
+//                     'cgst_amount' => round((float)($item['cgst_amount'] ?? 0), 2),
+//                     'sgst_amount' => round((float)($item['sgst_amount'] ?? 0), 2),
 //                 ]);
 //             }
 //         }
 
 //         // ✅ Replace all invoice rules
 //         InvoiceRule::where('order_id', $order->id)->delete();
-
 //         if (!empty($request->rule_ids) && is_array($request->rule_ids)) {
 //             foreach ($request->rule_ids as $ruleId) {
 //                 InvoiceRule::create([
@@ -824,25 +692,25 @@ if (!empty($request->items)) {
 //         $paymentDetails->amount = ($paymentDetails->amount ?? 0) - $balanceAmount;
 //         $paymentDetails->save();
 
-//         // ✅ Update OrderSummary if this is an Invoice
+//         // ✅ Update OrderSummary if this is an Invoice (Type 3)
 //         if ($order->invoiceType == 3) {
-//             $summaryDate = $request->deliveryDate
-//                 ? Carbon::parse($request->deliveryDate)->format('Y-m-d')
+//             $summaryDate = $request->deliveryDate 
+//                 ? Carbon::parse($request->deliveryDate)->format('Y-m-d') 
 //                 : $invoiceDate;
 
 //             $summary = OrderSummary::firstOrNew([
 //                 'invoice_date' => $summaryDate,
-//                 'company_id'   => $user->company_id,
+//                 'company_id' => $user->company_id,
 //             ]);
 
 //             if ($summary->exists) {
-//                 $summary->order_count  += 1;
+//                 $summary->order_count += 1;
 //                 $summary->total_amount += $finalAmount;
-//                 $summary->paid_amount  += $paidAmount;
+//                 $summary->paid_amount += $paidAmount;
 //             } else {
-//                 $summary->order_count  = 1;
+//                 $summary->order_count = 1;
 //                 $summary->total_amount = $finalAmount;
-//                 $summary->paid_amount  = $paidAmount;
+//                 $summary->paid_amount = $paidAmount;
 //             }
 //             $summary->save();
 //         }
@@ -854,8 +722,9 @@ if (!empty($request->items)) {
 
 //         return response()->json([
 //             'success' => true,
-//             'data'    => $order,
-//             'id'      => $order->id,
+//             'data' => $order,
+//             'id' => $order->id,
+//             'po_number' => $poNumber
 //         ], 200);
 
 //     } catch (\Exception $e) {
@@ -863,10 +732,11 @@ if (!empty($request->items)) {
 //         return response()->json([
 //             'success' => false,
 //             'message' => 'Failed to update order',
-//             'error'   => $e->getMessage(),
+//             'error' => $e->getMessage(),
 //         ], 500);
 //     }
 // }
+
 
 
 
@@ -899,13 +769,9 @@ public function update(Request $request, $id)
         $paidAmount = $request->paidAmount ?? 0;
         $balanceAmount = $finalAmount - $paidAmount;
 
-        // ✅ SMART PO NUMBER HANDLING - This fixes your issue
-        $poNumber = $order->po_number; // Keep existing PO number by default
+        // ✅ SMART PO NUMBER HANDLING
+        $poNumber = $order->po_number;
 
-        // Only generate new PO number in these cases:
-        // 1. It's a Work Order (invoiceType == 2)
-        // 2. Currently there is NO PO number
-        // 3. User didn't send any PO number manually
         if ($request->invoiceType == 2 && empty($order->po_number) && empty($request->po_number)) {
             $lastPo = Order::where('company_id', $user->company_id)
                 ->whereNotNull('po_number')
@@ -915,35 +781,32 @@ public function update(Request $request, $id)
 
             $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
             $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
-        }
-        // If user explicitly sent a PO number, use it (manual override)
-        elseif (!empty($request->po_number)) {
+        } elseif (!empty($request->po_number)) {
             $poNumber = $request->po_number;
         }
-        // Otherwise, keep the existing one (most common case when editing)
 
         // ✅ Update main order fields
         $order->update(array_merge(
-            $request->except(['items', 'rule_ids']), // exclude items & rules (handled separately)
+            $request->except(['items', 'rule_ids']),
             [
-                'project_id' => $request->project_id,
-                'customer_id' => $request->customer_id,
-                'profit' => $order->profit ?? 0,
-                'orderStatus' => $orderStatus,
-                'company_id' => $user->company_id,
-                'paidAmount' => $paidAmount,
-                'updated_by' => $user->id,
-                'totalAmount' => $request->taxableAmount ?? 0,
-                'gst' => $request->gstAmount ?? 0,
-                'cgst' => $request->cgstAmount ?? 0,
-                'sgst' => $request->sgstAmount ?? 0,
-                'igst' => $request->igstAmount ?? 0,
-                'invoiceDate' => $invoiceDate,
+                'project_id'          => $request->project_id,
+                'customer_id'         => $request->customer_id,
+                'profit'              => $order->profit ?? 0,
+                'orderStatus'         => $orderStatus,
+                'company_id'          => $user->company_id,
+                'paidAmount'          => $paidAmount,
+                'updated_by'          => $user->id,
+                'totalAmount'         => $request->taxableAmount ?? 0,
+                'gst'                 => $request->gstAmount ?? 0,
+                'cgst'                => $request->cgstAmount ?? 0,
+                'sgst'                => $request->sgstAmount ?? 0,
+                'igst'                => $request->igstAmount ?? 0,
+                'invoiceDate'         => $invoiceDate,
                 'terms_and_conditions' => $request->terms_and_conditions,
-                'payment_terms' => $request->payment_terms,
-                'note' => $request->note,
-                'ref_id' => $request->ref_id,
-                'po_number' => $poNumber,           // ← Smart PO handling applied here
+                'payment_terms'       => $request->payment_terms,
+                'note'                => $request->note,
+                'ref_id'              => $request->ref_id,
+                'po_number'           => $poNumber,
             ]
         ));
 
@@ -952,17 +815,17 @@ public function update(Request $request, $id)
         if (!empty($request->items)) {
             foreach ($request->items as $item) {
                 OrderDetail::create([
-                    'order_id' => $order->id,
-                    'work_type' => $item['work_type'] ?? '',
-                    'uom' => $item['uom'] ?? '',
-                    'qty' => round((float)($item['qty'] ?? 0), 2),
-                    'price' => round((float)($item['price'] ?? 0), 2),
-                    'total_price' => round((float)($item['total_price'] ?? 0), 2),
-                    'remark' => $item['remark'] ?? null,
+                    'order_id'             => $order->id,
+                    'work_type'            => $item['work_type'] ?? '',
+                    'uom'                  => $item['uom'] ?? '',
+                    'qty'                  => round((float)($item['qty'] ?? 0), 2),
+                    'price'                => round((float)($item['price'] ?? 0), 2),
+                    'total_price'          => round((float)($item['total_price'] ?? 0), 2),
+                    'remark'               => $item['remark'] ?? null,
                     'work_sub_description' => $item['work_sub_description'] ?? null,
-                    'gst_percent' => round((float)($item['gst_percent'] ?? 0), 2),
-                    'cgst_amount' => round((float)($item['cgst_amount'] ?? 0), 2),
-                    'sgst_amount' => round((float)($item['sgst_amount'] ?? 0), 2),
+                    'gst_percent'          => round((float)($item['gst_percent'] ?? 0), 2),
+                    'cgst_amount'          => round((float)($item['cgst_amount'] ?? 0), 2),
+                    'sgst_amount'          => round((float)($item['sgst_amount'] ?? 0), 2),
                 ]);
             }
         }
@@ -977,6 +840,26 @@ public function update(Request $request, $id)
                 ]);
             }
         }
+
+        // ==================== NEW SUBCONTRACT LOGIC ====================
+        if ($request->project_id) {
+            $project = Project::find($request->project_id);
+
+            if ($project && (bool)$project->is_subcontract === true) {
+                // Find existing SubcontractVendor entry for this order
+                $subcontract = SubcontractVendor::where('order_id', $order->id)
+                                                ->first();
+
+                if ($subcontract) {
+                    // Update total_amount to match new finalAmount
+                    $subcontract->update([
+                        'total_amount'   => round($finalAmount, 2),
+                        'pending_amount' => round($finalAmount - $subcontract->paid_amount, 2),
+                    ]);
+                }
+            }
+        }
+        // ============================================================
 
         // ✅ Update PaymentTracker
         $paymentDetails = PaymentTracker::firstOrNew(['customer_id' => $request->customer_id]);
@@ -1029,29 +912,6 @@ public function update(Request $request, $id)
         ], 500);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1121,21 +981,381 @@ public function update(Request $request, $id)
 
 
 
+// public function updateInvoiceStatus(Request $request, $id)
+// {
+//     $user = Auth::user();
+
+//     try {
+//         $order = Order::with(['items', 'project', 'customer'])->findOrFail($id);
+
+//         // ✅ Security check
+//         if ($order->company_id !== $user->company_id) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Unauthorized access'
+//             ], 403);
+//         }
+
+//         $newInvoiceType = $request->invoiceType;
+
+//         // ✅ Only Quotation → Work Order allowed
+//         $validProgressions = [
+//             1 => 2,
+//         ];
+
+//         if (!isset($validProgressions[$order->invoiceType]) ||
+//             $validProgressions[$order->invoiceType] !== $newInvoiceType) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Invalid status progression'
+//             ], 400);
+//         }
+
+//         DB::beginTransaction();
+
+//         try {
+//             // ✅ Step 1: Update Project details if provided
+//             if ($order->project) {
+//                 $validated = $request->validate([
+//                     'customer_name'   => 'sometimes|required|string|max:255',
+//                     'mobile_number'   => 'sometimes|required|string|max:255',
+//                     'project_name'    => 'sometimes|required|string|max:255',
+//                     'project_cost'    => 'nullable|string|max:255',
+//                     'work_place'      => 'nullable|string|max:255',
+//                     'start_date'      => 'nullable|date',
+//                     'end_date'        => 'nullable|date',
+//                     'is_confirm'      => 'nullable|boolean',
+//                     'is_visible'      => 'boolean',
+//                     'remark'          => 'nullable|string',
+//                     'supervisor_id'   => 'nullable|numeric',
+//                     'commission'      => 'nullable|numeric',
+//                     'gst_number'      => 'nullable|string|max:255',
+//                     'project_type_id' => 'nullable|exists:project_types,id',
+//                     'ref_id'          => 'nullable|string|max:255',     // ← Added for Order
+//                 ]);
+
+//                 $order->project->update($validated);
+
+//                 // ✅ Mandatory project fields check
+//                 if (empty($order->project->supervisor_id) || empty($order->project->project_cost)) {
+//                     DB::rollBack();
+//                     return response()->json([
+//                         'success' => false,
+//                         'message' => 'Please update supervisor and project cost before changing status',
+//                         'project' => $order->project
+//                     ], 400);
+//                 }
+//             }
+
+        
+
+
+
+//             // ✅ Step 2: Generate PO Number in format PO/DI/001 when converting to Work Order
+// $poNumber = null;
+// if ($newInvoiceType === 2 && empty($order->po_number)) {
+
+//     $lastPo = Order::where('company_id', $user->company_id)
+//         ->whereNotNull('po_number')
+//         ->where('po_number', 'LIKE', 'PO/DI/%')
+//         ->orderByRaw("CAST(SUBSTRING(po_number, 7) AS UNSIGNED) DESC")
+//         ->value('po_number');
+
+//     $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
+
+//     $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+// }
+
+
+
+//             // ✅ Step 3: Map invoiceType → orderStatus
+//             $orderStatus = match ($newInvoiceType) {
+//                 1 => 3,  // Quotation
+//                 2 => 2,  // Work Order
+//                 0 => 0,  // Cancelled
+//                 default => 1,
+//             };
+
+//             // ✅ Ensure customer_id exists
+//             $customerId = $order->customer_id ?? ($order->project?->customer_id ?? null);
+//             if (!$customerId) {
+//                 throw new \Exception('Customer ID cannot be determined for this order');
+//             }
+
+//             // ✅ Step 4: Update Order (including ref_id and po_number)
+//             $order->update([
+//                 'invoiceType' => $newInvoiceType,
+//                 'orderStatus' => $orderStatus,
+//                 'customer_id' => $customerId,
+//                 'po_number'   => $poNumber,
+//                 'ref_id'      => $request->ref_id,        // ← Updated from form
+//                 'updated_by'  => $user->id,
+//                 'updated_at'  => now()
+//             ]);
+
+//             // ✅ Step 5: Handle OrderSummary for Work Order
+//             if ($newInvoiceType == 2) {
+//                 $summaryDate = $order->invoiceDate ?? now();
+//                 $finalAmount = $order->finalAmount ?? (
+//                     ($order->totalAmount ?? 0) +
+//                     ($order->gst ?? 0) +
+//                     ($order->cgst ?? 0) +
+//                     ($order->sgst ?? 0) +
+//                     ($order->igst ?? 0)
+//                 );
+//                 $paidAmount = $order->paidAmount ?? 0;
+
+//                 $summary = OrderSummary::firstOrNew([
+//                     'invoice_date' => $summaryDate,
+//                     'company_id'   => $user->company_id
+//                 ]);
+
+//                 if ($summary->exists) {
+//                     $summary->order_count += 1;
+//                     $summary->total_amount += $finalAmount;
+//                     $summary->paid_amount += $paidAmount;
+//                 } else {
+//                     $summary->order_count = 1;
+//                     $summary->total_amount = $finalAmount;
+//                     $summary->paid_amount = $paidAmount;
+//                 }
+//                 $summary->save();
+//             }
+
+//             DB::commit();
+
+//             // ✅ Step 6: Fetch Supervisor details
+//             $supervisor = null;
+//             if ($order->project && $order->project->supervisor_id) {
+//                 $supervisor = \App\Models\User::where('company_id', $user->company_id)
+//                     ->where('id', $order->project->supervisor_id)
+//                     ->first();
+//             }
+
+//             return response()->json([
+//                 'success'    => true,
+//                 'message'    => 'Status & project updated successfully',
+//                 'data'       => $order->fresh(['project', 'customer', 'items']),
+//                 'supervisor' => $supervisor,
+//                 'po_number'  => $poNumber
+//             ], 200);
+
+//         } catch (\Exception $e) {
+//             DB::rollBack();
+//             throw $e;
+//         }
+
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to update status',
+//             'error'   => $e->getMessage()
+//         ], 500);
+//     }
+// }
 
 
 
 
 
 
+// public function updateInvoiceStatus(Request $request, $id)
+// {
+//     $user = Auth::user();
 
+//     try {
+//         $order = Order::with(['items', 'project', 'project.projectType', 'customer'])
+//                       ->findOrFail($id);
 
+//         // Security Check
+//         if ($order->company_id !== $user->company_id) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Unauthorized access'
+//             ], 403);
+//         }
 
+//         $newInvoiceType = $request->invoiceType;
 
+//         $validProgressions = [
+//             1 => [2, 3],
+//         ];
 
+//         if (!isset($validProgressions[$order->invoiceType]) ||
+//             !in_array($newInvoiceType, $validProgressions[$order->invoiceType])) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Invalid status progression'
+//             ], 400);
+//         }
 
+//         DB::beginTransaction();
 
+//         try {
+//             // Update Project Details
+//             if ($order->project) {
+//                 $validated = $request->validate([
+//                     'customer_name'   => 'sometimes|required|string|max:255',
+//                     'mobile_number'   => 'sometimes|required|string|max:255',
+//                     'project_name'    => 'sometimes|required|string|max:255',
+//                     'project_cost'    => 'nullable|string|max:255',
+//                     'work_place'      => 'nullable|string|max:255',
+//                     'start_date'      => 'nullable|date',
+//                     'end_date'        => 'nullable|date',
+//                     'is_confirm'      => 'nullable|boolean',
+//                     'is_visible'      => 'boolean',
+//                     'remark'          => 'nullable|string',
+//                     'supervisor_id'   => 'nullable|numeric',
+//                     'commission'      => 'nullable|numeric',
+//                     'gst_number'      => 'nullable|string|max:255',
+//                     'project_type_id' => 'nullable|exists:project_types,id',
+//                     'ref_id'          => 'nullable|string|max:255',
+                    
+//                     // ✅ Fixed: Using your actual table "operator"
+//                     'vendor_id'       => 'required_if:project_type_id,subcontract|exists:operators,id',
+//                 ]);
 
+//                 $order->project->update($validated);
+//             }
 
+//             // Check if Subcontract
+//             $isSubcontract = false;
+//             if ($order->project && $order->project->projectType) {
+//                 $isSubcontract = strtolower(trim($order->project->projectType->name)) === 'subcontract';
+//             }
+
+//             if ($isSubcontract && $newInvoiceType === 2) {
+//                 $newInvoiceType = 3;
+//             }
+
+//             // Generate PO Number
+//             $poNumber = null;
+//             if (in_array($newInvoiceType, [2, 3]) && empty($order->po_number)) {
+//                 $lastPo = Order::where('company_id', $user->company_id)
+//                     ->whereNotNull('po_number')
+//                     ->where('po_number', 'LIKE', 'PO/DI/%')
+//                     ->orderByRaw("CAST(SUBSTRING(po_number, 7) AS UNSIGNED) DESC")
+//                     ->value('po_number');
+
+//                 $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
+//                 $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+//             }
+
+//             $orderStatus = match ($newInvoiceType) {
+//                 1 => 3,
+//                 2 => 2,
+//                 3 => 4,
+//                 0 => 0,
+//                 default => 1,
+//             };
+
+//             $customerId = $order->customer_id ?? ($order->project?->customer_id ?? null);
+//             if (!$customerId) {
+//                 throw new \Exception('Customer ID cannot be determined');
+//             }
+
+//             // Update Order
+//             $order->update([
+//                 'invoiceType' => $newInvoiceType,
+//                 'orderStatus' => $orderStatus,
+//                 'customer_id' => $customerId,
+//                 'po_number'   => $poNumber,
+//                 'ref_id'      => $request->ref_id,
+//                 'updated_by'  => $user->id,
+//                 'updated_at'  => now()
+//             ]);
+
+//             // ✅ Create Subcontract Vendor Entry
+//             if ($isSubcontract && $newInvoiceType === 3) {
+//                 $vendorId = $request->vendor_id;
+
+//                 if (!$vendorId) {
+//                     DB::rollBack();
+//                     return response()->json([
+//                         'success' => false,
+//                         'message' => 'Vendor ID is required for Subcontract projects'
+//                     ], 400);
+//                 }
+
+//                 $finalAmount = $order->finalAmount ?? (
+//                     ($order->totalAmount ?? 0) +
+//                     ($order->gst ?? 0) +
+//                     ($order->cgst ?? 0) +
+//                     ($order->sgst ?? 0) +
+//                     ($order->igst ?? 0)
+//                 );
+
+//                 SubcontractVendor::create([
+//                     'project_id'     => $order->project_id,
+//                     'company_id'     => $user->company_id,
+//                     'order_id'       => $order->id,
+//                     'vendor_id'      => $vendorId,           // Keeping column name as vendor_id
+//                     'total_amount'   => $finalAmount,
+//                     'paid_amount'    => 0,
+//                     'pending_amount' => $finalAmount,
+//                 ]);
+//             }
+
+//             // Order Summary
+//             if (in_array($newInvoiceType, [2, 3])) {
+//                 $summaryDate = $order->invoiceDate ?? now();
+//                 $finalAmount = $order->finalAmount ?? (
+//                     ($order->totalAmount ?? 0) +
+//                     ($order->gst ?? 0) +
+//                     ($order->cgst ?? 0) +
+//                     ($order->sgst ?? 0) +
+//                     ($order->igst ?? 0)
+//                 );
+//                 $paidAmount = $order->paidAmount ?? 0;
+
+//                 $summary = OrderSummary::firstOrNew([
+//                     'invoice_date' => $summaryDate,
+//                     'company_id'   => $user->company_id
+//                 ]);
+
+//                 if ($summary->exists) {
+//                     $summary->order_count += 1;
+//                     $summary->total_amount += $finalAmount;
+//                     $summary->paid_amount += $paidAmount;
+//                 } else {
+//                     $summary->order_count = 1;
+//                     $summary->total_amount = $finalAmount;
+//                     $summary->paid_amount = $paidAmount;
+//                 }
+//                 $summary->save();
+//             }
+
+//             DB::commit();
+
+//             $supervisor = null;
+//             if ($order->project && $order->project->supervisor_id) {
+//                 $supervisor = \App\Models\User::where('company_id', $user->company_id)
+//                     ->where('id', $order->project->supervisor_id)
+//                     ->first();
+//             }
+
+//             return response()->json([
+//                 'success'      => true,
+//                 'message'      => $isSubcontract ? 'Converted to Subcontract Order successfully' : 'Status updated successfully',
+//                 'data'         => $order->fresh(['project', 'project.projectType', 'customer', 'items']),
+//                 'supervisor'   => $supervisor,
+//                 'po_number'    => $poNumber,
+//                 'invoice_type' => $newInvoiceType
+//             ], 200);
+
+//         } catch (\Exception $e) {
+//             DB::rollBack();
+//             throw $e;
+//         }
+
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to update status',
+//             'error'   => $e->getMessage()
+//         ], 500);
+//     }
+// }
 
 
 public function updateInvoiceStatus(Request $request, $id)
@@ -1143,9 +1363,10 @@ public function updateInvoiceStatus(Request $request, $id)
     $user = Auth::user();
 
     try {
-        $order = Order::with(['items', 'project', 'customer'])->findOrFail($id);
+        $order = Order::with(['items', 'project', 'project.projectType', 'customer'])
+                      ->findOrFail($id);
 
-        // ✅ Security check
+        // Security Check
         if ($order->company_id !== $user->company_id) {
             return response()->json([
                 'success' => false,
@@ -1153,15 +1374,14 @@ public function updateInvoiceStatus(Request $request, $id)
             ], 403);
         }
 
-        $newInvoiceType = $request->invoiceType;
+        $newInvoiceType = (int) $request->invoiceType;
 
-        // ✅ Only Quotation → Work Order allowed
         $validProgressions = [
-            1 => 2,
+            1 => [2, 3],
         ];
 
         if (!isset($validProgressions[$order->invoiceType]) ||
-            $validProgressions[$order->invoiceType] !== $newInvoiceType) {
+            !in_array($newInvoiceType, $validProgressions[$order->invoiceType])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid status progression'
@@ -1171,97 +1391,106 @@ public function updateInvoiceStatus(Request $request, $id)
         DB::beginTransaction();
 
         try {
-            // ✅ Step 1: Update Project details if provided
+            // Update Project Details
             if ($order->project) {
                 $validated = $request->validate([
-                    'customer_name'   => 'sometimes|required|string|max:255',
-                    'mobile_number'   => 'sometimes|required|string|max:255',
-                    'project_name'    => 'sometimes|required|string|max:255',
-                    'project_cost'    => 'nullable|string|max:255',
-                    'work_place'      => 'nullable|string|max:255',
-                    'start_date'      => 'nullable|date',
-                    'end_date'        => 'nullable|date',
-                    'is_confirm'      => 'nullable|boolean',
-                    'is_visible'      => 'boolean',
-                    'remark'          => 'nullable|string',
-                    'supervisor_id'   => 'nullable|numeric',
-                    'commission'      => 'nullable|numeric',
-                    'gst_number'      => 'nullable|string|max:255',
-                    'project_type_id' => 'nullable|exists:project_types,id',
-                    'ref_id'          => 'nullable|string|max:255',     // ← Added for Order
+                    'customer_name'    => 'sometimes|required|string|max:255',
+                    'mobile_number'    => 'sometimes|required|string|max:255',
+                    'project_name'     => 'sometimes|required|string|max:255',
+                    'project_cost'     => 'nullable|string|max:255',
+                    'work_place'       => 'nullable|string|max:255',
+                    'start_date'       => 'nullable|date',
+                    'end_date'         => 'nullable|date',
+                    'is_confirm'       => 'nullable|boolean',
+                    'is_visible'       => 'boolean',
+                    'remark'           => 'nullable|string',
+                    'supervisor_id'    => 'nullable|numeric',
+                    'commission'       => 'nullable|numeric',
+                    'gst_number'       => 'nullable|string|max:255',
+                    'project_type_id'  => 'nullable|exists:project_types,id',
+                    'ref_id'           => 'nullable|string|max:255',
+                    'vendor_id'        => 'nullable|exists:operators,id',
                 ]);
 
                 $order->project->update($validated);
-
-                // ✅ Mandatory project fields check
-                if (empty($order->project->supervisor_id) || empty($order->project->project_cost)) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Please update supervisor and project cost before changing status',
-                        'project' => $order->project
-                    ], 400);
-                }
             }
 
-            // ✅ Step 2: Generate PO Number only when converting to Work Order
-            // $poNumber = null;
-            // if ($newInvoiceType === 2 && empty($order->po_number)) {
-            //     $lastPo = Order::where('company_id', $user->company_id)
-            //         ->whereNotNull('po_number')
-            //         ->orderByRaw("CAST(SUBSTRING(po_number, 4) AS UNSIGNED) DESC")  // Safe numeric sorting
-            //         ->value('po_number');
+            // ✅ MAIN LOGIC: Check is_subcontract column from projects table
+            $isSubcontract = $order->project ? (bool) $order->project->is_subcontract : false;
 
-            //     $nextNumber = $lastPo ? (int) substr($lastPo, 3) + 1 : 1;
-            //     $poNumber = 'PO-' . $nextNumber;
-            // }
+            // Auto-set to invoiceType = 3 for subcontract projects
+            if ($isSubcontract && $newInvoiceType === 2) {
+                $newInvoiceType = 3;
+            }
 
+            // ✅ Vendor ID is compulsory ONLY if is_subcontract = 1
+            if ($isSubcontract && $newInvoiceType === 3) {
+                $request->validate([
+                    'vendor_id' => 'required|exists:operators,id'
+                ]);
+            }
 
+            // Generate PO Number
+            $poNumber = null;
+            if (in_array($newInvoiceType, [2, 3]) && empty($order->po_number)) {
+                $lastPo = Order::where('company_id', $user->company_id)
+                    ->whereNotNull('po_number')
+                    ->where('po_number', 'LIKE', 'PO/DI/%')
+                    ->orderByRaw("CAST(SUBSTRING(po_number, 7) AS UNSIGNED) DESC")
+                    ->value('po_number');
 
-            // ✅ Step 2: Generate PO Number in format PO/DI/001 when converting to Work Order
-$poNumber = null;
-if ($newInvoiceType === 2 && empty($order->po_number)) {
+                $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
+                $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            }
 
-    $lastPo = Order::where('company_id', $user->company_id)
-        ->whereNotNull('po_number')
-        ->where('po_number', 'LIKE', 'PO/DI/%')
-        ->orderByRaw("CAST(SUBSTRING(po_number, 7) AS UNSIGNED) DESC")
-        ->value('po_number');
-
-    $nextNumber = $lastPo ? (int) substr($lastPo, 6) + 1 : 1;
-
-    $poNumber = 'PO/DI/' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
-}
-
-
-
-            // ✅ Step 3: Map invoiceType → orderStatus
             $orderStatus = match ($newInvoiceType) {
-                1 => 3,  // Quotation
-                2 => 2,  // Work Order
-                0 => 0,  // Cancelled
+                1 => 3,
+                2 => 2,
+                3 => 4,
                 default => 1,
             };
 
-            // ✅ Ensure customer_id exists
             $customerId = $order->customer_id ?? ($order->project?->customer_id ?? null);
             if (!$customerId) {
-                throw new \Exception('Customer ID cannot be determined for this order');
+                throw new \Exception('Customer ID cannot be determined');
             }
 
-            // ✅ Step 4: Update Order (including ref_id and po_number)
+            // Update Order
             $order->update([
                 'invoiceType' => $newInvoiceType,
                 'orderStatus' => $orderStatus,
                 'customer_id' => $customerId,
                 'po_number'   => $poNumber,
-                'ref_id'      => $request->ref_id,        // ← Updated from form
+                'ref_id'      => $request->ref_id,
                 'updated_by'  => $user->id,
                 'updated_at'  => now()
             ]);
 
-            // ✅ Step 5: Handle OrderSummary for Work Order
-            if ($newInvoiceType == 2) {
+            // ✅ Create Subcontract Vendor Entry
+            if ($isSubcontract && $newInvoiceType === 3) {
+                $vendorId = $request->vendor_id;
+
+                $finalAmount = $order->finalAmount ?? (
+                    ($order->totalAmount ?? 0) +
+                    ($order->gst ?? 0) +
+                    ($order->cgst ?? 0) +
+                    ($order->sgst ?? 0) +
+                    ($order->igst ?? 0)
+                );
+
+                SubcontractVendor::create([
+                    'project_id'     => $order->project_id,
+                    'company_id'     => $user->company_id,
+                    'order_id'       => $order->id,
+                    'vendor_id'      => $vendorId,
+                    'total_amount'   => $finalAmount,
+                    'paid_amount'    => 0,
+                    'pending_amount' => $finalAmount,
+                ]);
+            }
+
+            // Order Summary
+            if (in_array($newInvoiceType, [2, 3])) {
                 $summaryDate = $order->invoiceDate ?? now();
                 $finalAmount = $order->finalAmount ?? (
                     ($order->totalAmount ?? 0) +
@@ -1291,20 +1520,15 @@ if ($newInvoiceType === 2 && empty($order->po_number)) {
 
             DB::commit();
 
-            // ✅ Step 6: Fetch Supervisor details
-            $supervisor = null;
-            if ($order->project && $order->project->supervisor_id) {
-                $supervisor = \App\Models\User::where('company_id', $user->company_id)
-                    ->where('id', $order->project->supervisor_id)
-                    ->first();
-            }
-
             return response()->json([
-                'success'    => true,
-                'message'    => 'Status & project updated successfully',
-                'data'       => $order->fresh(['project', 'customer', 'items']),
-                'supervisor' => $supervisor,
-                'po_number'  => $poNumber
+                'success'      => true,
+                'message'      => $isSubcontract 
+                                    ? 'Converted to Subcontract Order successfully' 
+                                    : 'Status updated successfully',
+                'data'         => $order->fresh(['project', 'project.projectType', 'customer', 'items']),
+                'po_number'    => $poNumber,
+                'invoice_type' => $newInvoiceType,
+                'is_subcontract' => $isSubcontract
             ], 200);
 
         } catch (\Exception $e) {
@@ -1821,87 +2045,7 @@ public function ClearAllOrderDetailsById($orderId)
 
 
 
-// public function adjustIncomeAfterBillChange(Request $request, $orderId)
-// {
-//     return \DB::transaction(function () use ($request, $orderId) {
 
-//         $request->validate([
-//             'new_final_amount' => 'required|numeric|min:0',
-//             'adjustment_reason'  => 'required|string'
-//         ]);
-
-//         $order = \App\Models\Order::findOrFail($orderId);
-
-//         $oldAmount = $order->finalAmount;
-//         $newAmount = $request->new_final_amount;
-//            $reason    = $request->adjustment_reason;    
-
-//         // 🔹 Step 1: Update Order Amount
-//         $order->finalAmount = $newAmount;
-//         $order->save();
-
-//         // 🔹 Step 2: Get total paid
-//         $totalPaid = \App\Models\Income::where('order_id', $orderId)
-//             ->sum('received_amount');
-
-//         // 🔹 Step 3: If bill reduced → create adjustment
-//         if ($totalPaid > $newAmount) {
-
-//             $extra = $totalPaid - $newAmount;
-
-//             \App\Models\Income::create([
-//                 'project_id'      => $order->project_id,
-//                 'order_id'        => $order->id,
-//                 'company_id'      => $order->company_id,
-//                 'po_no'           => 'ADJ',
-//                 'po_date'         => now(),
-//                 'invoice_no'      => 'ADJ-' . time(),
-//                 'invoice_date'    => now(),
-//                 'basic_amount'    => 0,
-//                 'gst_amount'      => 0,
-//                 'billing_amount'  => -$extra,
-//                 'received_amount' => -$extra,
-//                 'type'            => 'adjustment',
-//                 'received_by'     => 'system',
-//                 'senders_bank'    => 'system',
-//                 'payment_type'    => 'cash',
-//                 'receivers_bank'  => 'system',
-//                 'pending_amount'  => 0,
-//                 'remark'          => "Bill reduced from {$oldAmount} to {$newAmount}",
-//                 'payment_date'    => now(),
-//             ]);
-//         }
-
-//         // 🔹 Step 4: Refresh totals
-//         $finalPaid = \App\Models\Income::where('order_id', $orderId)
-//             ->sum('received_amount');
-
-//         $order->paidAmount = $finalPaid;
-
-//         if ($finalPaid > $newAmount) {
-//             $order->pending_amount = 0;
-//             $order->overpaid_amount = $finalPaid - $newAmount;
-//         } else {
-//             $order->pending_amount = $newAmount - $finalPaid;
-//             $order->overpaid_amount = 0;
-//         }
-
-//         $order->orderStatus = match (true) {
-//             $order->overpaid_amount > 0 => 4,
-//             $order->pending_amount == 0 => 1,
-//             $order->paidAmount > 0      => 2,
-//             default                     => 3,
-//         };
-
-//         $order->save();
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => 'Order updated & income adjusted successfully',
-//             'data' => $order
-//         ]);
-//     });
-// }
 
 
 public function adjustIncomeAfterBillChange(Request $request, $orderId)
@@ -2031,6 +2175,19 @@ public function adjustIncomeAfterBillChange(Request $request, $orderId)
         ]);
     });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }

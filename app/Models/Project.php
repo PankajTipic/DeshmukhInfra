@@ -27,6 +27,7 @@ class Project extends Model
         'is_confirm',
         'pan_number',
         'project_type_id',
+        'is_subcontract'
     ];
 
     protected $casts = [

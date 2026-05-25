@@ -13,17 +13,17 @@ const money     = (v) => (v != null ? `₹${Number(v).toLocaleString('en-IN')}` 
 
 /* ─── category / type config ──────────────────────────────── */
 const CAT_META = {
-  drilling:        { label: 'Drilling',        color: '#2563EB', bg: '#EFF6FF', icon: '⛏️' },
+  drilling:        { label: 'Work Logs',        color: '#2563EB', bg: '#EFF6FF', icon: '⛏️' },
   expense:         { label: 'Expense',         color: '#7C3AED', bg: '#F5F3FF', icon: '🧾' },
-  machine_reading: { label: 'Machine Reading', color: '#0891B2', bg: '#ECFEFF', icon: '🖥️' },
+  // machine_reading: { label: 'Machine Reading', color: '#0891B2', bg: '#ECFEFF', icon: '🖥️' },
   stock_update:    { label: 'Stock Update',    color: '#D97706', bg: '#FFFBEB', icon: '📦' },
   order:           { label: 'Order/Invoice',   color: '#059669', bg: '#ECFDF5', icon: '📋' },
   proforma:        { label: 'Proforma',        color: '#DB2777', bg: '#FDF2F8', icon: '📄' },
 };
 
 const TYPE_META = {
-  'Drilling / Work Log': { color: '#2563EB', icon: '⛏️' },
-  'Machine Reading':     { color: '#0891B2', icon: '🖥️' },
+  'Work Logs': { color: '#2563EB', icon: '⛏️' },
+  // 'Machine Reading':     { color: '#0891B2', icon: '🖥️' },
   'Expense':             { color: '#7C3AED', icon: '🧾' },
   'Stock Update':        { color: '#D97706', icon: '📦' },
   'Order / Invoice':     { color: '#059669', icon: '📋' },
@@ -105,77 +105,216 @@ const ERow = ({ label, value }) =>
     </div>
   ) : null;
 
+
+
+// function DrillingEntry({ e }) {
+//   const wp = e.work_points || [];
+//   const sv = e.surveys     || [];
+//   return (
+//     <div style={entryCardStyle('#2563EB')}>
+//       <div style={entryHeaderStyle}>
+//         <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
+//           📍 {e.project?.project_name || fmt(e.project)}
+//         </span>
+//         <Tag color="#2563EB" bg="#EFF6FF">{e.time || e.created_at?.substring(11,16)}</Tag>
+//       </div>
+//       <ERow label="Operator"    value={e.operator?.name || (e.oprator_helper ? 'Assigned' : 'Not assigned')} />
+//       <ERow label="Machine Hrs" value={fmt(e.actual_machine_hr)} />
+//       <ERow label="Start → End" value={e.machine_start ? `${e.machine_start} → ${e.machine_end ?? '—'}` : null} />
+//       {wp.length > 0 && (
+//         <div style={{ marginTop: 8 }}>
+//           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>WORK POINTS ({wp.length})</div>
+//           {wp.map((w, i) => (
+//             <div key={i} style={{ background: '#EFF6FF', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: 12 }}>
+//               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+//                 <span style={{ fontWeight: 600 }}>{w.work_type}</span>
+//                 <span style={{ color: '#2563EB', fontWeight: 700 }}>{money(w.total)}</span>
+//               </div>
+//               <div style={{ color: '#64748B', marginTop: 2 }}>Qty: {w.work_point} · Rate: {money(w.rate)}</div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//       {sv.length > 0 && (
+//         <div style={{ marginTop: 8 }}>
+//           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>SURVEYS ({sv.length})</div>
+//           {sv.map((s, i) => (
+//             <div key={i} style={{ background: '#F0F9FF', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: 12 }}>
+//               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+//                 <span style={{ fontWeight: 600 }}>{s.survey_type}</span>
+//                 <span style={{ color: '#0891B2', fontWeight: 700 }}>{money(s.total)}</span>
+//               </div>
+//               <div style={{ color: '#64748B', marginTop: 2 }}>Point: {s.survey_point} · Rate: {money(s.rate)}</div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 function DrillingEntry({ e }) {
-  const wp = e.work_points || [];
-  const sv = e.surveys     || [];
+  const wp = e.work_points || e.workPoints || [];
+  const sv = e.surveys || [];
+  const mr = e.machine_reading || e.machineReading || [];
+ const cm = e.compressor_rpm || e.compressorRpm || [];
+
+  const operatorName = e.operator?.name || 
+                      mr[0]?.operator?.name || 
+                      (e.oprator_helper ? 'Assigned' : 'Not Assigned');
+
   return (
     <div style={entryCardStyle('#2563EB')}>
       <div style={entryHeaderStyle}>
         <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
-          📍 {e.project?.project_name || fmt(e.project)}
+          📍 {e.project?.project_name || 'No Project'}
         </span>
-        <Tag color="#2563EB" bg="#EFF6FF">{e.time || e.created_at?.substring(11,16)}</Tag>
+        <Tag color="#2563EB" bg="#EFF6FF">
+          {e.time || e.created_at?.substring(11, 16)}
+        </Tag>
       </div>
-      <ERow label="Operator"    value={e.operator?.name || (e.oprator_helper ? 'Assigned' : 'Not assigned')} />
-      <ERow label="Machine Hrs" value={fmt(e.actual_machine_hr)} />
-      <ERow label="Start → End" value={e.machine_start ? `${e.machine_start} → ${e.machine_end ?? '—'}` : null} />
+
+      <ERow label="Operator" value={operatorName} />
+      <ERow label="Machine Hrs" value={fmt(e.actual_machine_hr) || '—'} />
+      
+      {e.machine_start && (
+        <ERow 
+          label="Start → End" 
+          value={`${e.machine_start} → ${e.machine_end ?? '—'}`} 
+        />
+      )}
+
+      {/* Work Points */}
       {wp.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>WORK POINTS ({wp.length})</div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>
+            WORK POINTS ({wp.length})
+          </div>
           {wp.map((w, i) => (
-            <div key={i} style={{ background: '#EFF6FF', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: 12 }}>
+            <div key={i} style={{
+              background: '#EFF6FF',
+              borderRadius: 6,
+              padding: '8px 10px',
+              marginTop: 4,
+              fontSize: 12
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontWeight: 600 }}>{w.work_type}</span>
                 <span style={{ color: '#2563EB', fontWeight: 700 }}>{money(w.total)}</span>
               </div>
-              <div style={{ color: '#64748B', marginTop: 2 }}>Qty: {w.work_point} · Rate: {money(w.rate)}</div>
+              <div style={{ color: '#64748B', marginTop: 2 }}>
+                Qty: {w.work_point} · Rate: {money(w.rate)}
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Surveys */}
       {sv.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>SURVEYS ({sv.length})</div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>
+            SURVEYS ({sv.length})
+          </div>
           {sv.map((s, i) => (
-            <div key={i} style={{ background: '#F0F9FF', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: 12 }}>
+            <div key={i} style={{
+              background: '#F0F9FF',
+              borderRadius: 6,
+              padding: '8px 10px',
+              marginTop: 4,
+              fontSize: 12
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontWeight: 600 }}>{s.survey_type}</span>
                 <span style={{ color: '#0891B2', fontWeight: 700 }}>{money(s.total)}</span>
               </div>
-              <div style={{ color: '#64748B', marginTop: 2 }}>Point: {s.survey_point} · Rate: {money(s.rate)}</div>
+              <div style={{ color: '#64748B', marginTop: 2 }}>
+                Point: {s.survey_point} · Rate: {money(s.rate)}
+              </div>
             </div>
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-/* Machine Reading Entry - New Rich Card */
-function MachineReadingEntry({ e }) {
-  return (
-    <div style={entryCardStyle('#0891B2')}>
-      <div style={entryHeaderStyle}>
-        <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
-          🖥️ Machine Reading
-        </span>
-        <Tag color="#0891B2" bg="#ECFEFF">{e.time || e.created_at?.substring(11,16)}</Tag>
-      </div>
-
-      <ERow label="Project" value={e.project?.project_name || e.drilling_record?.project?.project_name} />
-      <ERow label="Operator" value={e.operator?.name} />
-      <ERow label="Machine ID" value={e.machine_id} />
-      <ERow label="Start → End" value={`${e.machine_start} → ${e.machine_end}`} />
-      <ERow label="Actual Hours" value={e.actual_machine_hr} />
-
-      {e.drilling_record && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#64748B' }}>
-          Linked to Drilling Record #{e.drilling_record.id}
+     {cm.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>
+            COMPRESSOR RPM ({cm.length})
+          </div>
+          {cm.map((c, i) => (
+            <div key={i} style={{
+              background: '#FEF3C7',
+              borderRadius: 6,
+              padding: '8px 10px',
+              marginTop: 4,
+              fontSize: 12
+            }}>
+              <div >
+                <span>Reading:</span>
+                <span style={{ fontWeight: 600 }}>
+                  {c.comp_rpm_start} → {c.comp_rpm_end}
+                </span>
+              </div>
+              <div style={{ marginTop: 4 }}>
+                Actual Hours: <strong>{c.com_actul_hr || '—'}</strong>
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+{/* Machine Reading Info (if available) */}
+      {mr.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>
+            MACHINE READING
+          </div>
+          {mr.map((m, i) => (
+            <div key={i} style={{
+              background: '#FEF3C7',
+              borderRadius: 6,
+              padding: '6px 10px',
+              fontSize: 12,
+              marginTop: 4
+            }}>
+              <div>Reading: {m.machine_start} → {m.machine_end}</div>
+              <div>Actual Hrs: <strong>{m.actual_machine_hr}</strong></div>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
+
+
+/* Machine Reading Entry - New Rich Card */
+// function MachineReadingEntry({ e }) {
+//   return (
+//     <div style={entryCardStyle('#0891B2')}>
+//       <div style={entryHeaderStyle}>
+//         <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
+//           🖥️ Machine Reading
+//         </span>
+//         <Tag color="#0891B2" bg="#ECFEFF">{e.time || e.created_at?.substring(11,16)}</Tag>
+//       </div>
+
+//       <ERow label="Project" value={e.project?.project_name || e.drilling_record?.project?.project_name} />
+//       <ERow label="Operator" value={e.operator?.name} />
+//       <ERow label="Machine ID" value={e.machine_id} />
+//       <ERow label="Start → End" value={`${e.machine_start} → ${e.machine_end}`} />
+//       <ERow label="Actual Hours" value={e.actual_machine_hr} />
+
+//       {e.drilling_record && (
+//         <div style={{ marginTop: 8, fontSize: 12, color: '#64748B' }}>
+//           Linked to Drilling Record #{e.drilling_record.id}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 function ExpenseEntry({ e }) {
   const photos = e.photos || [];
@@ -553,13 +692,13 @@ function ActiveUserCard({ user }) {
           </div>
 
           <EntriesSection
-            label="Drilling Records"
+            label="Work Logs"
             color="#2563EB" bg="#EFF6FF"
             entries={user.entries?.drilling}
             EntryComponent={DrillingEntry}
           />
 
-<EntriesSection label="Machine Reading" color="#0891B2" bg="#ECFEFF" entries={user.entries?.machine_reading} EntryComponent={MachineReadingEntry} />
+{/* <EntriesSection label="Machine Reading" color="#0891B2" bg="#ECFEFF" entries={user.entries?.machine_reading} EntryComponent={MachineReadingEntry} /> */}
 
           <EntriesSection
             label="Expense Records"
@@ -783,7 +922,7 @@ const DailyActivityDashboard = () => {
               style={{ ...inputStyle, minWidth: 160 }}
             >
               <option value="">All Projects</option>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.project_name} - {p.customer_name}</option>)}
             </select>
             <select
               value={userId}

@@ -10,6 +10,7 @@ import {
   CFormLabel,
   CCol,
   CRow,
+  CFormCheck,
 } from "@coreui/react";
 import { useState, useEffect } from "react";
 import { put, getAPICall } from "../../../util/api";
@@ -20,6 +21,7 @@ import { useToast } from "../../common/toast/ToastContext";
 const EditProjectModal = ({ project, onClose, onUpdateSuccess }) => {
   const [form, setForm] = useState({
     ...project,
+     is_subcontract: project.is_subcontract ?? 0,
     start_date: project.start_date ? project.start_date.split("T")[0] : "",
     end_date: project.end_date ? project.end_date.split("T")[0] : "",
   });
@@ -140,6 +142,45 @@ const EditProjectModal = ({ project, onClose, onUpdateSuccess }) => {
                 isClearable
               />
             </CCol>
+
+
+{/* Project Category */}
+<CCol xs={12} md={6}>
+  <CFormLabel>Project Category</CFormLabel>
+
+  <div className="d-flex gap-4 mt-2">
+    <CFormCheck
+      type="radio"
+      name="is_subcontract"
+      id="normal_project_edit"
+      label="Normal Project"
+      checked={Number(form.is_subcontract) === 0}
+      onChange={() =>
+        setForm((prev) => ({
+          ...prev,
+          is_subcontract: 0,
+        }))
+      }
+    />
+
+    <CFormCheck
+      type="radio"
+      name="is_subcontract"
+      id="subcontract_project_edit"
+      label="Subcontract Project"
+      checked={Number(form.is_subcontract) === 1}
+      onChange={() =>
+        setForm((prev) => ({
+          ...prev,
+          is_subcontract: 1,
+        }))
+      }
+    />
+  </div>
+</CCol>
+
+
+
 
           {/* Project Name */}
           <CCol xs={12} md={6}>

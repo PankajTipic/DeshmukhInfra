@@ -172,8 +172,8 @@ function MachineriesTable() {
   }
 >
   <option value="">-- Select Ownership Type --</option>
-  <option value="own">Own</option>
-  <option value="rent">Rent</option>
+  <option value="Own">Own</option>
+  <option value="Rent">Rent</option>
 </CFormSelect>
 
         </CModalBody>

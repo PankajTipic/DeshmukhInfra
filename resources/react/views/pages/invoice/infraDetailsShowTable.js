@@ -833,7 +833,7 @@ const downloadPDF = () => {
                 <option value="">-- Select Project --</option>
                 {projects.map((proj) => (
                   <option key={proj.id} value={proj.project_name}>
-                    {proj?.project_name}
+                    {proj?.project_name} -  {proj?.customer_name}
                   </option>
                 ))}
               </CFormSelect>
