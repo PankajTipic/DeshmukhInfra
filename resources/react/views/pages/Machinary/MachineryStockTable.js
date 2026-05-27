@@ -1341,9 +1341,7 @@ function MasterSection({ title, items, fields, form, setForm, onAdd, renderRow, 
   );
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   TRANSFER LOG TAB
-ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+
 function TransferLogTab({ state, onRefresh , openDeleteModal}) {
   const { transferLogs, stockMaster, projects } = state;
   const { showToast } = useToast();
@@ -1495,11 +1493,9 @@ function InfoChip({ label, val, warn }) {
   );
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   DASHBOARD / OVERVIEW
-ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+
 function Dashboard({ state }) {
-  const { stockMaster, dailyLogs, dashboardStats, machines, projects } = state;
+  const { stockMaster, dailyLogs, dashboardStats, machines, projects, expiryAlerts } = state;
   const proj = (id) => projects.find(p=>p.id===id)?.name || id;
   const mach = (id) => machines.find(m=>m.id===id)?.name || id;
 
@@ -1508,6 +1504,83 @@ function Dashboard({ state }) {
 
   return (
     <div>
+
+
+
+
+
+{/* ==================== EXPIRY ALERTS (NEW) ==================== */}
+      {expiryAlerts?.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ 
+            margin: '0 0 16px', 
+            fontSize: 18, 
+            fontWeight: 700, 
+            color: '#E24B4A',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8 
+          }}>
+            ⚠️ Expiry Alerts ({expiryAlerts.length})
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
+            {expiryAlerts.map((alert, i) => (
+              <div key={i} style={{
+                background: '#FFF5F5',
+                border: '1px solid #FECACA',
+                borderRadius: 12,
+                padding: '18px 20px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 10 }}>
+                  <div>
+                    <strong style={{ fontSize: 15, color: '#B91C1C' }}>{alert.machine_name}</strong>
+                    <div style={{ fontSize: 13, color: '#64748B' }}>Machine ID: {alert.machinery_id}</div>
+                  </div>
+                  <div style={{
+                    background: '#FEE2E2',
+                    color: '#B91C1C',
+                    padding: '4px 10px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 700
+                  }}>
+                    {alert.days_remaining} days left
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1E293B', marginBottom: 6 }}>
+                  {alert.document_type}
+                </div>
+                
+                <div style={{ fontSize: 13, color: '#475569' }}>
+                  <strong>Document No:</strong> {alert.document_number}<br />
+                  <strong>Expiry:</strong> {alert.expiry_date}
+                </div>
+
+                <div style={{ 
+                  marginTop: 12, 
+                  padding: '8px 12px', 
+                  background: '#FEF3F2', 
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: '#B91C1C'
+                }}>
+                  {alert.message}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+
+
+
+
+
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:16,marginBottom:28 }}>
         {[
           { label:'Stock Items',      val: dashboardStats.stockItems || 0, color:'#2563EB', sub:'in inventory'       },
@@ -1619,6 +1692,7 @@ export default function MachineryTracker() {
   });
   const [loading, setLoading] = useState(true);
 
+  const [expiryAlerts, setExpiryAlerts] = useState([]);
 
 const { showToast } = useToast();
   
@@ -1699,13 +1773,14 @@ const confirmDelete = async () => {
 
   const refreshData = useCallback(async () => {
     try {
-      const [mastersRes, stockRes, dailyRes, maintRes, transRes, dashRes] = await Promise.all([
+      const [mastersRes, stockRes, dailyRes, maintRes, transRes, dashRes, expiryRes] = await Promise.all([
         getAPICall('/api/machinery/masters'),
         getAPICall('/api/machinery/stock'),
         getAPICall('/api/machinery/daily-logs'),
         getAPICall('/api/machinery/maintenance'),
         getAPICall('/api/machinery/transfers'),
-        getAPICall('/api/machinery/dashboard')
+        getAPICall('/api/machinery/dashboard'),
+        getAPICall('/api/expiryAlerts')
       ]);
 
       setProjects(mastersRes.projects || []);
@@ -1716,6 +1791,7 @@ const confirmDelete = async () => {
       setMaintenanceLogs(maintRes || []);
       setTransferLogs(transRes || []);
       setDashboardStats(dashRes || { stockItems: 0, criticalAlerts: 0, lowStock: 0, todayLogs: 0, hoursToday: 0, overdueM: 0, totalTransfers: 0 });
+      setExpiryAlerts(expiryRes.data || []);
     } catch (err) {
       console.error("Failed to load machinery data:", err);
     } finally {
@@ -1728,8 +1804,8 @@ const confirmDelete = async () => {
   }, [refreshData]);
 
   const state = useMemo(() => ({
-    projects, machines, supervisors, stockMaster, dailyLogs, maintenanceLogs, transferLogs, dashboardStats, loading
-  }), [projects, machines, supervisors, stockMaster, dailyLogs, maintenanceLogs, transferLogs, dashboardStats, loading]);
+    projects, machines, supervisors, stockMaster, dailyLogs, maintenanceLogs, transferLogs, dashboardStats, expiryAlerts, loading
+  }), [projects, machines, supervisors, stockMaster, dailyLogs, maintenanceLogs, transferLogs, dashboardStats, expiryAlerts, loading]);
 
   const critical = stockMaster.filter(s=>s.currentQty<=s.minQty).length;
 

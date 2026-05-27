@@ -531,6 +531,7 @@ import {
   CCardBody,
   CBadge,
 } from '@coreui/react';
+import Select from 'react-select';
 import CIcon from '@coreui/icons-react';
 import { cilSearch, cilX, cilTrash, cilCloudUpload } from '@coreui/icons';
 import CreatableSelect from 'react-select/creatable';
@@ -906,7 +907,7 @@ const PurchaseForm = ({ vendors, onSuccess, onCancel, editData = null }) => {
             )}
           </CCol>
 
-          <CCol md={6}>
+          {/* <CCol md={6}>
             <CFormLabel className="fw-bold">Vendor <span className="text-danger">*</span></CFormLabel>
             <select className="form-select" name="vendor_id" value={state.vendor_id} onChange={handleChange} required>
               <option value="">Select Vendor</option>
@@ -914,7 +915,44 @@ const PurchaseForm = ({ vendors, onSuccess, onCancel, editData = null }) => {
                 <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </select>
-          </CCol>
+          </CCol> */}
+
+         <CCol md={6}>
+  <CFormLabel className="fw-bold">
+    Vendor <span className="text-danger">*</span>
+  </CFormLabel>
+  
+  <Select
+    placeholder="Select Vendor..."
+    options={vendors.map((v) => ({
+      value: v.id,
+      label: v.name,
+    }))}
+    value={vendors.find(v => v.id === Number(state.vendor_id)) 
+      ? {
+          value: Number(state.vendor_id),
+          label: vendors.find(v => v.id === Number(state.vendor_id))?.name
+        }
+      : null
+    }
+    onChange={(selectedOption) => {
+      if (selectedOption) {
+        setState(prev => ({ ...prev, vendor_id: selectedOption.value }));
+      } else {
+        setState(prev => ({ ...prev, vendor_id: '' }));
+      }
+    }}
+    isClearable
+    isSearchable
+    styles={{
+      control: (base) => ({
+        ...base,
+        minHeight: '38px',
+        borderColor: '#d1d5db',
+      })
+    }}
+  />
+</CCol>
         </CRow>
 
         {/* Material, About, Price, Qty, GST, Date sections - same as previous version */}

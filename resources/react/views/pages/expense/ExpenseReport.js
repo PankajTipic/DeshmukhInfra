@@ -1637,6 +1637,7 @@ import {
   CModalTitle,
   CModalFooter,
 } from '@coreui/react';
+import Select from 'react-select';
 import CIcon from '@coreui/icons-react';
 import { cilTrash, cilCloudDownload, cilChevronLeft, cilChevronRight, cilCloudUpload } from '@coreui/icons';
 import { deleteAPICall, getAPICall, put } from '../../../util/api';
@@ -2399,7 +2400,7 @@ const ExpenseReport = () => {
               <CForm noValidate validated={validated} onSubmit={handleSubmit}>
                 <div className="row">
                   <div className="col-sm-3">
-                    <div className="mb-1">
+                    {/* <div className="mb-1">
                       <CFormLabel htmlFor="project_id">Project</CFormLabel>
                       <CFormSelect
                         id="project_id"
@@ -2414,7 +2415,48 @@ const ExpenseReport = () => {
                           </option>
                         ))}
                       </CFormSelect>
-                    </div>
+                    </div> */}
+
+<div className="mb-1">
+  <CFormLabel className="fw-bold">
+    Project <span className="text-danger">*</span>
+  </CFormLabel>
+  
+  <Select
+    placeholder="Select or search project..."
+    options={projects.map((project) => ({
+      value: project.id,
+      label: `${project.project_name} ${project.customer_name ? `- ${project.customer_name}` : ''}`,
+    }))}
+    value={projects.find(p => p.id === Number(state.project_id))
+      ? {
+          value: Number(state.project_id),
+          label: projects.find(p => p.id === Number(state.project_id))?.project_name + 
+                 (projects.find(p => p.id === Number(state.project_id))?.customer_name 
+                   ? ` - ${projects.find(p => p.id === Number(state.project_id))?.customer_name}` 
+                   : '')
+        }
+      : null
+    }
+    onChange={(selectedOption) => {
+      if (selectedOption) {
+        setState(prev => ({ ...prev, project_id: selectedOption.value }));
+      } else {
+        setState(prev => ({ ...prev, project_id: '' }));
+      }
+    }}
+    isClearable
+    isSearchable
+    styles={{
+      control: (base) => ({
+        ...base,
+        minHeight: '38px',
+        borderColor: '#d1d5db',
+      })
+    }}
+  />
+  </div>
+
                   </div>
 
                   <div className="col-sm-2">
@@ -2664,6 +2706,219 @@ const ExpenseReport = () => {
           </CCard>
         </CCol>
       </CRow>
+
+
+
+
+
+
+
+
+    {/* Photo Gallery Modal - Grid View */}
+      <CModal 
+        visible={showPhotoGalleryModal} 
+        onClose={() => setShowPhotoGalleryModal(false)}
+        size="lg"
+        scrollable
+      >
+        <CModalHeader style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+          <CModalTitle>
+            <strong>Expense Photos</strong>
+            <CBadge color="primary" className="ms-2">{currentExpensePhotos.length}</CBadge>
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody style={{ padding: '20px', backgroundColor: '#fff' }}>
+          {currentExpensePhotos.length > 0 ? (
+            <div className="row g-3">
+              {currentExpensePhotos.map((photo, index) => {
+                const fileName = photo.photo_url.split('/').pop().split('.')[0];
+                const fileExtension = photo.photo_url.split('.').pop();
+                const displayName = photo.remark 
+                  ? photo.remark 
+                  : `Photo ${index + 1}`;
+                
+                return (
+                  <div key={photo.id} className="col-6 col-md-4">
+                    <CCard 
+                      className="h-100"
+                      style={{ 
+                        transition: 'all 0.2s',
+                        cursor: 'pointer',
+                        border: '1px solid #dee2e6'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      {/* Image Preview */}
+                      <div 
+                        style={{ 
+                          height: '160px',
+                          backgroundColor: '#f8f9fa',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          borderBottom: '1px solid #dee2e6',
+                          position: 'relative'
+                        }}
+                        onClick={() => {
+                          setCurrentPhotoIndex(index);
+                          setShowImageModal(true);
+                          setSelectedImage(photo.photo_url);
+                        }}
+                      >
+                        {photo.photo_type === 'pdf' ? (
+                          <div className="text-center p-3">
+                            <CIcon icon={cilCloudUpload} size="3xl" style={{ color: '#dc3545' }} />
+                            <div className="mt-2">
+                              <CBadge color="danger" style={{ fontSize: '0.7rem' }}>PDF</CBadge>
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={`/${photo.photo_url}`}
+                            alt={displayName}
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        )}
+                        
+                        {/* Hover Overlay */}
+                        <div 
+                          className="position-absolute top-0 start-0 w-100 h-100"
+                          style={{
+                            backgroundColor: 'rgba(0,0,0,0)',
+                            transition: 'background-color 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                            e.currentTarget.querySelector('.preview-icon').style.opacity = '1';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0)';
+                            e.currentTarget.querySelector('.preview-icon').style.opacity = '0';
+                          }}
+                        >
+                          <div 
+                            className="preview-icon"
+                            style={{
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              color: 'white',
+                              fontSize: '1.5rem',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            👁️ View
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <CCardBody style={{ padding: '12px' }}>
+                        {/* File Name */}
+                        <div 
+                          className="text-truncate mb-2" 
+                          style={{ 
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#212529'
+                          }}
+                          title={displayName}
+                        >
+                          {displayName}
+                        </div>
+
+                        {/* File Info */}
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+                            {photo.file_size ? `${photo.file_size} KB` : fileExtension.toUpperCase()}
+                          </small>
+                          <CBadge 
+                            color="light" 
+                            style={{ 
+                              fontSize: '0.65rem',
+                              color: '#6c757d',
+                              border: '1px solid #dee2e6'
+                            }}
+                          >
+                            {fileExtension.toUpperCase()}
+                          </CBadge>
+                        </div>
+
+                        {/* Download Button */}
+                        <CButton
+                          color="primary"
+                          size="sm"
+                          className="w-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadPhoto(photo.photo_url, index);
+                          }}
+                          style={{ fontSize: '0.75rem', padding: '6px' }}
+                        >
+                          <CIcon icon={cilCloudDownload} size="sm" /> Download
+                        </CButton>
+
+                        {/* Remark if exists */}
+                        {photo.remark && photo.remark !== displayName && (
+                          <div 
+                            className="mt-2 p-2" 
+                            style={{ 
+                              backgroundColor: '#f8f9fa',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              color: '#6c757d',
+                              borderLeft: '2px solid #0d6efd'
+                            }}
+                          >
+                            <div className="text-truncate" title={photo.remark}>
+                              {photo.remark}
+                            </div>
+                          </div>
+                        )}
+                      </CCardBody>
+                    </CCard>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-5">
+              <CIcon icon={cilCloudUpload} size="4xl" className="text-muted mb-3" />
+              <h6 className="text-muted">No photos available</h6>
+              <p className="text-muted small">This expense has no photos attached.</p>
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter style={{ backgroundColor: '#f8f9fa', borderTop: '2px solid #dee2e6' }}>
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <small className="text-muted">
+              Click on any photo to view full size
+            </small>
+            <CButton color="secondary" onClick={() => setShowPhotoGalleryModal(false)}>
+              Close
+            </CButton>
+          </div>
+        </CModalFooter>
+      </CModal>
+
+
+
+
+
     </>
   );
 };

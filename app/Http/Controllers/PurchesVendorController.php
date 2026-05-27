@@ -82,7 +82,7 @@ public function store(Request $request)
         'sgst_percent'    => 'nullable|numeric|min:0',
 
         'photoAvailable'  => 'nullable|boolean',
-        'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         'photo_remarks.*' => 'nullable|string|max:255',
     ]);
 
@@ -574,7 +574,7 @@ public function updatePurchesVendorPayment(Request $request)
 
         // Image Fields
         'photoAvailable'   => 'nullable|boolean',
-        'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         'photo_remarks.*'  => 'nullable|string|max:255',
     ]);
 

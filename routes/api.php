@@ -228,6 +228,11 @@ Route::put('/machineries/{id}', [MachineryController::class, 'update']);
 // ✅ Delete machinery
 Route::delete('/machineries/{id}', [MachineryController::class, 'destroy']);
 
+Route::get('/expiryAlerts', [MachineryController::class, 'expiryAlerts']);
+
+
+
+
 Route::get('/income', [IncomeController::class, 'index']);
 Route::post('/income', [IncomeController::class, 'store']);
 Route::put('/income/{id}', [IncomeController::class, 'update']);

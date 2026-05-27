@@ -1,4 +1,4 @@
 // Auto-generated version file
-export const APP_VERSION = '1.1.67_25_05_2026';
-export const BUILD_DATE = '2026-05-25T09:54:31.905Z';
-export const VERSION_NUMBER = '1.1.67';
+export const APP_VERSION = '1.1.71_26_05_2026';
+export const BUILD_DATE = '2026-05-26T06:55:29.346Z';
+export const VERSION_NUMBER = '1.1.71';

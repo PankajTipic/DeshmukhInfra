@@ -305,7 +305,8 @@ export default function fetchRoutes(){
      
      
       { path: '/subcontractLadger', name: 'Sub Contract Ladger Report', element: subcontractLadger },
-
+  { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
 
   ]
   }
@@ -384,7 +385,8 @@ export default function fetchRoutes(){
   { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
- 
+   { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
 
   ]
   }
@@ -468,6 +470,8 @@ export default function fetchRoutes(){
    { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
+   { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
  
    ]
   }
@@ -478,15 +482,86 @@ export default function fetchRoutes(){
  else if(user===4){
     routes = [
 
+       { path: '/', exact: true, name: 'Home' },
+    { path: '/project', name: 'Project', element: Project },
+    { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+    { path: '/delivery', name: 'Delivery', element: Delivery },
+    { path: '/invoice', name: 'invoice', element: Invoice },
+    { path: '/edit-order/:id', name: 'Update Invoice', element: EditInvoice },
+    { path: '/booking', name: 'Booking', element: Booking },
+    { path: '/invoice-details/:id', name: 'InvoiceDetails', element: InvoiceDetails },
+    { path: '/bookings', name: 'Adv Bookings', element: Orders },
+    { path: '/quotation', name: 'Quotation', element: Orders },
+    { path: '/regular', name: 'Regular Orders', element: Orders },
+    { path: '/order', name: 'All Orders', element: Orders },
+    { path: '/customer/new', name: 'New Product', element: NewCustomer },
+    { path: '/customer/all', name: 'All Customers', element: AllCustomers },
+    { path: '/customer/edit/:id', name: 'Edit Customer', element: EditCustomer },
+    { path:'/resetPassword', name: 'Update Password', element: Resetpassword },
+    { path: '/updatepassword', name: 'Reset Password', element: Updatepassword },
+
+    //expense
+
+    { path: '/expense/new-type', name: 'New Type', element: NewExpenseType },
+    { path: '/expense/edit-type/:id', name: 'Edit Type', element: EditExpenseType },
+    { path: '/expense/all-type', name: 'All Types', element: AllExpenseType },
+    { path: '/expense/new', name: 'New Expense', element: NewExpense },
+    { path: '/expense/expenseReport', name: 'Expense Report', element: expenseReport },
+    
+    
+    //products
+    { path: '/products/new', name: 'New Product', element: NewProduct },
+    { path: '/products/all', name: 'All Products', element: AllProducts },
+    { path: '/products/edit/:id', name: 'Edit Products', element: EditProduct },
+    { path: '/products/BulkProducts', name: ' BulkProduct', element: BulkProduct },
+     { path: '/products/RawMaterial', name: ' Raw Material', element: RawMaterial },
+
+    //Reports
+    { path: '/Reports/creditReport', name: 'Credit Report', element: CreditReport },
+    { path: '/Reports/Customer_Report', name: 'Customer Report', element: CustomerReport },
+    { path:'/bulkCustomerCreation' , name : 'Bulk Customer', element: bulkCustomerCreation},
+
+     { path:'/infraCalculation' , name : 'Infra Calculation', element: infraCalculation},
+    
+     { path:'/infraDetailsShowTable' , name : 'Infra Details Show Table', element: infraDetailsShowTable},
+      { path:'/worklog' , name : 'Work Log', element: workLog},
+       { path:'/oprator' , name : 'All Oprators', element: oprator},
+          { path:'/projects/new' , name : 'New Project', element: newProject},
+     { path:'/OpratorList' , name : 'Oprator List', element: opratorList},
+     { path:'/MachineriesTable' , name : 'Machineries Table', element: MachineriesTable},
+     
+{ path:'/addMachinery' , name : 'Add Machineries', element: AddMachinery},
+  { path:'/operatorReport' , name : 'Operator Report', element: OperatorReport},
+  { path:'/vendorReport' , name : 'Vendor Report', element: VendorReport},
+  { path:'/updateDrillingForm/:id' , name : 'Update Drilling', element: UpdateDrillingForm}, 
+{ path:'/projectIncome' , name : 'Project Income', element: ProjectIncome},
+{ path:'/incomeTable' , name : 'Income Details', element: IncomeTable},
+{ path:'/budget' , name : 'Budget', element: budget},
+{ path:'/invoiceTable' , name : 'Invoice Table', element: invoiceTable},
+
+//Proforma Invoice
+      { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
+      { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
+      { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+
+  { path: '/products/RawMaterial', name: ' Raw Material', element: RawMaterial },
+{ path:'/newRawMaterials' , name : 'Raw Materials', element: newRawMaterials},
+{ path:'/showRawMaterials' , name : 'Raw Materials', element: ShowRawMaterials}, 
+    
       { path: '/vendorPurches', name: 'Purches Vendor', element: PurchesVendor },
       { path: '/vendorPurchesPayment', name: 'Purches Vendor Payment', element: PurchesVendorPayment },
 
       { path: '/displayPurchesVendors', name: 'Purches vendors', element: DisplayVendors },
  { path: '/NewPurchesVendor', name: 'New Purches Vendor', element: NewPurchesVendor },
 
-  { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
+  { path:'/project-types' , name : 'Project Types', element: ProjectTypeManager},
+
+   { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
+   { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+ 
     ]}
 
 
@@ -566,7 +641,8 @@ export default function fetchRoutes(){
   { path: '/PurchaseVendorReport', name: 'Purchase Vendor Report', element: PurchaseVendorReport },
  { path: '/PurchaseVendorLedgerReport', name: 'Purchase Vendor LedgerReport', element: PurchaseVendorLedgerReport },
 
- 
+   { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
+      { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
 
   ]
   }

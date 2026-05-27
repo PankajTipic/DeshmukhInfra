@@ -473,6 +473,8 @@ const SupervisorsList = () => {
     ? "User++"
     : u.type === 4
     ? "Purchase Vendor"
+     : u.type === 5
+    ? "Work Log User"
     : "Unknown"}
 </CTableDataCell>
 

@@ -85,6 +85,7 @@ export default function fetchNavItems(t1) {
       },
     ];
   }
+
   
   // Admin (user === 1) - Simple navigation
   else if (user === 1) {
@@ -160,14 +161,7 @@ export default function fetchNavItems(t1) {
         className: 'ms-2',
       },
 
-      //  {
-      //   component: CNavItem,
-      //   name:"Purches Vendor",
-      //   to: '/vendorPurches',
-      //   // icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
-      //   // style: { backgroundColor: 'cyan', color: 'black' },
-      //   className: 'ms-2',
-      // },
+     
 
 
 
@@ -179,24 +173,7 @@ export default function fetchNavItems(t1) {
             icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
             
           },
-      // {
-      //   component: CNavItem,
-      //   name: 'Project Income',
-      //   to: '/projectIncome',
-      //   icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-      // },
-      //   {
-      //   component: CNavItem,
-      //   name: 'All Income',
-      //   to: '/incomeTable',
-      //   icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-      // },
-      // {
-      //   component: CNavItem,
-      //   name: 'All Income',
-      //   to: '/incomeTable',
-      //   icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-      // },
+      
 
 
       {
@@ -382,12 +359,7 @@ className: 'ms-2',
                 className: 'ms-2',
               },
 
-              // {
-              //   component: CNavItem,
-              //   name: "Machinary Stock Updation",
-              //   to: '/machineryStockUpdate',
-              //   className: 'ms-2',
-              // },
+             
 
                  {
                 component: CNavItem,
@@ -406,7 +378,7 @@ className: 'ms-2',
     ];
   }
   
-  // Manager (user === 2) - Simple navigation
+  
   else if (user === 2) {
     _nav = [
       {
@@ -466,18 +438,26 @@ className: 'ms-2',
             to: '/OpratorList',
             className: 'ms-2',
           },
-           {
-                component: CNavItem,
-                name: "All Raw Materials",
-                to: '/showRawMaterials',
-                className: 'ms-2',
-              },
+          //  {
+          //       component: CNavItem,
+          //       name: "All Raw Materials",
+          //       to: '/showRawMaterials',
+          //       className: 'ms-2',
+          //     },
           {
             component: CNavItem,
             name: "All Machinary",
             to: '/MachineriesTable',
             className: 'ms-2',
           },
+
+              {
+                component: CNavItem,
+                name: "Machinary Stock Table",
+                to: '/machineryStockTable',
+                className: 'ms-2',
+              },
+
         ],
       },
     ];
@@ -627,18 +607,26 @@ className: 'ms-2',
             to: '/OpratorList',
             className: 'ms-2',
           },
-           {
-                component: CNavItem,
-                name: "All Raw Materials",
-                to: '/showRawMaterials',
-                className: 'ms-2',
-              },
+          //  {
+          //       component: CNavItem,
+          //       name: "All Raw Materials",
+          //       to: '/showRawMaterials',
+          //       className: 'ms-2',
+          //     },
           {
             component: CNavItem,
             name: "All Machinary",
             to: '/MachineriesTable',
             className: 'ms-2',
           },
+
+             {
+                component: CNavItem,
+                name: "Machinary Stock Table",
+                to: '/machineryStockTable',
+                className: 'ms-2',
+              },
+
         ],
       },
     ];
@@ -655,6 +643,44 @@ className: 'ms-2',
    // Employee/Partner (user === 3) - Fixed missing navigation
   else if (user === 4) {
     _nav = [
+
+
+
+            {
+        component: CNavItem,
+        name: 'Work Log',
+        to: '/worklog',
+        icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
+      },
+       {
+        component: CNavItem,
+        name: t("LABELS.new_expense"),
+        to: '/expense/new',
+        icon: <CIcon icon={cilDollar} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Work Log Report',
+        to: '/infraDetailsShowTable',
+        icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+      },
+    
+      {
+        component: CNavGroup,
+        name: t("LABELS.report"),
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+        items: [
+          
+          {
+            component: CNavItem,
+            name: t("LABELS.expense_report"),
+            to: '/expense/expenseReport',
+            className: 'ms-2',
+          },
+        ],
+      },
+
+
 
          {
         component: CNavGroup,
@@ -693,6 +719,65 @@ className: 'ms-2',
       },
 
         ],
+      },
+
+
+        {
+        component: CNavGroup,
+        name: "Manage Software",
+        icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
+        items: [
+          
+          {
+            component: CNavItem,
+            name: "Project Types Config",
+            to: '/project-types',
+            className: 'ms-2',
+          },
+           {
+            component: CNavItem,
+            name: t("LABELS.all_customers"),
+            to: '/project',
+            className: 'ms-2',
+          },
+          
+          {
+            component: CNavItem,
+            name: t("LABELS.all_expense_types"),
+            to: '/expense/all-type',
+            className: 'ms-2',
+          },
+          
+          {
+            component: CNavItem,
+            // name: t("LABELS.all_oprator"),
+            name: "All Resources",
+            to: '/OpratorList',
+            className: 'ms-2',
+          },
+          
+         
+           {
+                component: CNavItem,
+                name: "All Machinary",
+                to: '/MachineriesTable',
+                className: 'ms-2',
+              },
+
+             
+
+                 {
+                component: CNavItem,
+                name: "Machinary Stock Table",
+                to: '/machineryStockTable',
+                className: 'ms-2',
+              },
+
+          
+              
+
+        ],
+
       },
     
     ];
@@ -755,24 +840,27 @@ className: 'ms-2',
             to: '/expense/all-type',
             className: 'ms-2',
           },
-          {
-            component: CNavItem,
-            name: "All Oprators / Supervisors",
-            to: '/OpratorList',
-            className: 'ms-2',
-          },
-          //  {
-          //       component: CNavItem,
-          //       name: "All Raw Materials",
-          //       to: '/showRawMaterials',
-          //       className: 'ms-2',
-          //     },
+          // {
+          //   component: CNavItem,
+          //   name: "All Oprators / Supervisors",
+          //   to: '/OpratorList',
+          //   className: 'ms-2',
+          // },
+         
           {
             component: CNavItem,
             name: "All Machinary",
             to: '/MachineriesTable',
             className: 'ms-2',
           },
+
+           {
+                component: CNavItem,
+                name: "Machinary Stock Table",
+                to: '/machineryStockTable',
+                className: 'ms-2',
+              },
+
         ],
       },
     ];
