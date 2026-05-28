@@ -206,6 +206,24 @@ function MachineryForm({ onSuccess }) {
     setDocuments(updated)
   }
 
+
+
+  const validateDates = () => {
+    for (let doc of documents) {
+      if (doc.issue_date && doc.expiry_date) {
+        const issue = new Date(doc.issue_date)
+        const expiry = new Date(doc.expiry_date)
+
+        if (expiry < issue) {
+          return `Expiry Date cannot be before Issue Date for document: ${doc.document_type || 'Untitled'}`
+        }
+      }
+    }
+    return null
+  }
+
+
+
   const handleSubmit = async (e) => {
 
     e.preventDefault()
@@ -379,7 +397,7 @@ function MachineryForm({ onSuccess }) {
                     />
                   </CCol>
 
-                  <CCol md={3}>
+                  {/* <CCol md={3}>
                     <CFormInput
                       type="date"
                       label="Expiry Date"
@@ -387,6 +405,17 @@ function MachineryForm({ onSuccess }) {
                       onChange={(e) =>
                         handleDocumentChange(index, 'expiry_date', e.target.value)
                       }
+                    />
+                  </CCol> */}
+
+
+                  <CCol md={3}>
+                    <CFormInput
+                      type="date"
+                      label="Expiry Date"
+                      value={doc.expiry_date}
+                      min={doc.issue_date}  
+                      onChange={(e) => handleDocumentChange(index, 'expiry_date', e.target.value)}
                     />
                   </CCol>
 

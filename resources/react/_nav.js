@@ -466,6 +466,17 @@ className: 'ms-2',
   // Employee/Partner (user === 3) - Fixed missing navigation
   else if (user === 3) {
     _nav = [
+
+
+         {
+        component: CNavItem,
+        name: "Daily Activity Dashboard",
+        to: '/dailyActivityDashboard',
+        icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+        // style: { backgroundColor: 'cyan', color: 'black' },
+      },
+
+
       {
         component: CNavItem,
         name: 'Work Log',

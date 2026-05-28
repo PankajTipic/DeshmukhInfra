@@ -119,6 +119,7 @@ use App\Models\MachineryDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class MachineryController extends Controller
 {
@@ -133,7 +134,16 @@ class MachineryController extends Controller
 
             // Machinery Details
             'machine_name'      => 'required|string|max:255',
-            'reg_number'        => 'required|string|max:255',
+            // 'reg_number'        => 'required|string|max:255',
+
+            'reg_number'     => [
+            'required',
+            'string',
+            'max:255',
+            Rule::unique('machineries', 'reg_number')
+                ->where('company_id', $companyId),
+        ],
+
             'ownership_type'    => 'required|string|max:255',
 
             // Documents

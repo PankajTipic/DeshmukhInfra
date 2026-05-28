@@ -998,10 +998,23 @@ const DailyActivityDashboard = () => {
             {totalEntries} total
           </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginBottom: 32 }}>
+        {/* <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginBottom: 32 }}>
           {Object.entries(d.category_summary).map(([key, cat]) => (
             <CategoryCard key={key} catKey={key} cat={cat} maxCount={maxCount} />
           ))}
+        </div> */}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginBottom: 32 }}>
+          {Object.entries(d.category_summary)
+            .filter(([key]) => key !== 'machine_reading' && key !== 'machineReading')  // ← HIDE MACHINE READING
+            .map(([key, cat]) => (
+              <CategoryCard 
+                key={key} 
+                catKey={key} 
+                cat={cat} 
+                maxCount={maxCount} 
+              />
+            ))}
         </div>
 
         {/* ── ACTIVE USERS ───────────────────────────────── */}

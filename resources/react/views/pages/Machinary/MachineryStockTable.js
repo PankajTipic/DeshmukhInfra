@@ -1382,13 +1382,6 @@ function TransferLogTab({ state, onRefresh , openDeleteModal}) {
 
 
 
-
-  
-
-
-
-
-
   return (
     <div>
         <table style={{ width:'100%',borderCollapse:'collapse',fontSize:13 }}>
@@ -1402,7 +1395,7 @@ function TransferLogTab({ state, onRefresh , openDeleteModal}) {
               <tr key={log.id} style={{ background:i%2===0?'#fff':'#FAFAFA',borderBottom:'1px solid #F8FAFC' }}>
                 <td style={{ padding:'10px 14px',color:'#475569' }}>{log.date}</td>
                 <td style={{ padding:'10px 14px',fontWeight:600,color:'#0F172A' }}>{item(log.stockId)}</td>
-                <td style={{ padding:'10px 14px',fontWeight:700,color:'#7C3AED' }}>{log.qty} {unit(log.stockId)}</td>
+                <td style={{ padding:'10px 14px',fontWeight:700,color:'#7C3AED' }}>{log.qty} {unit(log.stock_name)}</td>
                 <td style={{ padding:'10px 14px' }}><Badge label={proj(log.fromProjectId)} color="#E24B4A" bg="#FCEBEB" /></td>
                 <td style={{ padding:'10px 14px' }}><Badge label={proj(log.toProjectId)}   color="#059669" bg="#ECFDF5" /></td>
                 <td style={{ padding:'10px 14px',color:'#64748B' }}>{fmt(log.note)}</td>
@@ -1466,7 +1459,7 @@ function TransferLogTab({ state, onRefresh , openDeleteModal}) {
   );
 }
 
-/* ΓöÇΓöÇΓöÇ shared components ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+
 const td = { padding:'10px 14px',color:'#475569',borderBottom:'1px solid #F8FAFC',fontSize:13 };
 
 function Btn({ children, onClick, gray, small }) {
@@ -1536,7 +1529,7 @@ function Dashboard({ state }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 10 }}>
                   <div>
                     <strong style={{ fontSize: 15, color: '#B91C1C' }}>{alert.machine_name}</strong>
-                    <div style={{ fontSize: 13, color: '#64748B' }}>Machine ID: {alert.machinery_id}</div>
+                    {/* <div style={{ fontSize: 13, color: '#64748B' }}>Machine ID: {alert.machinery_id}</div> */}
                   </div>
                   <div style={{
                     background: '#FEE2E2',
@@ -1551,7 +1544,7 @@ function Dashboard({ state }) {
                 </div>
 
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#1E293B', marginBottom: 6 }}>
-                  {alert.document_type}
+                 Document Type:  <strong> {alert.document_type} </strong>
                 </div>
                 
                 <div style={{ fontSize: 13, color: '#475569' }}>
@@ -1588,10 +1581,10 @@ function Dashboard({ state }) {
           { label:'Today\'s Logs',    val: dashboardStats.todayLogs || 0,   color:'#059669', sub:'work entries today' },
           { label:'Hours Today',      val: `${dashboardStats.hoursToday || 0}h`, color:'#7C3AED', sub:'machine hours'     },
           { label:'Low Stock Items',  val: dashboardStats.lowStock || 0,    color:'#BA7517', sub:'nearing minimum'      },
-          { label:'Total Transfers',  val: dashboardStats.totalTransfers || 0, color:'#0891B2', sub:'stock movements'   },
+          { label:'Total Stock Transfers Count',  val: dashboardStats.totalTransfers || 0, color:'#0891B2', sub:'stock movements'   },
         ].map(k=>(
           <div key={k.label} style={{ background:'#fff',border:'1.5px solid #E2E8F0',borderRadius:12,padding:'18px 20px',boxShadow:'0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.4px',color:'#94A3B8' }}>{k.label}</div>
+            <div style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.4px',color:'#010101' }}>{k.label}</div>
             <div style={{ fontSize:32,fontWeight:800,color:k.color,lineHeight:1,margin:'8px 0 4px',letterSpacing:'-0.5px' }}>{k.val}</div>
             <div style={{ fontSize:12,color:'#64748B',fontWeight:500 }}>{k.sub}</div>
           </div>
@@ -1827,11 +1820,23 @@ const confirmDelete = async () => {
   return (
     <>
     <div style={{ minHeight:'100vh',background:'#F8FAFC',fontFamily:"'Outfit','Segoe UI',sans-serif",color:'#1E293B' }}>
-      <style>{`
+      {/* <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; }
         input:focus, select:focus, textarea:focus { border-color: #6366F1 !important; outline: none; }
-      `}</style>
+      `}</style> */}
+
+<style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+          * { box-sizing: border-box; }
+          input:focus, select:focus, textarea:focus { border-color: #6366F1 !important; outline: none; }
+
+          /* 🔥 IMPORTANT: Force Toast on Top */
+          .toast-container, .sonner-toast, [class*="Toast"], [id*="toast"] {
+            z-index: 99999 !important;
+          }
+        `}</style>
+
       <div style={{ background:'#ffffff',borderBottom:'1.5px solid #E2E8F0',padding:'0 24px',display:'flex',alignItems:'center',height:56,position:'sticky',top:0,zIndex:100 }}>
         <div style={{ fontSize:16,fontWeight:800,color:'#0F172A',marginRight:32,whiteSpace:'nowrap',letterSpacing:'-0.3px',display:'flex',alignItems:'center',gap:6 }}>
           <span>⚙️</span> MachineryOS

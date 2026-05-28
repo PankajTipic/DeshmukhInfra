@@ -270,6 +270,22 @@ function MachineriesTable() {
     }
   }
 
+
+  // Validate Expiry Dates
+  const validateDates = () => {
+    for (let doc of editData.documents) {
+      if (doc.issue_date && doc.expiry_date) {
+        const issue = new Date(doc.issue_date)
+        const expiry = new Date(doc.expiry_date)
+
+        if (expiry < issue) {
+          return `Expiry Date cannot be before Issue Date for document: ${doc.document_type || 'Untitled'}`
+        }
+      }
+    }
+    return null
+  }
+
   // Delete
   const handleDelete = async (id) => {
 
@@ -817,7 +833,7 @@ const [expandedRow, setExpandedRow] = useState(null);
 
                   </CCol>
 
-                  <CCol md={3}>
+                  {/* <CCol md={3}>
 
                     <CFormInput
                       type="date"
@@ -832,6 +848,17 @@ const [expandedRow, setExpandedRow] = useState(null);
                       }
                     />
 
+                  </CCol> */}
+
+
+                  <CCol md={3}>
+                    <CFormInput
+                      type="date"
+                      label="Expiry Date"
+                      value={doc.expiry_date || ''}
+                      min={doc.issue_date}        
+                      onChange={(e) => handleDocumentChange(index, 'expiry_date', e.target.value)}
+                    />
                   </CCol>
 
                 </CRow>
