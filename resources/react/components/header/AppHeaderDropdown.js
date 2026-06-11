@@ -108,10 +108,10 @@ const AppHeaderDropdown = () => {
           <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader>
           
           <Link to="/resetPassword" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <CDropdownItem>
+            {/* <CDropdownItem>
               <CIcon icon={cilSettings} className="me-2" />
               Change Password
-            </CDropdownItem>
+            </CDropdownItem> */}
           </Link>
           <CDropdownDivider />
           <CDropdownItem onClick={handleLogoutClick}>

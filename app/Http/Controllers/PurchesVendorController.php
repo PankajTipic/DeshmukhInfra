@@ -11,6 +11,8 @@ use App\Models\PurchesVendorPayment;
 use App\Models\PurchesVendorPaymentLog; 
 use App\Models\PurchaseVendorImage;
 use App\Helpers\ImageCompressor;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PurchesVendorController extends Controller
 {
@@ -62,77 +64,321 @@ class PurchesVendorController extends Controller
 //     ], 201);
 // }
 
-public function store(Request $request)
-{
-    $user = auth()->user();
 
-    $validated = $request->validate([
-        'project_id'      => 'required|numeric',
-        'vendor_id'       => 'required|numeric',
-        'material_name'   => 'required|string|max:255',
-        'about'           => 'nullable|string|max:500',
-        'price_per_unit'  => 'required|numeric|min:0',
-        'qty'             => 'required|numeric|min:0',
-        'total'           => 'required|numeric|min:0',
-        'date'            => 'required|date',
+   private function buildSpacesUrl(string $s3Path): string
+    {
+        $bucket = env('AWS_BUCKET');
+        $region = env('AWS_DEFAULT_REGION');
+        return "https://{$bucket}.{$region}.digitaloceanspaces.com/{$s3Path}";
+    }
 
-        'gst_included'    => 'nullable|boolean',
-        'gst_percent'     => 'nullable|numeric|min:0',
-        'cgst_percent'    => 'nullable|numeric|min:0',
-        'sgst_percent'    => 'nullable|numeric|min:0',
+       public static function resolveImageUrl(?string $storedPath): ?string
+    {
+        if (!$storedPath) return null;
+ 
+        if (str_starts_with($storedPath, 'http://') || str_starts_with($storedPath, 'https://')) {
+            return $storedPath;
+        }
+ 
+        // Old local path e.g. "img/purchase-vendors/file.jpg"
+        return rtrim(env('APP_URL', ''), '/') . '/' . ltrim($storedPath, '/');
+    }
 
-        'photoAvailable'  => 'nullable|boolean',
-        'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        'photo_remarks.*' => 'nullable|string|max:255',
-    ]);
+     private function saveUploadedImageToS3($file, string $folder): string
+    {
+        if (!$file || !$file->isValid()) {
+            throw new \RuntimeException("Invalid file received for upload.");
+        }
+ 
+        $extension = strtolower($file->getClientOriginalExtension());
+        $allowed   = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+        if (!in_array($extension, $allowed)) {
+            throw new \RuntimeException("Invalid file extension: {$extension}");
+        }
+ 
+        $cleanFolder = trim(preg_replace('#/+#', '/', $folder), '/');
+        $fileName    = date('His') . '-' . Str::random(12) . '.' . $extension;
+        $envPrefix   = env('ENVIRONMENT_PREFIX', 'localhost');
+        $s3Path      = "img/{$envPrefix}/{$cleanFolder}/{$fileName}";
+ 
+        \Log::info("Spaces upload → bucket: " . env('AWS_BUCKET') . " | path: {$s3Path}");
+ 
+        Storage::disk('s3')->put($s3Path, file_get_contents($file->getRealPath()), [
+            'visibility'  => 'public',
+            'ContentType' => $file->getMimeType(),
+        ]);
+ 
+        $fullUrl = $this->buildSpacesUrl($s3Path);
+        \Log::info("✅ Spaces Upload SUCCESS: {$fullUrl}");
+        return $fullUrl;
+    }
 
-    $validated['company_id'] = $user->company_id ?? null;
-    $validated['created_by'] = $user->id ?? null;
-
-    // Create Purchase
-    $purchaseVendor = PurchesVendorModel::create($validated);
-
-    // Create Payment Master
-    $payment = PurchesVendorPayment::create([
-        'purches_vendor_id' => $purchaseVendor->id,
-        'amount'            => $validated['total'],
-        'paid_amount'       => 0,
-        'balance_amount'    => $validated['total'],
-    ]);
-
-    // Handle Multiple Images
-    if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
-        foreach ($request->file('photos') as $index => $file) {
-            $uploadedPath = ImageCompressor::compressAndSave(
-                $file,
-                'purchase-vendors',
-                1024
-            );
-
-            $remark = $request->input("photo_remarks.{$index}");
-
-            PurchaseVendorImage::create([
-                'purches_vendor_id' => $purchaseVendor->id,
-                'image_path'        => $uploadedPath,
-                'original_name'     => $file->getClientOriginalName(),
-                'remark'            => $remark,
-                'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
-            ]);
+     private function deleteImageFromStorage(string $storedPath): void
+    {
+        // If it's a full S3 URL, extract the key and delete from Spaces
+        if (str_starts_with($storedPath, 'http://') || str_starts_with($storedPath, 'https://')) {
+            $bucket  = env('AWS_BUCKET');
+            $region  = env('AWS_DEFAULT_REGION');
+            $baseUrl = "https://{$bucket}.{$region}.digitaloceanspaces.com/";
+ 
+            if (str_starts_with($storedPath, $baseUrl)) {
+                $s3Key = substr($storedPath, strlen($baseUrl));
+                try {
+                    Storage::disk('s3')->delete($s3Key);
+                    \Log::info("🗑️ Deleted from Spaces: {$s3Key}");
+                } catch (\Throwable $e) {
+                    \Log::error("Failed to delete from Spaces: {$s3Key} → " . $e->getMessage());
+                }
+            }
+            return;
+        }
+ 
+        // Old local file — delete from public_path if it exists
+        $fullPath = public_path($storedPath);
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+            \Log::info("🗑️ Deleted local file: {$fullPath}");
         }
     }
 
-    // Reload with images
-    $purchaseVendor->load('images');
 
-    return response()->json([
-        'message'          => 'Purchase vendor and payment stored successfully.',
-        'purchase_vendor'  => $purchaseVendor,
-        'payment'          => $payment,
-        'images'           => $purchaseVendor->images
-    ], 201);
-}
+// public function store(Request $request)
+// {
+//     $user = auth()->user();
+
+//     $validated = $request->validate([
+//         'project_id'      => 'required|numeric',
+//         'vendor_id'       => 'required|numeric',
+//         'material_name'   => 'required|string|max:255',
+//         'about'           => 'nullable|string|max:500',
+//         'price_per_unit'  => 'required|numeric|min:0',
+//         'qty'             => 'required|numeric|min:0',
+//         'total'           => 'required|numeric|min:0',
+//         'date'            => 'required|date',
+
+//         'gst_included'    => 'nullable|boolean',
+//         'gst_percent'     => 'nullable|numeric|min:0',
+//         'cgst_percent'    => 'nullable|numeric|min:0',
+//         'sgst_percent'    => 'nullable|numeric|min:0',
+
+//         'photoAvailable'  => 'nullable|boolean',
+//         'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+//         'photo_remarks.*' => 'nullable|string|max:255',
+//     ]);
+
+//     $validated['company_id'] = $user->company_id ?? null;
+//     $validated['created_by'] = $user->id ?? null;
+
+//     // Create Purchase
+//     $purchaseVendor = PurchesVendorModel::create($validated);
+
+//     // Create Payment Master
+//     $payment = PurchesVendorPayment::create([
+//         'purches_vendor_id' => $purchaseVendor->id,
+//         'amount'            => $validated['total'],
+//         'paid_amount'       => 0,
+//         'balance_amount'    => $validated['total'],
+//     ]);
+
+//     // Handle Multiple Images
+//     if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+//         foreach ($request->file('photos') as $index => $file) {
+//             $uploadedPath = ImageCompressor::compressAndSave(
+//                 $file,
+//                 'purchase-vendors',
+//                 1024
+//             );
+
+//             $remark = $request->input("photo_remarks.{$index}");
+
+//             PurchaseVendorImage::create([
+//                 'purches_vendor_id' => $purchaseVendor->id,
+//                 'image_path'        => $uploadedPath,
+//                 'original_name'     => $file->getClientOriginalName(),
+//                 'remark'            => $remark,
+//                 'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+//             ]);
+//         }
+//     }
+
+//     // Reload with images
+//     $purchaseVendor->load('images');
+
+//     return response()->json([
+//         'message'          => 'Purchase vendor and payment stored successfully.',
+//         'purchase_vendor'  => $purchaseVendor,
+//         'payment'          => $payment,
+//         'images'           => $purchaseVendor->images
+//     ], 201);
+// }
+
+ public function store(Request $request)
+    {
+        $user = auth()->user();
+ 
+        $validated = $request->validate([
+            'project_id'      => 'required|numeric',
+            'vendor_id'       => 'required|numeric',
+            'material_name'   => 'required|string|max:255',
+            'about'           => 'nullable|string|max:500',
+            'price_per_unit'  => 'required|numeric|min:0',
+            'qty'             => 'required|numeric|min:0',
+            'total'           => 'required|numeric|min:0',
+            'date'            => 'required|date',
+            'gst_included'    => 'nullable|boolean',
+            'gst_percent'     => 'nullable|numeric|min:0',
+            'cgst_percent'    => 'nullable|numeric|min:0',
+            'sgst_percent'    => 'nullable|numeric|min:0',
+            'photoAvailable'  => 'nullable|boolean',
+            'photos.*'        => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'photo_remarks.*' => 'nullable|string|max:255',
+        ]);
+ 
+        $validated['company_id'] = $user->company_id ?? null;
+        $validated['created_by'] = $user->id ?? null;
+ 
+        // Create Purchase
+        $purchaseVendor = PurchesVendorModel::create($validated);
+ 
+        // Create Payment Master
+        $payment = PurchesVendorPayment::create([
+            'purches_vendor_id' => $purchaseVendor->id,
+            'amount'            => $validated['total'],
+            'paid_amount'       => 0,
+            'balance_amount'    => $validated['total'],
+        ]);
+ 
+        // Handle Multiple Images — upload to DigitalOcean Spaces
+        if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+            foreach ($request->file('photos') as $index => $file) {
+                try {
+                    $uploadedUrl = $this->saveUploadedImageToS3($file, 'purchase-vendors');
+ 
+                    PurchaseVendorImage::create([
+                        'purches_vendor_id' => $purchaseVendor->id,
+                        'image_path'        => $uploadedUrl,          // Full S3 URL stored in DB
+                        'original_name'     => $file->getClientOriginalName(),
+                        'remark'            => $request->input("photo_remarks.{$index}"),
+                        'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::error("Image upload failed in store (index {$index}): " . $e->getMessage());
+                    // Continue uploading remaining files; don't abort the whole record
+                }
+            }
+        }
+ 
+        // Reload with images and resolve URLs
+        $purchaseVendor->load('images');
+        $this->resolveImagesOnModel($purchaseVendor);
+ 
+        return response()->json([
+            'message'         => 'Purchase vendor and payment stored successfully.',
+            'purchase_vendor' => $purchaseVendor,
+            'payment'         => $payment,
+            'images'          => $purchaseVendor->images,
+        ], 201);
+    }
 
 
+
+// public function addVendorPayment(Request $request)
+// {
+//     // 1️⃣ Validate request
+//     $validated = $request->validate([
+//         'purches_vendor_id' => 'required|numeric',
+//         'paid_by'           => 'required|string',
+//         'payment_type'      => 'required|string',
+//         'amount'            => 'required|numeric|min:0.01',
+//         'payment_date'      => 'required|date',
+//         'description'       => 'nullable|string',
+//         'remark'            => 'nullable|string',
+//         'payment_file'      => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+
+
+//         'bank_name'        => 'nullable|string|max:255',
+//         'acc_number'       => 'nullable|string|max:255',
+//         'ifsc'             => 'nullable|string|max:50',
+//         'transaction_id'   => 'nullable|string|max:255',
+
+
+//     ]);
+
+//     // 2️⃣ Get master payment entry
+//     $payment = PurchesVendorPayment::where('purches_vendor_id', $validated['purches_vendor_id'])->first();
+
+//     if (!$payment) {
+//         return response()->json([
+//             'message' => 'Payment record not found for this vendor.'
+//         ], 404);
+//     }
+
+//     // 3️⃣ Check if already fully paid
+//     if ($payment->balance_amount <= 0) {
+//         return response()->json([
+//             'message' => 'Payment already completed. No more payments allowed.'
+//         ], 400);
+//     }
+
+//     // 4️⃣ Check overpayment
+//     if ($validated['amount'] > $payment->balance_amount) {
+//         return response()->json([
+//             'message' => 'Payment amount is greater than remaining balance.',
+//             'remaining_balance' => $payment->balance_amount
+//         ], 400);
+//     }
+
+
+
+//     // 5️⃣ File upload using ImageCompressor
+//     $uploadedFilePath = null;
+
+//     if ($request->hasFile('payment_file')) {
+//         $uploadedFilePath = ImageCompressor::compressAndSave(
+//             $request->file('payment_file'),
+//             'vendor-payments', // folder inside /img/
+//             1024               // max size KB
+//         );
+//     }
+
+
+
+
+
+   
+
+
+//     // 6️⃣ Create payment log entry
+//     $paymentLog = PurchesVendorPaymentLog::create([
+//         'purches_vendor_id'         => $validated['purches_vendor_id'],
+//         'purches_vendor_payment_id' => $payment->id,
+//         'paid_by'                   => $validated['paid_by'],
+//         'payment_type'              => $validated['payment_type'],
+//         'amount'                    => $validated['amount'],
+//         'payment_date'              => $validated['payment_date'],
+//         'description'               => $validated['description'] ?? null,
+//         'remark'                    => $validated['remark'] ?? null,
+//         'payment_file'              => $uploadedFilePath,
+
+
+//         'bank_name'                 => $validated['bank_name'],
+//         'acc_number'                => $validated['acc_number'],
+//         'ifsc'                      => $validated['ifsc'],
+//         'transaction_id'            => $validated['transaction_id'],
+//     ]);
+
+//     // 7️⃣ Update master payment table
+//     $payment->paid_amount += $validated['amount'];
+//     $payment->balance_amount = $payment->amount - $payment->paid_amount;
+//     $payment->save();
+
+//     // 8️⃣ Response
+//     return response()->json([
+//         'message'      => 'Payment added successfully.',
+//         'payment'      => $payment->fresh(),
+//         'payment_log'  => $paymentLog
+//     ], 201);
+// }
 
 public function addVendorPayment(Request $request)
 {
@@ -146,14 +392,10 @@ public function addVendorPayment(Request $request)
         'description'       => 'nullable|string',
         'remark'            => 'nullable|string',
         'payment_file'      => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-
-
-        'bank_name'        => 'nullable|string|max:255',
-        'acc_number'       => 'nullable|string|max:255',
-        'ifsc'             => 'nullable|string|max:50',
-        'transaction_id'   => 'nullable|string|max:255',
-
-
+        'bank_name'         => 'nullable|string|max:255',
+        'acc_number'        => 'nullable|string|max:255',
+        'ifsc'              => 'nullable|string|max:50',
+        'transaction_id'    => 'nullable|string|max:255',
     ]);
 
     // 2️⃣ Get master payment entry
@@ -175,30 +417,27 @@ public function addVendorPayment(Request $request)
     // 4️⃣ Check overpayment
     if ($validated['amount'] > $payment->balance_amount) {
         return response()->json([
-            'message' => 'Payment amount is greater than remaining balance.',
-            'remaining_balance' => $payment->balance_amount
+            'message'           => 'Payment amount is greater than remaining balance.',
+            'remaining_balance' => $payment->balance_amount,
         ], 400);
     }
 
-
-
-    // 5️⃣ File upload using ImageCompressor
+    // 5️⃣ File upload → DigitalOcean Spaces
     $uploadedFilePath = null;
 
     if ($request->hasFile('payment_file')) {
-        $uploadedFilePath = ImageCompressor::compressAndSave(
-            $request->file('payment_file'),
-            'vendor-payments', // folder inside /img/
-            1024               // max size KB
-        );
+        try {
+            $uploadedFilePath = $this->saveUploadedImageToS3(
+                $request->file('payment_file'),
+                'vendor-payments'   // stored under img/{env}/vendor-payments/
+            );
+        } catch (\Throwable $e) {
+            \Log::error("Vendor payment file upload failed: " . $e->getMessage());
+            return response()->json([
+                'message' => 'File upload failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
-
-
-
-
-
-   
-
 
     // 6️⃣ Create payment log entry
     $paymentLog = PurchesVendorPaymentLog::create([
@@ -210,25 +449,28 @@ public function addVendorPayment(Request $request)
         'payment_date'              => $validated['payment_date'],
         'description'               => $validated['description'] ?? null,
         'remark'                    => $validated['remark'] ?? null,
-        'payment_file'              => $uploadedFilePath,
-
-
-        'bank_name'                 => $validated['bank_name'],
-        'acc_number'                => $validated['acc_number'],
-        'ifsc'                      => $validated['ifsc'],
-        'transaction_id'            => $validated['transaction_id'],
+        'payment_file'              => $uploadedFilePath,   // Full S3 URL or null
+        'bank_name'                 => $validated['bank_name'] ?? null,
+        'acc_number'                => $validated['acc_number'] ?? null,
+        'ifsc'                      => $validated['ifsc'] ?? null,
+        'transaction_id'            => $validated['transaction_id'] ?? null,
     ]);
 
     // 7️⃣ Update master payment table
-    $payment->paid_amount += $validated['amount'];
-    $payment->balance_amount = $payment->amount - $payment->paid_amount;
+    $payment->paid_amount    += $validated['amount'];
+    $payment->balance_amount  = $payment->amount - $payment->paid_amount;
     $payment->save();
 
-    // 8️⃣ Response
+    // 8️⃣ Resolve file URL for response
+    if ($paymentLog->payment_file) {
+        $paymentLog->payment_file = self::resolveImageUrl($paymentLog->payment_file);
+    }
+
+    // 9️⃣ Response
     return response()->json([
-        'message'      => 'Payment added successfully.',
-        'payment'      => $payment->fresh(),
-        'payment_log'  => $paymentLog
+        'message'     => 'Payment added successfully.',
+        'payment'     => $payment->fresh(),
+        'payment_log' => $paymentLog,
     ], 201);
 }
 
@@ -551,152 +793,283 @@ public function getPurchesVedorPayment(Request $request)
 //     ]);
 // }
 
-public function updatePurchesVendorPayment(Request $request)
-{
-    $user = auth()->user();
+// public function updatePurchesVendorPayment(Request $request)
+// {
+//     $user = auth()->user();
 
-    // 1️⃣ Validation
-    $validated = $request->validate([
-        'payment_id'       => 'required|numeric',
-        'price_per_unit'   => 'required|numeric|min:0',
-        'qty'              => 'required|numeric|min:0',
-        'material_name'    => 'required|string|max:255',
-        'about'            => 'nullable|string|max:500',
-        'date'             => 'required|date',
-        'vendor_id'        => 'required|numeric',
-        'project_id'       => 'required|numeric',
+//     // 1️⃣ Validation
+//     $validated = $request->validate([
+//         'payment_id'       => 'required|numeric',
+//         'price_per_unit'   => 'required|numeric|min:0',
+//         'qty'              => 'required|numeric|min:0',
+//         'material_name'    => 'required|string|max:255',
+//         'about'            => 'nullable|string|max:500',
+//         'date'             => 'required|date',
+//         'vendor_id'        => 'required|numeric',
+//         'project_id'       => 'required|numeric',
 
-        // GST Fields
-        'gst_included'     => 'nullable|boolean',
-        'gst_percent'      => 'nullable|numeric|min:0',
-        'cgst_percent'     => 'nullable|numeric|min:0',
-        'sgst_percent'     => 'nullable|numeric|min:0',
+//         // GST Fields
+//         'gst_included'     => 'nullable|boolean',
+//         'gst_percent'      => 'nullable|numeric|min:0',
+//         'cgst_percent'     => 'nullable|numeric|min:0',
+//         'sgst_percent'     => 'nullable|numeric|min:0',
 
-        // Image Fields
-        'photoAvailable'   => 'nullable|boolean',
-        'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        'photo_remarks.*'  => 'nullable|string|max:255',
-    ]);
+//         // Image Fields
+//         'photoAvailable'   => 'nullable|boolean',
+//         'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+//         'photo_remarks.*'  => 'nullable|string|max:255',
+//     ]);
 
-    // 2️⃣ Fetch Payment Record
-    $payment = PurchesVendorPayment::find($request->payment_id);
-    if (!$payment) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Payment record not found'
-        ], 404);
-    }
+//     // 2️⃣ Fetch Payment Record
+//     $payment = PurchesVendorPayment::find($request->payment_id);
+//     if (!$payment) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Payment record not found'
+//         ], 404);
+//     }
 
-    // 3️⃣ Fetch Purchase Record
-    $purchase = PurchesVendorModel::find($payment->purches_vendor_id);
-    if (!$purchase) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Purchase data not found'
-        ], 404);
-    }
+//     // 3️⃣ Fetch Purchase Record
+//     $purchase = PurchesVendorModel::find($payment->purches_vendor_id);
+//     if (!$purchase) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Purchase data not found'
+//         ], 404);
+//     }
 
-    // 4️⃣ Calculate New Total with GST
-    $pricePerUnit = (float) $request->price_per_unit;
-    $qty          = (float) $request->qty;
-    $baseAmount   = $pricePerUnit * $qty;
+//     // 4️⃣ Calculate New Total with GST
+//     $pricePerUnit = (float) $request->price_per_unit;
+//     $qty          = (float) $request->qty;
+//     $baseAmount   = $pricePerUnit * $qty;
 
-    $gstIncluded = (bool) $request->gst_included;
-    $gstPercent  = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
+//     $gstIncluded = (bool) $request->gst_included;
+//     $gstPercent  = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
 
-    $gstAmount = $gstIncluded && $gstPercent > 0 
-        ? round($baseAmount * ($gstPercent / 100), 2) 
-        : 0;
+//     $gstAmount = $gstIncluded && $gstPercent > 0 
+//         ? round($baseAmount * ($gstPercent / 100), 2) 
+//         : 0;
 
-    $newTotal = round($baseAmount + $gstAmount, 2);
+//     $newTotal = round($baseAmount + $gstAmount, 2);
 
-    $cgstPercent = $gstIncluded && $gstPercent > 0 ? round($gstPercent / 2, 2) : 0;
-    $sgstPercent = $cgstPercent;
+//     $cgstPercent = $gstIncluded && $gstPercent > 0 ? round($gstPercent / 2, 2) : 0;
+//     $sgstPercent = $cgstPercent;
 
-    // 5️⃣ Update Purchase Record
-    $purchase->update([
-        'vendor_id'       => $request->vendor_id,
-        'project_id'      => $request->project_id,
-        'material_name'   => $request->material_name,
-        'about'           => $request->about ?? null,
-        'price_per_unit'  => $pricePerUnit,
-        'qty'             => $qty,
-        'total'           => $newTotal,
-        'date'            => $request->date,
+//     // 5️⃣ Update Purchase Record
+//     $purchase->update([
+//         'vendor_id'       => $request->vendor_id,
+//         'project_id'      => $request->project_id,
+//         'material_name'   => $request->material_name,
+//         'about'           => $request->about ?? null,
+//         'price_per_unit'  => $pricePerUnit,
+//         'qty'             => $qty,
+//         'total'           => $newTotal,
+//         'date'            => $request->date,
 
-        // GST Fields
-        'gst_included'    => $gstIncluded ? 1 : 0,
-        'gst_percent'     => $gstIncluded ? $gstPercent : 0,
-        'cgst_percent'    => $gstIncluded ? $cgstPercent : 0,
-        'sgst_percent'    => $gstIncluded ? $sgstPercent : 0,
-    ]);
+//         // GST Fields
+//         'gst_included'    => $gstIncluded ? 1 : 0,
+//         'gst_percent'     => $gstIncluded ? $gstPercent : 0,
+//         'cgst_percent'    => $gstIncluded ? $cgstPercent : 0,
+//         'sgst_percent'    => $gstIncluded ? $sgstPercent : 0,
+//     ]);
 
 
 
-       // 6b. Delete images that the user removed in the Edit modal
-    $deletedImageIds = json_decode($request->input('deleted_image_ids', '[]'), true);
+//        // 6b. Delete images that the user removed in the Edit modal
+//     $deletedImageIds = json_decode($request->input('deleted_image_ids', '[]'), true);
  
-    if (!empty($deletedImageIds) && is_array($deletedImageIds)) {
-        $imagesToDelete = PurchaseVendorImage::whereIn('id', $deletedImageIds)
-            ->where('purches_vendor_id', $purchase->id) // ← security: only delete images belonging to THIS purchase
-            ->get();
+//     if (!empty($deletedImageIds) && is_array($deletedImageIds)) {
+//         $imagesToDelete = PurchaseVendorImage::whereIn('id', $deletedImageIds)
+//             ->where('purches_vendor_id', $purchase->id) // ← security: only delete images belonging to THIS purchase
+//             ->get();
  
-        foreach ($imagesToDelete as $image) {
-            // Delete the physical file from storage
-            $filePath = public_path($image->image_path); // adjust to storage_path() if using storage/app
-            if (file_exists($filePath)) {
-                unlink($filePath);
+//         foreach ($imagesToDelete as $image) {
+//             // Delete the physical file from storage
+//             $filePath = public_path($image->image_path); // adjust to storage_path() if using storage/app
+//             if (file_exists($filePath)) {
+//                 unlink($filePath);
+//             }
+ 
+//             // Delete the DB record
+//             $image->delete();
+//         }
+//     }
+
+
+
+//     // 6️⃣ Update Payment Record
+//     $paidAmount = (float) $payment->paid_amount;
+//     $newBalance = $newTotal - $paidAmount;
+//     $newBalance = max(0, $newBalance); // Prevent negative balance
+
+//     $payment->update([
+//         'amount'         => $newTotal,
+//         'balance_amount' => $newBalance
+//     ]);
+
+//     // 7️⃣ Handle New Images (Add only - existing images remain)
+//     if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+//         foreach ($request->file('photos') as $index => $file) {
+//             $uploadedPath = ImageCompressor::compressAndSave(
+//                 $file,
+//                 'purchase-vendors',
+//                 1024
+//             );
+
+//             $remark = $request->input("photo_remarks.{$index}");
+
+//             PurchaseVendorImage::create([
+//                 'purches_vendor_id' => $purchase->id,
+//                 'image_path'        => $uploadedPath,
+//                 'original_name'     => $file->getClientOriginalName(),
+//                 'remark'            => $remark,
+//                 'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+//             ]);
+//         }
+//     }
+
+//     // Reload purchase with latest images
+//     $purchase->load('images');
+
+//     return response()->json([
+//         'success'  => true,
+//         'message'  => 'Purchase & Payment updated successfully.',
+//         'purchase' => $purchase,
+//         'payment'  => $payment,
+//         'images'   => $purchase->images
+//     ]);
+// }
+
+ public function updatePurchesVendorPayment(Request $request)
+    {
+        $user = auth()->user();
+ 
+        $validated = $request->validate([
+            'payment_id'       => 'required|numeric',
+            'price_per_unit'   => 'required|numeric|min:0',
+            'qty'              => 'required|numeric|min:0',
+            'material_name'    => 'required|string|max:255',
+            'about'            => 'nullable|string|max:500',
+            'date'             => 'required|date',
+            'vendor_id'        => 'required|numeric',
+            'project_id'       => 'required|numeric',
+            'gst_included'     => 'nullable|boolean',
+            'gst_percent'      => 'nullable|numeric|min:0',
+            'cgst_percent'     => 'nullable|numeric|min:0',
+            'sgst_percent'     => 'nullable|numeric|min:0',
+            'photoAvailable'   => 'nullable|boolean',
+            'photos.*'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'photo_remarks.*'  => 'nullable|string|max:255',
+        ]);
+ 
+        // Fetch Payment Record
+        $payment = PurchesVendorPayment::find($request->payment_id);
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'Payment record not found'], 404);
+        }
+ 
+        // Fetch Purchase Record
+        $purchase = PurchesVendorModel::find($payment->purches_vendor_id);
+        if (!$purchase) {
+            return response()->json(['success' => false, 'message' => 'Purchase data not found'], 404);
+        }
+ 
+        // Calculate New Total with GST
+        $pricePerUnit = (float) $request->price_per_unit;
+        $qty          = (float) $request->qty;
+        $baseAmount   = $pricePerUnit * $qty;
+ 
+        $gstIncluded = (bool) $request->gst_included;
+        $gstPercent  = $gstIncluded ? (float) ($request->gst_percent ?? 0) : 0;
+        $gstAmount   = $gstIncluded && $gstPercent > 0
+            ? round($baseAmount * ($gstPercent / 100), 2)
+            : 0;
+        $newTotal     = round($baseAmount + $gstAmount, 2);
+        $cgstPercent  = $gstIncluded && $gstPercent > 0 ? round($gstPercent / 2, 2) : 0;
+        $sgstPercent  = $cgstPercent;
+ 
+        // Update Purchase Record
+        $purchase->update([
+            'vendor_id'      => $request->vendor_id,
+            'project_id'     => $request->project_id,
+            'material_name'  => $request->material_name,
+            'about'          => $request->about ?? null,
+            'price_per_unit' => $pricePerUnit,
+            'qty'            => $qty,
+            'total'          => $newTotal,
+            'date'           => $request->date,
+            'gst_included'   => $gstIncluded ? 1 : 0,
+            'gst_percent'    => $gstIncluded ? $gstPercent : 0,
+            'cgst_percent'   => $gstIncluded ? $cgstPercent : 0,
+            'sgst_percent'   => $gstIncluded ? $sgstPercent : 0,
+        ]);
+ 
+        // Delete images the user removed in the Edit modal
+        $deletedImageIds = json_decode($request->input('deleted_image_ids', '[]'), true);
+ 
+        if (!empty($deletedImageIds) && is_array($deletedImageIds)) {
+            $imagesToDelete = PurchaseVendorImage::whereIn('id', $deletedImageIds)
+                ->where('purches_vendor_id', $purchase->id) // security: only this purchase
+                ->get();
+ 
+            foreach ($imagesToDelete as $image) {
+                // Delete from Spaces (or local fallback for old files)
+                $this->deleteImageFromStorage($image->image_path);
+                $image->delete();
             }
+        }
  
-            // Delete the DB record
-            $image->delete();
+        // Update Payment Record
+        $paidAmount = (float) $payment->paid_amount;
+        $newBalance = max(0, $newTotal - $paidAmount);
+ 
+        $payment->update([
+            'amount'         => $newTotal,
+            'balance_amount' => $newBalance,
+        ]);
+ 
+        // Handle New Images — upload to DigitalOcean Spaces
+        if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
+            foreach ($request->file('photos') as $index => $file) {
+                try {
+                    $uploadedUrl = $this->saveUploadedImageToS3($file, 'purchase-vendors');
+ 
+                    PurchaseVendorImage::create([
+                        'purches_vendor_id' => $purchase->id,
+                        'image_path'        => $uploadedUrl,          // Full S3 URL stored in DB
+                        'original_name'     => $file->getClientOriginalName(),
+                        'remark'            => $request->input("photo_remarks.{$index}"),
+                        'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::error("Image upload failed in update (index {$index}): " . $e->getMessage());
+                }
+            }
         }
+ 
+        // Reload with images and resolve URLs
+        $purchase->load('images');
+        $this->resolveImagesOnModel($purchase);
+ 
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Purchase & Payment updated successfully.',
+            'purchase' => $purchase,
+            'payment'  => $payment,
+            'images'   => $purchase->images,
+        ]);
     }
 
 
 
-    // 6️⃣ Update Payment Record
-    $paidAmount = (float) $payment->paid_amount;
-    $newBalance = $newTotal - $paidAmount;
-    $newBalance = max(0, $newBalance); // Prevent negative balance
-
-    $payment->update([
-        'amount'         => $newTotal,
-        'balance_amount' => $newBalance
-    ]);
-
-    // 7️⃣ Handle New Images (Add only - existing images remain)
-    if ($request->boolean('photoAvailable') && $request->hasFile('photos')) {
-        foreach ($request->file('photos') as $index => $file) {
-            $uploadedPath = ImageCompressor::compressAndSave(
-                $file,
-                'purchase-vendors',
-                1024
-            );
-
-            $remark = $request->input("photo_remarks.{$index}");
-
-            PurchaseVendorImage::create([
-                'purches_vendor_id' => $purchase->id,
-                'image_path'        => $uploadedPath,
-                'original_name'     => $file->getClientOriginalName(),
-                'remark'            => $remark,
-                'type'              => str_contains($file->getMimeType(), 'pdf') ? 'pdf' : 'image',
-            ]);
+     private function resolveImagesOnModel($model): void
+    {
+        if ($model->relationLoaded('images')) {
+            $model->images->each(function ($img) {
+                $img->image_path = self::resolveImageUrl($img->image_path);
+            });
         }
     }
-
-    // Reload purchase with latest images
-    $purchase->load('images');
-
-    return response()->json([
-        'success'  => true,
-        'message'  => 'Purchase & Payment updated successfully.',
-        'purchase' => $purchase,
-        'payment'  => $payment,
-        'images'   => $purchase->images
-    ]);
-}
 
 
 /*-----------------------------------------

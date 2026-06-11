@@ -346,7 +346,7 @@ function MachineriesTable() {
 
       console.error('Error updating machinery:', error)
 
-      showToast('danger', 'Failed to update machinery!')
+      showToast('danger', error.message ||'Failed to update machinery!')
     }
   }
 

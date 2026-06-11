@@ -11,6 +11,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "league/csv": "*",
+        "league/flysystem-aws-s3-v3": "3.0",
         "razorpay/razorpay": "^2.9"
     },
     "require-dev": {

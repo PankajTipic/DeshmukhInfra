@@ -428,6 +428,57 @@ const SupervisorsList = () => {
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-column">
       <CContainer>
+
+
+
+
+{/* ==================== ROLE PERMISSIONS SECTION ==================== */}
+           <CCard className="mb-4">
+  <CCardHeader><strong>Role Permissions Overview</strong></CCardHeader>
+  <CCardBody>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '10px' }}>
+
+      {[
+        { label: 'Admin', sub: 'Full access', color: '#A32D2D', bg: '#FCEBEB', icon: 'ti-shield-lock',
+          perms: ['All entries', 'All reports', 'All screens', 'Full system access'] },
+        { label: 'User', sub: 'Basic access', color: '#0F6E56', bg: '#E1F5EE', icon: 'ti-user',
+          perms: ['Work log', 'Expenses', 'Allocated projects'] },
+        { label: 'User++', sub: 'Extended access', color: '#854F0B', bg: '#FAEEDA', icon: 'ti-user-plus',
+          perms: ['Work log', 'Expenses', 'Bills', 'Purchase vendor', 'Software mgmt', 'Machinery stock'] },
+        { label: 'Purchase vendor', sub: 'Vendor access', color: '#534AB7', bg: '#EEEDFE', icon: 'ti-building-store',
+          perms: ['Work log', 'Expenses', 'Purchase vendor'] },
+        { label: 'Work log user', sub: 'Log access', color: '#185FA5', bg: '#E6F1FB', icon: 'ti-clipboard-list',
+          perms: ['Work log', 'Expenses', 'All projects access'] },
+      ].map(({ label, sub, color, bg, icon, perms }) => (
+        <div key={label} style={{ background: 'var(--cui-card-bg, #fff)', border: '0.5px solid var(--cui-border-color)', borderRadius: '12px', padding: '1rem', borderTop: `3px solid ${color}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className={`ti ${icon}`} style={{ fontSize: 16, color }} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{label}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'inherit' }}>{sub}</p>
+            </div>
+          </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {perms.map(p => (
+              <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'inherit' }}>
+                <i className="ti ti-check" style={{ fontSize: 14, color: 'inherit' }} />{p}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+    </div>
+  </CCardBody>
+</CCard>
+
+
+
+
+
+
         <CRow className="justify-content-center">
           <CCol md={12} lg={12} xl={12}>
             {/* --- SUPERVISORS LIST --- */}

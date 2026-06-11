@@ -468,13 +468,14 @@ className: 'ms-2',
     _nav = [
 
 
-         {
+          {
         component: CNavItem,
         name: "Daily Activity Dashboard",
         to: '/dailyActivityDashboard',
         icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
+
 
 
       {

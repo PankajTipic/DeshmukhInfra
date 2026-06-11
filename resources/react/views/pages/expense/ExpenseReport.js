@@ -1,3 +1,4 @@
+
 // import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 // import {
 //   CBadge,
@@ -24,9 +25,10 @@
 //   CModalTitle,
 //   CModalFooter,
 // } from '@coreui/react';
+// import Select from 'react-select';
 // import CIcon from '@coreui/icons-react';
 // import { cilTrash, cilCloudDownload, cilChevronLeft, cilChevronRight, cilCloudUpload } from '@coreui/icons';
-// import { deleteAPICall, getAPICall, put, postFormData } from '../../../util/api';
+// import { deleteAPICall, getAPICall, put } from '../../../util/api';
 // import ConfirmationModal from '../../common/ConfirmationModal';
 // import { useNavigate } from 'react-router-dom';
 // import { useToast } from '../../common/toast/ToastContext';
@@ -36,7 +38,7 @@
 // import * as XLSX from 'xlsx';
 // import jsPDF from 'jspdf';
 // import 'jspdf-autotable';
-// import { exportToPDF } from './exportToPDF';
+// import { exportToPDF, downloadAllExpenseImages } from './exportToPDF';
 // import { exportToExcel } from './exportToExcel';
 
 // const ExpenseReport = () => {
@@ -71,12 +73,12 @@
 //   const [currentExpensePhotos, setCurrentExpensePhotos] = useState([]);
 //   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
-//   // New state for filters
+//   // Filters
 //   const [projects, setProjects] = useState([]);
 //   const [expenseTypes, setExpenseTypes] = useState([]);
 
-//   const [partyNames, setPartyNames] = useState([]);           // All unique party names
-//   const [filteredPartyNames, setFilteredPartyNames] = useState([]); // For search dropdown
+//   const [partyNames, setPartyNames] = useState([]);
+//   const [filteredPartyNames, setFilteredPartyNames] = useState([]);
 //   const [partySearchTerm, setPartySearchTerm] = useState('');
 //   const [showPartyDropdown, setShowPartyDropdown] = useState(false);
   
@@ -96,7 +98,6 @@
 //   const isInfiniteScrollingRef = useRef(false);
 //   const partyDropdownRef = useRef(null);
 
-
 //   // Fetch unique party names
 //   const fetchPartyNames = async () => {
 //     try {
@@ -107,7 +108,6 @@
 //       showToast('danger', 'Error fetching party names: ' + error);
 //     }
 //   };
-
 
 //   // Party name search handler
 //   const handlePartySearch = (e) => {
@@ -162,7 +162,7 @@
 //     setState({ ...state, [name]: value });
 //   };
 
-// // Close dropdown when clicking outside
+//   // Close dropdown when clicking outside
 //   useEffect(() => {
 //     const handleClickOutside = (event) => {
 //       if (partyDropdownRef.current && !partyDropdownRef.current.contains(event.target)) {
@@ -173,130 +173,53 @@
 //     return () => document.removeEventListener('mousedown', handleClickOutside);
 //   }, []);
 
-
-
-//   // const fetchExpense = async (reset = true) => {
-//   //   if (!state.start_date || !state.end_date) {
-//   //     if (!state.project_id && !state.expense_type_id) {
-//   //       showToast('warning', 'Please select dates or at least one filter (Project or Expense Type)');
-//   //       return;
-//   //     }
-//   //   }
-
-//   //   if (reset) {
-//   //     setIsLoading(true);
-//   //     isInfiniteScrollingRef.current = false;
-//   //   } else {
-//   //     setIsFetchingMore(true);
-//   //   }
-
-//   //   try {
-//   //     let url = `/api/expense?`;
-//   //     const params = [];
-      
-//   //     if (state.start_date && state.end_date) {
-//   //       params.push(`startDate=${state.start_date}`);
-//   //       params.push(`endDate=${state.end_date}`);
-//   //     }
-      
-//   //     if (state.project_id) {
-//   //       params.push(`customerId=${state.project_id}`);
-//   //     }
-      
-//   //     if (state.expense_type_id) {
-//   //       params.push(`expenseTypeId=${state.expense_type_id}`);
-//   //     }
-
-//   //     if (state.party_name && state.party_name.trim() !== '') {
-//   //     params.append('partyName', state.party_name.trim());
-//   //   }
-      
-//   //     if (nextCursor && !reset) {
-//   //       params.push(`cursor=${nextCursor}`);
-//   //     }
-      
-//   //     url += params.join('&');
-
-//   //     const response = await getAPICall(url);
-
-//   //     if (response.error) {
-//   //       showToast('danger', response.error);
-//   //     } else {
-//   //       const newExpenses = reset ? response.data : [...expenses, ...response.data];
-//   //       setExpenses(newExpenses);
-//   //       setTotalExpense(response.totalExpense || 0);
-//   //       setNextCursor(response.next_cursor || null);
-//   //       setHasMorePages(response.has_more_pages);
-
-//   //       if (isInfiniteScrollingRef.current && !reset) {
-//   //         requestAnimationFrame(() => {
-//   //           requestAnimationFrame(() => {
-//   //             if (tableContainerRef.current) {
-//   //               tableContainerRef.current.scrollTop = scrollPositionRef.current;
-//   //             }
-//   //             isInfiniteScrollingRef.current = false;
-//   //           });
-//   //         });
-//   //       }
-//   //     }
-//   //   } catch (error) {
-//   //     showToast('danger', 'Error occurred: ' + error);
-//   //   } finally {
-//   //     setIsLoading(false);
-//   //     setIsFetchingMore(false);
-//   //   }
-//   // };
-
-
-
-// const fetchExpense = async (reset = true) => {
-//   if (reset) {
-//     setIsLoading(true);
-//     setNextCursor(null);
-//     isInfiniteScrollingRef.current = false;
-//   } else {
-//     setIsFetchingMore(true);
-//   }
-
-//   try {
-//     const params = new URLSearchParams();
-
-//     if (state.start_date && state.end_date) {
-//       params.append('startDate', state.start_date);
-//       params.append('endDate', state.end_date);
-//     }
-//     if (state.project_id) params.append('customerId', state.project_id);
-//     if (state.expense_type_id) params.append('expenseTypeId', state.expense_type_id);
-    
-//     // FIXED: Properly send party_name
-//     if (state.party_name && state.party_name.trim() !== '') {
-//       params.append('partyName', state.party_name.trim());
-//     }
-
-//     if (nextCursor && !reset) {
-//       params.append('cursor', nextCursor);
-//     }
-
-//     const url = `/api/expense?${params.toString()}`;
-
-//     const response = await getAPICall(url);
-
-//     if (response.error) {
-//       showToast('danger', response.error);
+//   const fetchExpense = async (reset = true) => {
+//     if (reset) {
+//       setIsLoading(true);
+//       setNextCursor(null);
+//       isInfiniteScrollingRef.current = false;
 //     } else {
-//       const newExpenses = reset ? response.data : [...expenses, ...response.data];
-//       setExpenses(newExpenses);
-//       setTotalExpense(response.totalExpense || 0);
-//       setNextCursor(response.next_cursor || null);
-//       setHasMorePages(response.has_more_pages || false);
+//       setIsFetchingMore(true);
 //     }
-//   } catch (error) {
-//     showToast('danger', 'Error occurred: ' + error);
-//   } finally {
-//     setIsLoading(false);
-//     setIsFetchingMore(false);
-//   }
-// };
+
+//     try {
+//       const params = new URLSearchParams();
+
+//       if (state.start_date && state.end_date) {
+//         params.append('startDate', state.start_date);
+//         params.append('endDate', state.end_date);
+//       }
+//       if (state.project_id) params.append('customerId', state.project_id);
+//       if (state.expense_type_id) params.append('expenseTypeId', state.expense_type_id);
+      
+//       if (state.party_name && state.party_name.trim() !== '') {
+//         params.append('partyName', state.party_name.trim());
+//       }
+
+//       if (nextCursor && !reset) {
+//         params.append('cursor', nextCursor);
+//       }
+
+//       const url = `/api/expense?${params.toString()}`;
+
+//       const response = await getAPICall(url);
+
+//       if (response.error) {
+//         showToast('danger', response.error);
+//       } else {
+//         const newExpenses = reset ? response.data : [...expenses, ...response.data];
+//         setExpenses(newExpenses);
+//         setTotalExpense(response.totalExpense || 0);
+//         setNextCursor(response.next_cursor || null);
+//         setHasMorePages(response.has_more_pages || false);
+//       }
+//     } catch (error) {
+//       showToast('danger', 'Error occurred: ' + error);
+//     } finally {
+//       setIsLoading(false);
+//       setIsFetchingMore(false);
+//     }
+//   };
 
 //   const handleSubmit = async (event) => {
 //     try {
@@ -399,14 +322,11 @@
 //   };
 
 //   const handleViewImage = (expense) => {
-//     // Check if expense has photos array (new format)
 //     if (expense.photos && Array.isArray(expense.photos) && expense.photos.length > 0) {
 //       setCurrentExpensePhotos(expense.photos);
 //       setCurrentPhotoIndex(0);
 //       setShowPhotoGalleryModal(true);
-//     } 
-//     // Fallback to old single photo format
-//     else if (expense.photo_url && expense.photo_url !== "NA") {
+//     } else if (expense.photo_url && expense.photo_url !== "NA") {
 //       setSelectedImage(expense.photo_url || '');
 //       setShowImageModal(true);
 //     } else {
@@ -414,7 +334,6 @@
 //     }
 //   };
 
-//   // Photo gallery navigation
 //   const handleNextPhoto = () => {
 //     if (currentPhotoIndex < currentExpensePhotos.length - 1) {
 //       setCurrentPhotoIndex(currentPhotoIndex + 1);
@@ -427,7 +346,6 @@
 //     }
 //   };
 
-//   // Download photo
 //   const handleDownloadPhoto = (photoUrl, index) => {
 //     const fileName = photoUrl.split('/').pop();
 //     const link = document.createElement('a');
@@ -468,10 +386,9 @@
 //     const [integerPart, decimalPart = '00'] = numericAmount.toFixed(2).split('.');
 //     const lastThree = integerPart.slice(-3);
 //     const otherNumbers = integerPart.slice(0, -3);
-//     const formattedInteger =
-//       otherNumbers.length > 0
-//         ? otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree
-//         : lastThree;
+//     const formattedInteger = otherNumbers.length > 0
+//       ? otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree
+//       : lastThree;
 //     return `${formattedInteger}.${decimalPart}`;
 //   };
 
@@ -526,9 +443,9 @@
 //     );
 //   };
 
-
-
-
+//   const handleDownloadAllImages = () => {
+//     downloadAllExpenseImages(sortedFilteredExpenses, showToast);
+//   };
 
 //   const sortedFilteredExpenses = useMemo(() => {
 //     let filtered = expenses.map((expense, index) => ({
@@ -592,11 +509,6 @@
 //     [sortedFilteredExpenses]
 //   );
 
-//   const sumPrice = useMemo(() => 
-//     sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.price || 0), 0),
-//     [sortedFilteredExpenses]
-//   );
-
 //   const sumBase = useMemo(() => 
 //     sortedFilteredExpenses.reduce((sum, expense) => {
 //       const qty = parseFloat(expense.qty || 0);
@@ -607,30 +519,22 @@
 //   );
 
 //   const totalCgstAmount = useMemo(() =>
-//     sortedFilteredExpenses.reduce((sum, expense) => {
-//       return sum + parseFloat(expense.cgst || 0);
-//     }, 0),
+//     sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.cgst || 0), 0),
 //     [sortedFilteredExpenses]
 //   );
 
 //   const totalSgstAmount = useMemo(() =>
-//     sortedFilteredExpenses.reduce((sum, expense) => {
-//       return sum + parseFloat(expense.sgst || 0);
-//     }, 0),
+//     sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.sgst || 0), 0),
 //     [sortedFilteredExpenses]
 //   );
 
 //   const totalIgstAmount = useMemo(() =>
-//     sortedFilteredExpenses.reduce((sum, expense) => {
-//       return sum + parseFloat(expense.igst || 0);
-//     }, 0),
+//     sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.igst || 0), 0),
 //     [sortedFilteredExpenses]
 //   );
 
 //   const totalGstAmount = useMemo(() =>
-//     sortedFilteredExpenses.reduce((sum, expense) => {
-//       return sum + parseFloat(expense.gst || 0);
-//     }, 0),
+//     sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.gst || 0), 0),
 //     [sortedFilteredExpenses]
 //   );
 
@@ -772,9 +676,6 @@
 //     );
 //   }
 
-//   const selectedProject = projects.find(p => p.id === parseInt(state.project_id));
-//   const selectedExpenseType = expenseTypes.find(et => et.id === parseInt(state.expense_type_id));
-
 //   return (
 //     <>
 //       <style jsx global>{`
@@ -838,29 +739,6 @@
 //           background-color: #f8f9fa;
 //           border-bottom: 2px solid #dee2e6;
 //         }
-//         .search-container {
-//           position: relative;
-//         }
-//         .search-input {
-//           padding-left: 40px;
-//         }
-//         .search-icon {
-//           position: absolute;
-//           left: 12px;
-//           top: 50%;
-//           transform: translateY(-50%);
-//           color: #6c757d;
-//         }
-//         .clear-search {
-//           position: absolute;
-//           right: 12px;
-//           top: 50%;
-//           transform: translateY(-50%);
-//           background: none;
-//           border: none;
-//           color: #6c757d;
-//           cursor: pointer;
-//         }
 //         .summary-container {
 //           margin-bottom: 20px;
 //           padding: 10px;
@@ -890,42 +768,341 @@
 //         onExpenseUpdated={handleExpenseUpdated}
 //       />
 
-//       {/* Old Single Photo Modal - Keep for backward compatibility */}
-//       <CModal visible={showImageModal} onClose={() => setShowImageModal(false)}>
-//         <CModalHeader>
-//           <CModalTitle>View File</CModalTitle>
-//         </CModalHeader>
-//         <CModalBody>
-//           {selectedImage ? (
-//             (() => {
-//               const fileName = selectedImage.split('/').pop();
-//               const fileUrl = `/${selectedImage}`;
-//               const fileExtension = fileName.split('.').pop().toLowerCase();
+//       {/* Image Modals (kept as is) */}
+//       {/* ... (All your modals remain unchanged) ... */}
 
-//               if (fileExtension === 'pdf') {
-//                 return (
-//                   <iframe src={fileUrl} title="PDF Preview" style={{ width: '100%', height: '70vh', border: 'none' }} />
-//                 );
-//               }
+//       <CRow>
+//         <ConfirmationModal
+//           visible={deleteModalVisible}
+//           setVisible={setDeleteModalVisible}
+//           onYes={onDelete}
+//           resource={`Delete expense`}
+//         />
+//         <CCol xs={12}>
+//           <CCard className="mb-4">
+//             <CCardHeader>
+//               <strong>Expense Report</strong>
+//               <span className="ms-2 text-muted">Total {sortedFilteredExpenses.length} expenses</span>
+//             </CCardHeader>
+//             <CCardBody>
+//               <CForm noValidate validated={validated} onSubmit={handleSubmit}>
+//                 <div className="row">
+//                   <div className="col-sm-3">
+//                     {/* <div className="mb-1">
+//                       <CFormLabel htmlFor="project_id">Project</CFormLabel>
+//                       <CFormSelect
+//                         id="project_id"
+//                         name="project_id"
+//                         value={state.project_id}
+//                         onChange={handleChange}
+//                       >
+//                         <option value="">All Projects</option>
+//                         {projects.map((project) => (
+//                           <option key={project.id} value={project.id}>
+//                             {project.project_name} - {project.customer_name || 'No Customer'}
+//                           </option>
+//                         ))}
+//                       </CFormSelect>
+//                     </div> */}
 
-//               if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
-//                 return (
-//                   <img src={fileUrl} alt="Expense" style={{ maxWidth: '100%', maxHeight: '70vh', display: 'block', margin: 'auto' }} />
-//                 );
-//               }
+// <div className="mb-1">
+//   <CFormLabel className="fw-bold">
+//     Project <span className="text-danger">*</span>
+//   </CFormLabel>
+  
+//   <Select
+//     placeholder="Select or search project..."
+//     options={projects.map((project) => ({
+//       value: project.id,
+//       label: `${project.project_name} ${project.customer_name ? `- ${project.customer_name}` : ''}`,
+//     }))}
+//     value={projects.find(p => p.id === Number(state.project_id))
+//       ? {
+//           value: Number(state.project_id),
+//           label: projects.find(p => p.id === Number(state.project_id))?.project_name + 
+//                  (projects.find(p => p.id === Number(state.project_id))?.customer_name 
+//                    ? ` - ${projects.find(p => p.id === Number(state.project_id))?.customer_name}` 
+//                    : '')
+//         }
+//       : null
+//     }
+//     onChange={(selectedOption) => {
+//       if (selectedOption) {
+//         setState(prev => ({ ...prev, project_id: selectedOption.value }));
+//       } else {
+//         setState(prev => ({ ...prev, project_id: '' }));
+//       }
+//     }}
+//     isClearable
+//     isSearchable
+//     styles={{
+//       control: (base) => ({
+//         ...base,
+//         minHeight: '38px',
+//         borderColor: '#d1d5db',
+//       })
+//     }}
+//   />
+//   </div>
 
-//               return <p style={{ color: 'red', textAlign: 'center' }}>Unsupported file type</p>;
-//             })()
-//           ) : (
-//             <p style={{ color: 'red', textAlign: 'center' }}>File not available</p>
-//           )}
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton color="secondary" onClick={() => setShowImageModal(false)}>Close</CButton>
-//         </CModalFooter>
-//       </CModal>
+//                   </div>
 
-//       {/* Photo Gallery Modal - Grid View */}
+//                   <div className="col-sm-2">
+//                     <div className="mb-1">
+//                       <CFormLabel htmlFor="start_date">Start Date</CFormLabel>
+//                       <CFormInput type="date" id="start_date" name="start_date" value={state.start_date} onChange={handleChange} />
+//                     </div>
+//                   </div>
+
+//                   <div className="col-sm-2">
+//                     <div className="mb-1">
+//                       <CFormLabel htmlFor="end_date">End Date</CFormLabel>
+//                       <CFormInput type="date" id="end_date" name="end_date" value={state.end_date} onChange={handleChange} />
+//                     </div>
+//                   </div>
+
+//                   <div className="col-sm-3">
+//                     <div className="mb-1">
+//                       <CFormLabel htmlFor="expense_type_id">Expense Type</CFormLabel>
+//                       <CFormSelect id="expense_type_id" name="expense_type_id" value={state.expense_type_id} onChange={handleChange}>
+//                         <option value="">All Expense Types</option>
+//                         {expenseTypes.map((type) => (
+//                           <option key={type.id} value={type.id}>{type.name}</option>
+//                         ))}
+//                       </CFormSelect>
+//                     </div>
+//                   </div>
+
+//                   <div className="col-sm-3" ref={partyDropdownRef}>
+//                     <CFormLabel>Party Name</CFormLabel>
+//                     <div className="position-relative">
+//                       <CFormInput
+//                         type="text"
+//                         placeholder="Search party name..."
+//                         value={partySearchTerm}
+//                         onChange={handlePartySearch}
+//                         onFocus={() => setShowPartyDropdown(true)}
+//                       />
+//                       {showPartyDropdown && filteredPartyNames.length > 0 && (
+//                         <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded" 
+//                              style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
+//                           {filteredPartyNames.map((name, index) => (
+//                             <div key={index} className="px-3 py-2 hover-bg-light cursor-pointer" onClick={() => selectPartyName(name)} style={{ cursor: 'pointer' }}>
+//                               {name}
+//                             </div>
+//                           ))}
+//                         </div>
+//                       )}
+//                     </div>
+//                   </div>
+
+//                   <div className="col-sm-2">
+//                     <div className="mb-1 mt-4">
+//                       <CButton color="success" type="submit" disabled={isLoading} className="w-100">
+//                         {isLoading ? 'Loading...' : 'Submit'}
+//                       </CButton>
+//                     </div>
+//                   </div>
+//                 </div>
+//               </CForm>
+
+//               <hr />
+
+//               <CRow className="mb-3">
+//                 <CCol xs={12} md={6} lg={3}>
+//                   <div className="mb-1">
+//                     <CFormLabel htmlFor="gstFilter">GST/Non-GST</CFormLabel>
+//                     <CFormSelect id="gstFilter" value={gstFilter} onChange={(e) => setGstFilter(e.target.value)}>
+//                       <option value="">All</option>
+//                       <option value="gst">GST</option>
+//                       <option value="non-gst">Non-GST</option>
+//                     </CFormSelect>
+//                   </div>
+//                 </CCol>
+
+//                 <CCol xs={12} md={6} lg={6}>
+//                   <div className="d-flex gap-2 mt-4">
+//                     <CButton color="primary" onClick={handleExportToExcel} disabled={!sortedFilteredExpenses.length}>
+//                       Download Excel
+//                     </CButton>
+//                     <CButton color="warning" onClick={handleExportToPDF} disabled={!sortedFilteredExpenses.length}>
+//                       Download PDF
+//                     </CButton>
+//                     <CButton 
+//                       color="info" 
+//                       onClick={handleDownloadAllImages} 
+//                       disabled={!sortedFilteredExpenses.length}
+//                     >
+//                       📸 Download All Images (ZIP)
+//                     </CButton>
+//                   </div>
+//                 </CCol>
+//               </CRow>
+
+//               {/* Mobile View */}
+//               {isMobile ? (
+//                 <div className="mobile-cards-container">
+//                   {sortedFilteredExpenses.length === 0 ? (
+//                     <div className="text-center text-muted py-4">
+//                       <p>No expenses found</p>
+//                     </div>
+//                   ) : (
+//                     sortedFilteredExpenses.map(renderMobileCard)
+//                   )}
+//                   {isFetchingMore && (
+//                     <div className="loading-more">
+//                       <CSpinner color="primary" size="sm" />
+//                       <span className="ms-2 text-muted">Loading more...</span>
+//                     </div>
+//                   )}
+//                 </div>
+//               ) : (
+//                 <>
+//                   {sortedFilteredExpenses.length > 0 && (
+//                     <div className="summary-container">
+//                       <div className="summary-item"><strong>Total Amount</strong>{formatCurrency(filteredTotalExpense)}</div>
+//                       <div className="summary-item"><strong>GST</strong>{formatCurrency(totalGstAmount)}</div>
+//                       <div className="summary-item"><strong>CGST</strong>{formatCurrency(totalCgstAmount)}</div>
+//                       <div className="summary-item"><strong>SGST</strong>{formatCurrency(totalSgstAmount)}</div>
+//                       <div className="summary-item"><strong>IGST</strong>{formatCurrency(totalIgstAmount)}</div>
+//                     </div>
+//                   )}
+//                   <div className="table-container" ref={tableContainerRef} onScroll={handleScroll}>
+//                     <div className="table-responsive">
+//                       <CTable className="expenses-table">
+//                         <CTableHead>
+//                           <CTableRow>
+//                             <CTableHeaderCell onClick={() => handleSort('sr_no')} style={{ cursor: 'pointer' }}>
+//                               Sr No <span style={getSortIconStyle('sr_no')}>{getSortIcon('sr_no')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell onClick={() => handleSort('expense_date')} style={{ cursor: 'pointer' }}>
+//                               Date <span style={getSortIconStyle('expense_date')}>{getSortIcon('expense_date')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell onClick={() => handleSort('customer_name')} style={{ cursor: 'pointer' }}>
+//                               Project <span style={getSortIconStyle('customer_name')}>{getSortIcon('customer_name')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell>Party Name</CTableHeaderCell>
+//                             <CTableHeaderCell>Party GST Number</CTableHeaderCell> 
+//                             <CTableHeaderCell>Party Address</CTableHeaderCell>
+//                             <CTableHeaderCell onClick={() => handleSort('expense_type')} style={{ cursor: 'pointer' }}>
+//                               Expense Type <span style={getSortIconStyle('expense_type')}>{getSortIcon('expense_type')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell>Category</CTableHeaderCell>
+//                             <CTableHeaderCell>Qty</CTableHeaderCell>
+//                             <CTableHeaderCell onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>
+//                               Price <span style={getSortIconStyle('price')}>{getSortIcon('price')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell onClick={() => handleSort('total_price')} style={{ cursor: 'pointer' }}>
+//                               Total <span style={getSortIconStyle('total_price')}>{getSortIcon('total_price')}</span>
+//                             </CTableHeaderCell>
+//                             <CTableHeaderCell>GST Rs</CTableHeaderCell>
+//                             <CTableHeaderCell>CGST Rs</CTableHeaderCell>
+//                             <CTableHeaderCell>SGST Rs</CTableHeaderCell>
+//                             <CTableHeaderCell>IGST Rs</CTableHeaderCell>
+//                             <CTableHeaderCell>Payment By</CTableHeaderCell>
+//                             <CTableHeaderCell>Payment Type</CTableHeaderCell>
+//                             <CTableHeaderCell>Contact</CTableHeaderCell>
+//                             <CTableHeaderCell>Bank Name</CTableHeaderCell>
+//                             <CTableHeaderCell>Account Number</CTableHeaderCell>
+//                             <CTableHeaderCell>IFSC</CTableHeaderCell>
+//                             <CTableHeaderCell>Transaction ID</CTableHeaderCell>
+//                             <CTableHeaderCell>About</CTableHeaderCell>
+//                             <CTableHeaderCell>Notes</CTableHeaderCell>
+//                             <CTableHeaderCell>Actions</CTableHeaderCell>
+//                           </CTableRow>
+//                         </CTableHead>
+//                         <CTableBody>
+//                           {sortedFilteredExpenses.length === 0 ? (
+//                             <CTableRow>
+//                               <CTableDataCell colSpan={22} className="text-center py-4">
+//                                 <p>No expenses found</p>
+//                               </CTableDataCell>
+//                             </CTableRow>
+//                           ) : (
+//                             sortedFilteredExpenses.map((expense) => (
+//                               <CTableRow key={expense.id}>
+//                                 <CTableDataCell>{expense.sr_no}</CTableDataCell>
+//                                 <CTableDataCell>{formatDate(expense.expense_date)}</CTableDataCell>
+//                                 <CTableDataCell>{expense.project?.project_name || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.party_name || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.party_gst_number || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.party_address || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expenseType[expense.expense_id] || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.expense_type?.expense_category || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.qty || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.price ? formatIndianNumber(expense.price) : '-'}</CTableDataCell>
+//                                 <CTableDataCell>
+//                                   <span style={{ fontWeight: '500', color: '#dc3545' }}>
+//                                     {formatCurrency(expense.total_price)}
+//                                   </span>
+//                                 </CTableDataCell>
+//                                 <CTableDataCell>{expense.isGst ? (expense.gst !== null ? `${expense.gst}Rs` : '-') : '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.isGst ? (expense.cgst !== null ? `${expense.cgst}Rs` : '-') : '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.isGst ? (expense.sgst !== null ? `${expense.sgst}Rs` : '-') : '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.isGst ? (expense.igst !== null ? `${expense.igst}Rs` : '-') : '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.payment_by || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.payment_type || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.contact || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.bank_name || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.acc_number || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.ifsc || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.transaction_id || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.name || '-'}</CTableDataCell>
+//                                 <CTableDataCell>{expense.photo_remark || '-'}</CTableDataCell>
+//                                 <CTableDataCell>
+//                                   <div className="action-buttons">
+//                                     {(usertype === 1 || usertype === 3) ? (
+//                                       <>
+//                                         <CBadge role="button" color={expense.show ? 'success' : 'danger'} onClick={() => handleEdit(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
+//                                           {expense.show ? 'Valid' : 'Invalid'}
+//                                         </CBadge>
+//                                         <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
+//                                           Edit
+//                                         </CBadge>
+//                                         <CBadge role="button" color="danger" onClick={() => handleDelete(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
+//                                           Delete
+//                                         </CBadge>
+//                                       </>
+//                                     ) : (
+//                                       <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
+//                                         Edit
+//                                       </CBadge>
+//                                     )}
+//                                     {((expense.photos && expense.photos.length > 0) || (expense.photo_url && expense.photo_url !== "NA")) && (
+//                                       <CBadge role="button" color="secondary" onClick={() => handleViewImage(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
+//                                         View {expense.photos && expense.photos.length > 1 ? `(${expense.photos.length})` : ''}
+//                                       </CBadge>
+//                                     )}
+//                                   </div>
+//                                 </CTableDataCell>
+//                               </CTableRow>
+//                             ))
+//                           )}
+//                         </CTableBody>
+//                       </CTable>
+//                     </div>
+//                     {isFetchingMore && (
+//                       <div className="loading-more">
+//                         <CSpinner color="primary" size="sm" />
+//                         <span className="ms-2 text-muted">Loading more...</span>
+//                       </div>
+//                     )}
+//                   </div>
+//                 </>
+//               )}
+//             </CCardBody>
+//           </CCard>
+//         </CCol>
+//       </CRow>
+
+
+
+
+
+
+
+
+//     {/* Photo Gallery Modal - Grid View */}
 //       <CModal 
 //         visible={showPhotoGalleryModal} 
 //         onClose={() => setShowPhotoGalleryModal(false)}
@@ -1126,479 +1303,15 @@
 //         </CModalFooter>
 //       </CModal>
 
-//       {/* Full Size Image Preview Modal */}
-//       <CModal 
-//         visible={showImageModal && selectedImage && showPhotoGalleryModal === false} 
-//         onClose={() => {
-//           setShowImageModal(false);
-//           setSelectedImage('');
-//         }}
-//         size="xl"
-//       >
-//         <CModalHeader>
-//           <CModalTitle>
-//             Photo {currentPhotoIndex + 1} of {currentExpensePhotos.length}
-//           </CModalTitle>
-//         </CModalHeader>
-//         <CModalBody style={{ backgroundColor: '#000', padding: 0 }}>
-//           {selectedImage && (
-//             <div className="d-flex align-items-center justify-content-center position-relative" style={{ minHeight: '70vh' }}>
-//               {/* Navigation */}
-//               {currentPhotoIndex > 0 && (
-//                 <CButton
-//                   color="light"
-//                   className="position-absolute start-0 ms-3"
-//                   onClick={() => {
-//                     const newIndex = currentPhotoIndex - 1;
-//                     setCurrentPhotoIndex(newIndex);
-//                     setSelectedImage(currentExpensePhotos[newIndex].photo_url);
-//                   }}
-//                   style={{ zIndex: 10 }}
-//                 >
-//                   <CIcon icon={cilChevronLeft} size="lg" />
-//                 </CButton>
-//               )}
-
-//               {(() => {
-//                 const fileExtension = selectedImage.split('.').pop().toLowerCase();
-//                 const fileUrl = `/${selectedImage}`;
-
-//                 if (fileExtension === 'pdf') {
-//                   return (
-//                     <iframe 
-//                       src={fileUrl} 
-//                       title="PDF Preview" 
-//                       style={{ 
-//                         width: '100%', 
-//                         height: '70vh', 
-//                         border: 'none'
-//                       }} 
-//                     />
-//                   );
-//                 }
-
-//                 return (
-//                   <img 
-//                     src={fileUrl} 
-//                     alt="Full size" 
-//                     style={{ 
-//                       maxWidth: '100%', 
-//                       maxHeight: '70vh', 
-//                       objectFit: 'contain'
-//                     }}
-//                   />
-//                 );
-//               })()}
-
-//               {currentPhotoIndex < currentExpensePhotos.length - 1 && (
-//                 <CButton
-//                   color="light"
-//                   className="position-absolute end-0 me-3"
-//                   onClick={() => {
-//                     const newIndex = currentPhotoIndex + 1;
-//                     setCurrentPhotoIndex(newIndex);
-//                     setSelectedImage(currentExpensePhotos[newIndex].photo_url);
-//                   }}
-//                   style={{ zIndex: 10 }}
-//                 >
-//                   <CIcon icon={cilChevronRight} size="lg" />
-//                 </CButton>
-//               )}
-//             </div>
-//           )}
-//         </CModalBody>
-//         <CModalFooter>
-//           <CButton 
-//             color="primary" 
-//             onClick={() => handleDownloadPhoto(selectedImage, currentPhotoIndex)}
-//           >
-//             <CIcon icon={cilCloudDownload} /> Download
-//           </CButton>
-//           <CButton 
-//             color="secondary" 
-//             onClick={() => {
-//               setShowImageModal(false);
-//               setSelectedImage('');
-//             }}
-//           >
-//             Close
-//           </CButton>
-//         </CModalFooter>
-//       </CModal>
-
-//       <CRow>
-//         <ConfirmationModal
-//           visible={deleteModalVisible}
-//           setVisible={setDeleteModalVisible}
-//           onYes={onDelete}
-//           resource={`Delete expense`}
-//         />
-//         <CCol xs={12}>
-//           <CCard className="mb-4">
-//             <CCardHeader>
-//               <strong>Expense Report</strong>
-//               <span className="ms-2 text-muted">Total {sortedFilteredExpenses.length} expenses</span>
-//             </CCardHeader>
-//             <CCardBody>
-//               <CForm noValidate validated={validated} onSubmit={handleSubmit}>
-//                 <div className="row">
-//                   <div className="col-sm-3">
-//                     <div className="mb-1">
-//                       <CFormLabel htmlFor="project_id">Project</CFormLabel>
-//                       <CFormSelect
-//                         id="project_id"
-//                         name="project_id"
-//                         value={state.project_id}
-//                         onChange={handleChange}
-//                       >
-//                         <option value="">All Projects</option>
-//                         {projects.map((project) => (
-//                           <option key={project.id} value={project.id}>
-//                             {project.project_name} - {project.customer_name} 
-//                           </option>
-//                         ))}
-//                       </CFormSelect>
-//                     </div>
-//                   </div>
-
-//                   <div className="col-sm-2">
-//                     <div className="mb-1">
-//                       <CFormLabel htmlFor="start_date">Start Date</CFormLabel>
-//                       <CFormInput
-//                         type="date"
-//                         id="start_date"
-//                         name="start_date"
-//                         value={state.start_date}
-//                         onChange={handleChange}
-//                       />
-//                     </div>
-//                   </div>
-
-//                   <div className="col-sm-2">
-//                     <div className="mb-1">
-//                       <CFormLabel htmlFor="end_date">End Date</CFormLabel>
-//                       <CFormInput
-//                         type="date"
-//                         id="end_date"
-//                         name="end_date"
-//                         value={state.end_date}
-//                         onChange={handleChange}
-//                       />
-//                     </div>
-//                   </div>
-
-//                   <div className="col-sm-3">
-//                     <div className="mb-1">
-//                       <CFormLabel htmlFor="expense_type_id">Expense Type</CFormLabel>
-//                       <CFormSelect
-//                         id="expense_type_id"
-//                         name="expense_type_id"
-//                         value={state.expense_type_id}
-//                         onChange={handleChange}
-//                       >
-//                         <option value="">All Expense Types</option>
-//                         {expenseTypes.map((type) => (
-//                           <option key={type.id} value={type.id}>
-//                             {type.name}
-//                           </option>
-//                         ))}
-//                       </CFormSelect>
-//                     </div>
-//                   </div>
 
 
 
 
-
-
-
-// {/* ================== NEW PARTY NAME FILTER ================== */}
-//                   <div className="col-sm-3" ref={partyDropdownRef}>
-//                     <CFormLabel>Party Name</CFormLabel>
-//                     <div className="position-relative">
-//                       <CFormInput
-//                         type="text"
-//                         placeholder="Search party name..."
-//                         value={partySearchTerm}
-//                         onChange={handlePartySearch}
-//                         onFocus={() => setShowPartyDropdown(true)}
-//                       />
-
-//                       {showPartyDropdown && filteredPartyNames.length > 0 && (
-//                         <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded" 
-//                              style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
-//                           {filteredPartyNames.map((name, index) => (
-//                             <div
-//                               key={index}
-//                               className="px-3 py-2 hover-bg-light cursor-pointer"
-//                               onClick={() => selectPartyName(name)}
-//                               style={{ cursor: 'pointer' }}
-//                             >
-//                               {name}
-//                             </div>
-//                           ))}
-//                         </div>
-//                       )}
-//                     </div>
-//                   </div>
-
-
-
-
-
-
-
-
-
-
-//                   <div className="col-sm-2">
-//                     <div className="mb-1 mt-4">
-//                       <CButton color="success" type="submit" disabled={isLoading} className="w-100">
-//                         {isLoading ? 'Loading...' : 'Submit'}
-//                       </CButton>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </CForm>
-
-//               <hr />
-
-//               <CRow className="mb-3">
-//                 <CCol xs={12} md={6} lg={3}>
-//                   <div className="mb-1">
-//                     <CFormLabel htmlFor="gstFilter">GST/Non-GST</CFormLabel>
-//                     <CFormSelect id="gstFilter" value={gstFilter} onChange={(e) => setGstFilter(e.target.value)}>
-//                       <option value="">All</option>
-//                       <option value="gst">GST</option>
-//                       <option value="non-gst">Non-GST</option>
-//                     </CFormSelect>
-//                   </div>
-//                 </CCol>
-
-//                 <CCol xs={12} md={6} lg={3}>
-//                   <div className="d-flex gap-2 mt-4">
-//                     <CButton color="primary" onClick={handleExportToExcel} disabled={!sortedFilteredExpenses.length}>
-//                       Download Excel
-//                     </CButton>
-//                     <CButton color="warning" onClick={handleExportToPDF} disabled={!sortedFilteredExpenses.length}>
-//                       Download PDF
-//                     </CButton>
-
-// <CButton 
-//     color="info" 
-//     onClick={() => downloadAllExpenseImages(sortedFilteredExpenses, showToast)}
-//     disabled={!sortedFilteredExpenses.length}
-//   >
-//     📸 Download All Images
-//   </CButton>
-
-
-//                   </div>
-//                 </CCol>
-
-//                 {searchTerm && (
-//                   <CCol xs={12} className="mt-2">
-//                     <small className="text-muted">
-//                       {sortedFilteredExpenses.length} expenses found for "{searchTerm}"
-//                     </small>
-//                   </CCol>
-//                 )}
-//               </CRow>
-
-//               {isMobile ? (
-//                 <div className="mobile-cards-container">
-//                   {sortedFilteredExpenses.length === 0 ? (
-//                     <div className="text-center text-muted py-4">
-//                       <p>No expenses found</p>
-//                     </div>
-//                   ) : (
-//                     sortedFilteredExpenses.map(renderMobileCard)
-//                   )}
-//                   {isFetchingMore && (
-//                     <div className="loading-more">
-//                       <CSpinner color="primary" size="sm" />
-//                       <span className="ms-2 text-muted">Loading more...</span>
-//                     </div>
-//                   )}
-//                 </div>
-//               ) : (
-//                 <>
-//                   {sortedFilteredExpenses.length > 0 && (
-//                     <div className="summary-container">
-//                       <div className="summary-item"><strong>Total Amount</strong>{formatCurrency(filteredTotalExpense)}</div>
-//                       <div className="summary-item"><strong>GST</strong>{formatCurrency(totalGstAmount)}</div>
-//                       <div className="summary-item"><strong>CGST</strong>{formatCurrency(totalCgstAmount)}</div>
-//                       <div className="summary-item"><strong>SGST</strong>{formatCurrency(totalSgstAmount)}</div>
-//                       <div className="summary-item"><strong>IGST</strong>{formatCurrency(totalIgstAmount)}</div>
-//                     </div>
-//                   )}
-//                   <div className="table-container" ref={tableContainerRef} onScroll={handleScroll}>
-//                     <div className="table-responsive">
-//                       <CTable className="expenses-table">
-//                         <CTableHead>
-//                           <CTableRow>
-//                             <CTableHeaderCell onClick={() => handleSort('sr_no')} style={{ cursor: 'pointer' }}>
-//                               Sr No <span style={getSortIconStyle('sr_no')}>{getSortIcon('sr_no')}</span>
-//                             </CTableHeaderCell>
-//                             <CTableHeaderCell onClick={() => handleSort('expense_date')} style={{ cursor: 'pointer' }}>
-//                               Date <span style={getSortIconStyle('expense_date')}>{getSortIcon('expense_date')}</span>
-//                             </CTableHeaderCell>
-//                             <CTableHeaderCell onClick={() => handleSort('customer_name')} style={{ cursor: 'pointer' }}>
-//                               Project <span style={getSortIconStyle('customer_name')}>{getSortIcon('customer_name')}</span>
-//                             </CTableHeaderCell>
-
-
-//  <CTableHeaderCell>Party Name</CTableHeaderCell>
-//   <CTableHeaderCell>Party GST Number</CTableHeaderCell> 
-//   <CTableHeaderCell>Party Address</CTableHeaderCell>
-
-
-
-//                             <CTableHeaderCell onClick={() => handleSort('expense_type')} style={{ cursor: 'pointer' }}>
-//                               Expense Type <span style={getSortIconStyle('expense_type')}>{getSortIcon('expense_type')}</span>
-//                             </CTableHeaderCell>
-//                             <CTableHeaderCell>Category</CTableHeaderCell>
-//                             <CTableHeaderCell>Qty</CTableHeaderCell>
-//                             <CTableHeaderCell onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>
-//                               Price <span style={getSortIconStyle('price')}>{getSortIcon('price')}</span>
-//                             </CTableHeaderCell>
-//                             <CTableHeaderCell onClick={() => handleSort('total_price')} style={{ cursor: 'pointer' }}>
-//                               Total <span style={getSortIconStyle('total_price')}>{getSortIcon('total_price')}</span>
-//                             </CTableHeaderCell>
-//                             <CTableHeaderCell>GST Rs</CTableHeaderCell>
-//                             <CTableHeaderCell>CGST Rs</CTableHeaderCell>
-//                             <CTableHeaderCell>SGST Rs</CTableHeaderCell>
-//                             <CTableHeaderCell>IGST Rs</CTableHeaderCell>
-//                             <CTableHeaderCell>Payment By</CTableHeaderCell>
-//                             <CTableHeaderCell>Payment Type</CTableHeaderCell>
-//                             <CTableHeaderCell>Contact</CTableHeaderCell>
-//                             <CTableHeaderCell>Bank Name</CTableHeaderCell>
-//                             <CTableHeaderCell>Account Number</CTableHeaderCell>
-//                             <CTableHeaderCell>IFSC</CTableHeaderCell>
-//                             <CTableHeaderCell>Transaction ID</CTableHeaderCell>
-//                             <CTableHeaderCell>About</CTableHeaderCell>
-//                             <CTableHeaderCell>Notes</CTableHeaderCell>
-//                             <CTableHeaderCell>Actions</CTableHeaderCell>
-//                           </CTableRow>
-//                         </CTableHead>
-//                         <CTableBody>
-//                           {sortedFilteredExpenses.length === 0 ? (
-//                             <CTableRow>
-//                               <CTableDataCell colSpan={22} className="text-center py-4">
-//                                 <p>No expenses found</p>
-//                               </CTableDataCell>
-//                             </CTableRow>
-//                           ) : (
-//                             sortedFilteredExpenses.map((expense) => (
-//                               <CTableRow key={expense.id}>
-//                                 <CTableDataCell>{expense.sr_no}</CTableDataCell>
-//                                 <CTableDataCell>{formatDate(expense.expense_date)}</CTableDataCell>
-//                                 <CTableDataCell>{expense.project?.project_name || '-'}</CTableDataCell>
-
-
-// <CTableDataCell>{expense.party_name || '-'}</CTableDataCell>
-// <CTableDataCell>{expense.party_gst_number || '-'}</CTableDataCell>
-// <CTableDataCell>{expense.party_address || '-'}</CTableDataCell>
-
-
-//                                 <CTableDataCell>{expenseType[expense.expense_id] || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.expense_type?.expense_category || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.qty || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.price ? formatIndianNumber(expense.price) : '-'}</CTableDataCell>
-//                                 <CTableDataCell>
-//                                   <span style={{ fontWeight: '500', color: '#dc3545' }}>
-//                                     {formatCurrency(expense.total_price)}
-//                                   </span>
-//                                 </CTableDataCell>
-//                                 <CTableDataCell>{expense.isGst ? (expense.gst !== null ? `${expense.gst}Rs` : '-') : '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.isGst ? (expense.cgst !== null ? `${expense.cgst}Rs` : '-') : '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.isGst ? (expense.sgst !== null ? `${expense.sgst}Rs` : '-') : '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.isGst ? (expense.igst !== null ? `${expense.igst}Rs` : '-') : '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.payment_by || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.payment_type || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.contact || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.bank_name || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.acc_number || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.ifsc || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.transaction_id || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.name || '-'}</CTableDataCell>
-//                                 <CTableDataCell>{expense.photo_remark || '-'}</CTableDataCell>
-//                                 <CTableDataCell>
-//                                   <div className="action-buttons">
-//                                     {(usertype === 1 || usertype ===3) ? (
-//                                       <>
-//                                         <CBadge
-//                                           role="button"
-//                                           color={expense.show ? 'success' : 'danger'}
-//                                           onClick={() => handleEdit(expense)}
-//                                           style={{ cursor: 'pointer', fontSize: '0.75em' }}
-//                                         >
-//                                           {expense.show ? 'Valid' : 'Invalid'}
-//                                         </CBadge>
-//                                         <CBadge
-//                                           role="button"
-//                                           color="primary"
-//                                           onClick={() => handleEditExpense(expense)}
-//                                           style={{ cursor: 'pointer', fontSize: '0.75em' }}
-//                                         >
-//                                           Edit
-//                                         </CBadge>
-//                                         <CBadge
-//                                           role="button"
-//                                           color="danger"
-//                                           onClick={() => handleDelete(expense)}
-//                                           style={{ cursor: 'pointer', fontSize: '0.75em' }}
-//                                         >
-//                                           Delete
-//                                         </CBadge>
-//                                       </>
-//                                     ) : (
-//                                       <CBadge
-//                                         role="button"
-//                                         color="primary"
-//                                         onClick={() => handleEditExpense(expense)}
-//                                         style={{ cursor: 'pointer', fontSize: '0.75em' }}
-//                                       >
-//                                         Edit
-//                                       </CBadge>
-//                                     )}
-//                                     {((expense.photos && expense.photos.length > 0) || (expense.photo_url && expense.photo_url !== "NA")) && (
-//                                       <CBadge
-//                                         role="button"
-//                                         color="secondary"
-//                                         onClick={() => handleViewImage(expense)}
-//                                         style={{ cursor: 'pointer', fontSize: '0.75em' }}
-//                                       >
-//                                         View {expense.photos && expense.photos.length > 1 ? `(${expense.photos.length})` : ''}
-//                                       </CBadge>
-//                                     )}
-//                                   </div>
-//                                 </CTableDataCell>
-//                               </CTableRow>
-//                             ))
-//                           )}
-//                         </CTableBody>
-//                       </CTable>
-//                     </div>
-//                     {isFetchingMore && (
-//                       <div className="loading-more">
-//                         <CSpinner color="primary" size="sm" />
-//                         <span className="ms-2 text-muted">Loading more...</span>
-//                       </div>
-//                     )}
-//                   </div>
-//                 </>
-//               )}
-//             </CCardBody>
-//           </CCard>
-//         </CCol>
-//       </CRow>
 //     </>
 //   );
 // };
 
 // export default ExpenseReport;
-
 
 
 
@@ -1653,6 +1366,18 @@ import 'jspdf-autotable';
 import { exportToPDF, downloadAllExpenseImages } from './exportToPDF';
 import { exportToExcel } from './exportToExcel';
 
+// ─────────────────────────────────────────────────────────────
+// HELPER: resolve any photo_url to a usable <img src> / href
+//   • Full https:// URL  → use as-is  (S3 / Spaces)
+//   • Old local path     → prepend window.location.origin
+// ─────────────────────────────────────────────────────────────
+const resolvePhotoUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // Legacy local path e.g. "img/expenses/bills/file.png"
+  return `${window.location.origin}/${url.replace(/^\//, '')}`;
+};
+
 const ExpenseReport = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -1679,7 +1404,7 @@ const ExpenseReport = () => {
   const [gstFilter, setGstFilter] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
-  
+
   // Photo gallery states
   const [showPhotoGalleryModal, setShowPhotoGalleryModal] = useState(false);
   const [currentExpensePhotos, setCurrentExpensePhotos] = useState([]);
@@ -1688,12 +1413,11 @@ const ExpenseReport = () => {
   // Filters
   const [projects, setProjects] = useState([]);
   const [expenseTypes, setExpenseTypes] = useState([]);
-
   const [partyNames, setPartyNames] = useState([]);
   const [filteredPartyNames, setFilteredPartyNames] = useState([]);
   const [partySearchTerm, setPartySearchTerm] = useState('');
   const [showPartyDropdown, setShowPartyDropdown] = useState(false);
-  
+
   const [state, setState] = useState({
     start_date: '',
     end_date: '',
@@ -1710,7 +1434,7 @@ const ExpenseReport = () => {
   const isInfiniteScrollingRef = useRef(false);
   const partyDropdownRef = useRef(null);
 
-  // Fetch unique party names
+  // ── API calls ──────────────────────────────────────────────
   const fetchPartyNames = async () => {
     try {
       const response = await getAPICall('/api/party-names');
@@ -1721,30 +1445,6 @@ const ExpenseReport = () => {
     }
   };
 
-  // Party name search handler
-  const handlePartySearch = (e) => {
-    const value = e.target.value;
-    setPartySearchTerm(value);
-    setState({ ...state, party_name: value });
-
-    if (value.trim() === '') {
-      setFilteredPartyNames(partyNames);
-    } else {
-      const filtered = partyNames.filter(name =>
-        name.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredPartyNames(filtered);
-    }
-    setShowPartyDropdown(true);
-  };
-
-  const selectPartyName = (name) => {
-    setState({ ...state, party_name: name });
-    setPartySearchTerm(name);
-    setShowPartyDropdown(false);
-  };
-
-  // Fetch projects
   const fetchProjects = async () => {
     try {
       const response = await getAPICall('/api/projects');
@@ -1754,7 +1454,6 @@ const ExpenseReport = () => {
     }
   };
 
-  // Fetch expense types
   const fetchExpenseTypes = async () => {
     try {
       const response = await getAPICall('/api/expenseType');
@@ -1767,6 +1466,25 @@ const ExpenseReport = () => {
     } catch (error) {
       showToast('danger', 'Error fetching expense types: ' + error);
     }
+  };
+
+  // ── Party search ───────────────────────────────────────────
+  const handlePartySearch = (e) => {
+    const value = e.target.value;
+    setPartySearchTerm(value);
+    setState({ ...state, party_name: value });
+    setFilteredPartyNames(
+      value.trim() === ''
+        ? partyNames
+        : partyNames.filter(n => n.toLowerCase().includes(value.toLowerCase()))
+    );
+    setShowPartyDropdown(true);
+  };
+
+  const selectPartyName = (name) => {
+    setState({ ...state, party_name: name });
+    setPartySearchTerm(name);
+    setShowPartyDropdown(false);
   };
 
   const handleChange = (e) => {
@@ -1785,6 +1503,7 @@ const ExpenseReport = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ── Fetch expenses ─────────────────────────────────────────
   const fetchExpense = async (reset = true) => {
     if (reset) {
       setIsLoading(true);
@@ -1796,31 +1515,21 @@ const ExpenseReport = () => {
 
     try {
       const params = new URLSearchParams();
-
       if (state.start_date && state.end_date) {
         params.append('startDate', state.start_date);
         params.append('endDate', state.end_date);
       }
-      if (state.project_id) params.append('customerId', state.project_id);
+      if (state.project_id)    params.append('customerId', state.project_id);
       if (state.expense_type_id) params.append('expenseTypeId', state.expense_type_id);
-      
-      if (state.party_name && state.party_name.trim() !== '') {
-        params.append('partyName', state.party_name.trim());
-      }
+      if (state.party_name?.trim()) params.append('partyName', state.party_name.trim());
+      if (nextCursor && !reset) params.append('cursor', nextCursor);
 
-      if (nextCursor && !reset) {
-        params.append('cursor', nextCursor);
-      }
-
-      const url = `/api/expense?${params.toString()}`;
-
-      const response = await getAPICall(url);
+      const response = await getAPICall(`/api/expense?${params.toString()}`);
 
       if (response.error) {
         showToast('danger', response.error);
       } else {
-        const newExpenses = reset ? response.data : [...expenses, ...response.data];
-        setExpenses(newExpenses);
+        setExpenses(reset ? response.data : [...expenses, ...response.data]);
         setTotalExpense(response.totalExpense || 0);
         setNextCursor(response.next_cursor || null);
         setHasMorePages(response.has_more_pages || false);
@@ -1850,25 +1559,17 @@ const ExpenseReport = () => {
     }
   };
 
+  // ── Infinite scroll ────────────────────────────────────────
   const handleScroll = useCallback(() => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
       const container = tableContainerRef.current;
       if (!container) return;
-
       const { scrollTop, scrollHeight, clientHeight } = container;
-      const threshold = 100;
-
       scrollPositionRef.current = scrollTop;
-
       if (
-        scrollTop + clientHeight >= scrollHeight - threshold &&
-        hasMorePages &&
-        !isFetchingMore &&
-        !isLoading
+        scrollTop + clientHeight >= scrollHeight - 100 &&
+        hasMorePages && !isFetchingMore && !isLoading
       ) {
         isInfiniteScrollingRef.current = true;
         fetchExpense(false);
@@ -1876,13 +1577,10 @@ const ExpenseReport = () => {
     }, 100);
   }, [hasMorePages, isFetchingMore, isLoading]);
 
+  // ── Search ─────────────────────────────────────────────────
   const debouncedSearch = useCallback((value) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setSearchTerm(value);
-    }, 300);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => setSearchTerm(value), 300);
   }, []);
 
   const handleSearchChange = (e) => {
@@ -1891,14 +1589,7 @@ const ExpenseReport = () => {
     debouncedSearch(value);
   };
 
-  const clearSearch = () => {
-    setSearchInput('');
-    setSearchTerm('');
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-  };
-
+  // ── CRUD actions ───────────────────────────────────────────
   const handleDelete = (expense) => {
     setDeleteResource(expense);
     setDeleteModalVisible(true);
@@ -1929,17 +1620,16 @@ const ExpenseReport = () => {
     setShowEditModal(true);
   };
 
-  const handleExpenseUpdated = () => {
-    fetchExpense(true);
-  };
+  const handleExpenseUpdated = () => fetchExpense(true);
 
+  // ── Photo viewing ──────────────────────────────────────────
   const handleViewImage = (expense) => {
     if (expense.photos && Array.isArray(expense.photos) && expense.photos.length > 0) {
       setCurrentExpensePhotos(expense.photos);
       setCurrentPhotoIndex(0);
       setShowPhotoGalleryModal(true);
     } else if (expense.photo_url && expense.photo_url !== "NA") {
-      setSelectedImage(expense.photo_url || '');
+      setSelectedImage(resolvePhotoUrl(expense.photo_url));
       setShowImageModal(true);
     } else {
       showToast('info', 'No photos available for this expense');
@@ -1958,198 +1648,139 @@ const ExpenseReport = () => {
     }
   };
 
-  const handleDownloadPhoto = (photoUrl, index) => {
-    const fileName = photoUrl.split('/').pop();
-    const link = document.createElement('a');
-    link.href = `/${photoUrl}`;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  /**
+   * Download a photo by its URL.
+   * Works for both S3/Spaces full URLs and old local paths.
+   */
+  const handleDownloadPhoto = async (photoUrl) => {
+    const resolvedUrl = resolvePhotoUrl(photoUrl);
+    const fileName = photoUrl.split('/').pop().split('?')[0]; // strip query params
+
+    try {
+      // Fetch as blob so we can force a download even for cross-origin S3 URLs
+      const response = await fetch(resolvedUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob     = await response.blob();
+      const blobUrl  = URL.createObjectURL(blob);
+
+      const link      = document.createElement('a');
+      link.href       = blobUrl;
+      link.download   = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      // Fallback: open in new tab
+      window.open(resolvedUrl, '_blank');
+    }
   };
 
+  // ── Sort ───────────────────────────────────────────────────
   const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
   };
 
-  const getSortIcon = (columnKey) => {
-    if (sortConfig.key === columnKey) {
-      return sortConfig.direction === 'asc' ? '↑' : '↓';
-    }
-    return '↕';
-  };
-
-  const getSortIconStyle = (columnKey) => ({
-    marginLeft: '8px',
-    fontSize: '14px',
-    opacity: sortConfig.key === columnKey ? 1 : 0.5,
-    color: sortConfig.key === columnKey ? '#0d6efd' : '#6c757d',
+  const getSortIcon      = (key) => sortConfig.key === key ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕';
+  const getSortIconStyle = (key) => ({
+    marginLeft: '8px', fontSize: '14px',
+    opacity: sortConfig.key === key ? 1 : 0.5,
+    color:   sortConfig.key === key ? '#0d6efd' : '#6c757d',
     transition: 'all 0.2s ease',
   });
 
+  // ── Formatting ─────────────────────────────────────────────
   const formatIndianNumber = (amount) => {
-    const numericAmount = parseFloat(amount) || 0;
-    if (isNaN(numericAmount)) return '0.00';
-    
-    const [integerPart, decimalPart = '00'] = numericAmount.toFixed(2).split('.');
-    const lastThree = integerPart.slice(-3);
-    const otherNumbers = integerPart.slice(0, -3);
-    const formattedInteger = otherNumbers.length > 0
-      ? otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree
-      : lastThree;
-    return `${formattedInteger}.${decimalPart}`;
+    const n = parseFloat(amount) || 0;
+    const [int, dec = '00'] = n.toFixed(2).split('.');
+    const last3  = int.slice(-3);
+    const others = int.slice(0, -3);
+    const fmt    = others.length > 0
+      ? others.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3
+      : last3;
+    return `${fmt}.${dec}`;
   };
 
-  const formatCurrency = (amount) => {
-    return `Rs ${formatIndianNumber(amount)}`;
-  };
+  const formatCurrency = (amount) => `Rs ${formatIndianNumber(amount)}`;
 
   const formatDate = (dateString) => {
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    const date = new Date(dateString);
-    const formattedDate = date.toLocaleDateString('en-US', options).replace(',', '');
-    const [month, day] = formattedDate.split(' ');
+    const d   = new Date(dateString);
+    const fmt = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).replace(',', '');
+    const [month, day] = fmt.split(' ');
     return `${day} ${month}`;
   };
 
+  // ── Export helpers ─────────────────────────────────────────
   const handleExportToPDF = () => {
-    exportToPDF(
-      state,
-      projects,
-      expenseTypes,
-      filteredTotalExpense,
-      sortedFilteredExpenses,
-      expenseType,
-      formatIndianNumber,
-      formatDate,
-      showToast,
-      totalCgstAmount,
-      totalSgstAmount,
-      totalIgstAmount,
-      sumQty,
-      sumBase
-    );
+    exportToPDF(state, projects, expenseTypes, filteredTotalExpense, sortedFilteredExpenses,
+      expenseType, formatIndianNumber, formatDate, showToast,
+      totalCgstAmount, totalSgstAmount, totalIgstAmount, sumQty, sumBase);
   };
 
   const handleExportToExcel = () => {
-    exportToExcel(
-      state,
-      projects,
-      expenseTypes,
-      filteredTotalExpense,
-      sortedFilteredExpenses,
-      expenseType,
-      formatIndianNumber,
-      formatDate,
-      showToast,
-      window.location.origin,
-      totalCgstAmount,
-      totalSgstAmount,
-      totalIgstAmount,
-      sumQty,
-      sumBase
-    );
+    exportToExcel(state, projects, expenseTypes, filteredTotalExpense, sortedFilteredExpenses,
+      expenseType, formatIndianNumber, formatDate, showToast, window.location.origin,
+      totalCgstAmount, totalSgstAmount, totalIgstAmount, sumQty, sumBase);
   };
 
-  const handleDownloadAllImages = () => {
-    downloadAllExpenseImages(sortedFilteredExpenses, showToast);
-  };
+  const handleDownloadAllImages = () => downloadAllExpenseImages(sortedFilteredExpenses, showToast);
 
+  // ── Derived data ───────────────────────────────────────────
   const sortedFilteredExpenses = useMemo(() => {
-    let filtered = expenses.map((expense, index) => ({
-      ...expense,
-      sr_no: index + 1,
-    }));
+    let filtered = expenses.map((expense, index) => ({ ...expense, sr_no: index + 1 }));
 
     if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((expense) =>
-        expenseType[expense.expense_id]?.toLowerCase().includes(searchLower) ||
-        expense.expense_date?.toLowerCase().includes(searchLower) ||
-        expense.total_price?.toString().includes(searchTerm) ||
-        expense.contact?.toLowerCase().includes(searchLower) ||
-        expense.desc?.toLowerCase().includes(searchLower) ||
-        expense.payment_by?.toLowerCase().includes(searchLower) ||
-        expense.payment_type?.toLowerCase().includes(searchLower) ||
-        expense.project?.project_name?.toLowerCase().includes(searchLower)
+      const s = searchTerm.toLowerCase();
+      filtered = filtered.filter((e) =>
+        expenseType[e.expense_id]?.toLowerCase().includes(s) ||
+        e.expense_date?.toLowerCase().includes(s) ||
+        e.total_price?.toString().includes(searchTerm) ||
+        e.contact?.toLowerCase().includes(s) ||
+        e.desc?.toLowerCase().includes(s) ||
+        e.payment_by?.toLowerCase().includes(s) ||
+        e.payment_type?.toLowerCase().includes(s) ||
+        e.project?.project_name?.toLowerCase().includes(s)
       );
     }
 
-    if (gstFilter === 'gst') {
-      filtered = filtered.filter(expense => expense.isGst === 1 || expense.isGst === true);
-    } else if (gstFilter === 'non-gst') {
-      filtered = filtered.filter(expense => expense.isGst === 0 || expense.isGst === false);
-    }
+    if (gstFilter === 'gst')     filtered = filtered.filter(e => e.isGst === 1 || e.isGst === true);
+    if (gstFilter === 'non-gst') filtered = filtered.filter(e => e.isGst === 0 || e.isGst === false);
 
     if (!sortConfig.key) return filtered;
 
     return [...filtered].sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
-
-      if (sortConfig.key === 'expense_type') {
-        aVal = expenseType[a.expense_id] || '';
-        bVal = expenseType[b.expense_id] || '';
-      } else if (sortConfig.key === 'customer_name') {
-        aVal = a.project?.project_name || '';
-        bVal = b.project?.project_name || '';
-      } else if (sortConfig.key === 'category') {
-        aVal = a.expense_type?.expense_category || '';
-        bVal = b.expense_type?.expense_category || '';
-      }
-
+      if (sortConfig.key === 'expense_type')  { aVal = expenseType[a.expense_id] || ''; bVal = expenseType[b.expense_id] || ''; }
+      if (sortConfig.key === 'customer_name') { aVal = a.project?.project_name || '';   bVal = b.project?.project_name || ''; }
+      if (sortConfig.key === 'category')      { aVal = a.expense_type?.expense_category || ''; bVal = b.expense_type?.expense_category || ''; }
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
       if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ?  1 : -1;
       return 0;
     });
   }, [expenses, searchTerm, sortConfig, expenseType, gstFilter]);
 
-  const filteredTotalExpense = useMemo(() => 
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.total_price || 0), 0),
-    [sortedFilteredExpenses]
-  );
-
-  const sumQty = useMemo(() => 
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.qty || 0), 0),
-    [sortedFilteredExpenses]
-  );
-
-  const sumBase = useMemo(() => 
-    sortedFilteredExpenses.reduce((sum, expense) => {
-      const qty = parseFloat(expense.qty || 0);
-      const price = parseFloat(expense.price || 0);
-      return sum + (qty * price);
-    }, 0),
-    [sortedFilteredExpenses]
-  );
-
+  const filteredTotalExpense = useMemo(() =>
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.total_price || 0), 0), [sortedFilteredExpenses]);
+  const sumQty = useMemo(() =>
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.qty || 0), 0), [sortedFilteredExpenses]);
+  const sumBase = useMemo(() =>
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.qty || 0) * parseFloat(e.price || 0), 0), [sortedFilteredExpenses]);
   const totalCgstAmount = useMemo(() =>
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.cgst || 0), 0),
-    [sortedFilteredExpenses]
-  );
-
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.cgst || 0), 0), [sortedFilteredExpenses]);
   const totalSgstAmount = useMemo(() =>
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.sgst || 0), 0),
-    [sortedFilteredExpenses]
-  );
-
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.sgst || 0), 0), [sortedFilteredExpenses]);
   const totalIgstAmount = useMemo(() =>
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.igst || 0), 0),
-    [sortedFilteredExpenses]
-  );
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.igst || 0), 0), [sortedFilteredExpenses]);
+  const totalGstAmount  = useMemo(() =>
+    sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.gst  || 0), 0), [sortedFilteredExpenses]);
 
-  const totalGstAmount = useMemo(() =>
-    sortedFilteredExpenses.reduce((sum, expense) => sum + parseFloat(expense.gst || 0), 0),
-    [sortedFilteredExpenses]
-  );
-
+  // ── Lifecycle ──────────────────────────────────────────────
   useEffect(() => {
     fetchProjects();
     fetchExpenseTypes();
@@ -2157,100 +1788,41 @@ const ExpenseReport = () => {
   }, []);
 
   useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
+  useEffect(() => () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
   }, []);
 
+  // ── Mobile card ────────────────────────────────────────────
   const renderMobileCard = (expense) => (
     <CCard key={expense.id} className="mb-3 expense-card">
       <CCardBody>
         <div className="card-row-1">
           <div className="expense-name-section">
             <div className="expense-name">{expenseType[expense.expense_id] || 'N/A'}</div>
-            <div className="expense-type">
-              <span className="category-text">{expense.sr_no}</span>
-            </div>
+            <div className="expense-type"><span className="category-text">{expense.sr_no}</span></div>
           </div>
           <div className="expense-total">
             <div className="total-amount">{formatCurrency(expense.total_price)}</div>
             <div className="total-label">Amount</div>
           </div>
         </div>
-
         <div className="card-row-2">
           <div className="expense-date">📅 {formatDate(expense.expense_date)}</div>
-          <div className="expense-details">
-            <span className="detail-item">{expense.project?.project_name || '-'}</span>
-          </div>
+          <div className="expense-details"><span className="detail-item">{expense.project?.project_name || '-'}</span></div>
         </div>
-
         <div className="card-row-2">
           <div className="expense-details">
             <span className="detail-item">Category: {expense.expense_type?.expense_category || '-'}</span>
             <span className="detail-item">Qty: {expense.qty || '-'}</span>
           </div>
         </div>
-
-        <div className="card-row-2">
-          <div className="expense-details">
-            <span className="detail-item">Price: Rs {formatIndianNumber(expense.price || 0)}</span>
-            <span className="detail-item">
-              {expense.isGst ? (
-                <>GST: {expense.gst || 0}Rs | CGST: {expense.cgst || 0}Rs | SGST: {expense.sgst || 0}Rs | IGST: {expense.igst || 0}Rs</>
-              ) : (
-                'Non-GST'
-              )}
-            </span>
-          </div>
-        </div>
-
-        <div className="card-row-2">
-          <div className="expense-details">
-            <span className="detail-item">{expense.contact || '-'}</span>
-            <span className="detail-item">{expense.payment_by || '-'}</span>
-          </div>
-        </div>
-
-        <div className="card-row-2">
-          <div className="expense-details">
-            <span className="detail-item">{expense.payment_type || '-'}</span>
-            <span className="detail-item">{expense.bank_name || '-'}</span>
-          </div>
-        </div>
-
-        <div className="card-row-3">
-          <div className="expense-details">
-            <span className="detail-item">Acc: {expense.account_number || '-'} IFSC: {expense.ifsc_code || '-'} Trans: {expense.transaction_id || '-'}</span>
-          </div>
-        </div>
-
-        <div className="card-row-3">
-          <div className="expense-details">
-            <span className="detail-item">{expense.name || '-'}</span>
-          </div>
-        </div>
-
-        <div className="card-row-3">
-          <div className="expense-details">
-            <span className="detail-item">{expense.photo_remark || '-'}</span>
-          </div>
-        </div>
-
         <div className="card-row-3">
           <div className="action-buttons-mobile">
             {usertype === 1 && (
@@ -2258,13 +1830,9 @@ const ExpenseReport = () => {
                 {expense.show ? 'Valid' : 'Invalid'}
               </button>
             )}
-            <button className="badge bg-primary" onClick={() => handleEditExpense(expense)} role="button">
-              Edit
-            </button>
+            <button className="badge bg-primary" onClick={() => handleEditExpense(expense)} role="button">Edit</button>
             {(usertype === 1 || usertype === 3) && (
-              <button className="badge bg-danger" onClick={() => handleDelete(expense)} role="button">
-                Delete
-              </button>
+              <button className="badge bg-danger" onClick={() => handleDelete(expense)} role="button">Delete</button>
             )}
             {((expense.photos && expense.photos.length > 0) || (expense.photo_url && expense.photo_url !== "NA")) && (
               <button className="badge bg-secondary" onClick={() => handleViewImage(expense)} role="button">
@@ -2291,86 +1859,21 @@ const ExpenseReport = () => {
   return (
     <>
       <style jsx global>{`
-        .expense-card {
-          border: 1px solid #dee2e6;
-          border-radius: 8px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-          transition: all 0.3s ease;
-        }
-        .expense-card:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .expense-card .card-body {
-          padding: 12px !important;
-        }
-        .card-row-1 {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-        .expense-name {
-          font-weight: 600;
-          font-size: 1em;
-          color: #333;
-        }
-        .expense-total {
-          text-align: right;
-        }
-        .total-amount {
-          font-weight: 600;
-          font-size: 1.1em;
-          color: #d32f2f;
-        }
-        .card-row-2, .card-row-3 {
-          margin-bottom: 8px;
-          padding: 4px 0;
-          border-top: 1px solid #f0f0f0;
-        }
-        .action-buttons-mobile {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-        .action-buttons-mobile .badge {
-          font-size: 0.85em;
-          padding: 6px 12px;
-          border-radius: 16px;
-          cursor: pointer;
-        }
-        .table-container {
-          height: 350px;
-          overflow-y: auto;
-          border: 1px solid #dee2e6;
-          border-radius: 0.375rem;
-        }
-        .expenses-table thead th {
-          position: sticky;
-          top: 0;
-          z-index: 10;
-          background-color: #f8f9fa;
-          border-bottom: 2px solid #dee2e6;
-        }
-        .summary-container {
-          margin-bottom: 20px;
-          padding: 10px;
-          background-color: #f8f9fa;
-          border: 1px solid #dee2e6;
-          border-radius: 0.375rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .summary-item {
-          flex: 1;
-          text-align: center;
-          font-weight: 500;
-        }
-        .summary-item strong {
-          display: block;
-          font-size: 0.9em;
-          color: #555;
-        }
+        .expense-card { border:1px solid #dee2e6; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.1); transition:all .3s; }
+        .expense-card:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,.15); }
+        .expense-card .card-body { padding:12px !important; }
+        .card-row-1 { display:flex; justify-content:space-between; margin-bottom:8px; }
+        .expense-name { font-weight:600; font-size:1em; color:#333; }
+        .expense-total { text-align:right; }
+        .total-amount { font-weight:600; font-size:1.1em; color:#d32f2f; }
+        .card-row-2,.card-row-3 { margin-bottom:8px; padding:4px 0; border-top:1px solid #f0f0f0; }
+        .action-buttons-mobile { display:flex; gap:8px; flex-wrap:wrap; }
+        .action-buttons-mobile .badge { font-size:.85em; padding:6px 12px; border-radius:16px; cursor:pointer; }
+        .table-container { height:350px; overflow-y:auto; border:1px solid #dee2e6; border-radius:.375rem; }
+        .expenses-table thead th { position:sticky; top:0; z-index:10; background-color:#f8f9fa; border-bottom:2px solid #dee2e6; }
+        .summary-container { margin-bottom:20px; padding:10px; background-color:#f8f9fa; border:1px solid #dee2e6; border-radius:.375rem; display:flex; justify-content:space-between; align-items:center; }
+        .summary-item { flex:1; text-align:center; font-weight:500; }
+        .summary-item strong { display:block; font-size:.9em; color:#555; }
       `}</style>
 
       <EditExpense
@@ -2380,15 +1883,32 @@ const ExpenseReport = () => {
         onExpenseUpdated={handleExpenseUpdated}
       />
 
-      {/* Image Modals (kept as is) */}
-      {/* ... (All your modals remain unchanged) ... */}
+      {/* ── Single image modal ─────────────────────────────── */}
+      <CModal visible={showImageModal} onClose={() => setShowImageModal(false)} size="lg">
+        <CModalHeader><CModalTitle>Photo</CModalTitle></CModalHeader>
+        <CModalBody className="text-center">
+          {selectedImage && (
+            <img
+              src={selectedImage}               // already resolved by resolvePhotoUrl()
+              alt="Expense"
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+            />
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="primary" onClick={() => handleDownloadPhoto(selectedImage)}>
+            <CIcon icon={cilCloudDownload} /> Download
+          </CButton>
+          <CButton color="secondary" onClick={() => setShowImageModal(false)}>Close</CButton>
+        </CModalFooter>
+      </CModal>
 
       <CRow>
         <ConfirmationModal
           visible={deleteModalVisible}
           setVisible={setDeleteModalVisible}
           onYes={onDelete}
-          resource={`Delete expense`}
+          resource="Delete expense"
         />
         <CCol xs={12}>
           <CCard className="mb-4">
@@ -2400,63 +1920,57 @@ const ExpenseReport = () => {
               <CForm noValidate validated={validated} onSubmit={handleSubmit}>
                 <div className="row">
                   <div className="col-sm-3">
-                    {/* <div className="mb-1">
-                      <CFormLabel htmlFor="project_id">Project</CFormLabel>
-                      <CFormSelect
-                        id="project_id"
-                        name="project_id"
-                        value={state.project_id}
-                        onChange={handleChange}
-                      >
-                        <option value="">All Projects</option>
-                        {projects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.project_name} - {project.customer_name || 'No Customer'}
-                          </option>
-                        ))}
-                      </CFormSelect>
-                    </div> */}
+                    <div className="mb-1">
+                      <CFormLabel className="fw-bold">Project</CFormLabel>
+                      {/* <Select
+                        placeholder="Select or search project..."
+                        options={projects.map(p => ({
+                          value: p.id,
+                          label: `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`,
+                        }))}
+                        value={projects.find(p => p.id === Number(state.project_id))
+                          ? {
+                              value: Number(state.project_id),
+                              label: (() => {
+                                const p = projects.find(p => p.id === Number(state.project_id));
+                                return `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`;
+                              })(),
+                            }
+                          : null
+                        }
+                        onChange={opt => setState(prev => ({ ...prev, project_id: opt ? opt.value : '' }))}
+                        isClearable
+                        isSearchable
+                        styles={{ control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }) }}
+                      /> */}
 
-<div className="mb-1">
-  <CFormLabel className="fw-bold">
-    Project <span className="text-danger">*</span>
-  </CFormLabel>
-  
-  <Select
-    placeholder="Select or search project..."
-    options={projects.map((project) => ({
-      value: project.id,
-      label: `${project.project_name} ${project.customer_name ? `- ${project.customer_name}` : ''}`,
-    }))}
-    value={projects.find(p => p.id === Number(state.project_id))
-      ? {
-          value: Number(state.project_id),
-          label: projects.find(p => p.id === Number(state.project_id))?.project_name + 
-                 (projects.find(p => p.id === Number(state.project_id))?.customer_name 
-                   ? ` - ${projects.find(p => p.id === Number(state.project_id))?.customer_name}` 
-                   : '')
-        }
-      : null
-    }
-    onChange={(selectedOption) => {
-      if (selectedOption) {
-        setState(prev => ({ ...prev, project_id: selectedOption.value }));
-      } else {
-        setState(prev => ({ ...prev, project_id: '' }));
+                      <Select
+  placeholder="Select or search project..."
+  options={projects.map(p => ({
+    value: p.id,
+    label: `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`,
+  }))}
+  value={projects.find(p => p.id === Number(state.project_id))
+    ? {
+        value: Number(state.project_id),
+        label: (() => {
+          const p = projects.find(p => p.id === Number(state.project_id));
+          return `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`;
+        })(),
       }
-    }}
-    isClearable
-    isSearchable
-    styles={{
-      control: (base) => ({
-        ...base,
-        minHeight: '38px',
-        borderColor: '#d1d5db',
-      })
-    }}
-  />
-  </div>
-
+    : null
+  }
+  onChange={opt => setState(prev => ({ ...prev, project_id: opt ? opt.value : '' }))}
+  isClearable
+  isSearchable
+  menuPortalTarget={document.body}        // ← renders dropdown in body, above everything
+  menuPosition="fixed"                   // ← required alongside menuPortalTarget
+  styles={{
+    control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }),
+    menuPortal: base => ({ ...base, zIndex: 9999 }),   // ← above sticky header z-index:10
+  }}
+/>
+                    </div>
                   </div>
 
                   <div className="col-sm-2">
@@ -2478,9 +1992,7 @@ const ExpenseReport = () => {
                       <CFormLabel htmlFor="expense_type_id">Expense Type</CFormLabel>
                       <CFormSelect id="expense_type_id" name="expense_type_id" value={state.expense_type_id} onChange={handleChange}>
                         <option value="">All Expense Types</option>
-                        {expenseTypes.map((type) => (
-                          <option key={type.id} value={type.id}>{type.name}</option>
-                        ))}
+                        {expenseTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </CFormSelect>
                     </div>
                   </div>
@@ -2496,10 +2008,10 @@ const ExpenseReport = () => {
                         onFocus={() => setShowPartyDropdown(true)}
                       />
                       {showPartyDropdown && filteredPartyNames.length > 0 && (
-                        <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded" 
+                        <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded"
                              style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
-                          {filteredPartyNames.map((name, index) => (
-                            <div key={index} className="px-3 py-2 hover-bg-light cursor-pointer" onClick={() => selectPartyName(name)} style={{ cursor: 'pointer' }}>
+                          {filteredPartyNames.map((name, i) => (
+                            <div key={i} className="px-3 py-2" style={{ cursor: 'pointer' }} onClick={() => selectPartyName(name)}>
                               {name}
                             </div>
                           ))}
@@ -2523,8 +2035,8 @@ const ExpenseReport = () => {
               <CRow className="mb-3">
                 <CCol xs={12} md={6} lg={3}>
                   <div className="mb-1">
-                    <CFormLabel htmlFor="gstFilter">GST/Non-GST</CFormLabel>
-                    <CFormSelect id="gstFilter" value={gstFilter} onChange={(e) => setGstFilter(e.target.value)}>
+                    <CFormLabel>GST/Non-GST</CFormLabel>
+                    <CFormSelect value={gstFilter} onChange={e => setGstFilter(e.target.value)}>
                       <option value="">All</option>
                       <option value="gst">GST</option>
                       <option value="non-gst">Non-GST</option>
@@ -2534,35 +2046,22 @@ const ExpenseReport = () => {
 
                 <CCol xs={12} md={6} lg={6}>
                   <div className="d-flex gap-2 mt-4">
-                    <CButton color="primary" onClick={handleExportToExcel} disabled={!sortedFilteredExpenses.length}>
-                      Download Excel
-                    </CButton>
-                    <CButton color="warning" onClick={handleExportToPDF} disabled={!sortedFilteredExpenses.length}>
-                      Download PDF
-                    </CButton>
-                    <CButton 
-                      color="info" 
-                      onClick={handleDownloadAllImages} 
-                      disabled={!sortedFilteredExpenses.length}
-                    >
-                      📸 Download All Images (ZIP)
-                    </CButton>
+                    <CButton color="primary" onClick={handleExportToExcel} disabled={!sortedFilteredExpenses.length}>Download Excel</CButton>
+                    <CButton color="warning" onClick={handleExportToPDF}   disabled={!sortedFilteredExpenses.length}>Download PDF</CButton>
+                    <CButton color="info"    onClick={handleDownloadAllImages} disabled={!sortedFilteredExpenses.length}>📸 Download All Images (ZIP)</CButton>
                   </div>
                 </CCol>
               </CRow>
 
-              {/* Mobile View */}
+              {/* ── Mobile View ──────────────────────────────── */}
               {isMobile ? (
                 <div className="mobile-cards-container">
-                  {sortedFilteredExpenses.length === 0 ? (
-                    <div className="text-center text-muted py-4">
-                      <p>No expenses found</p>
-                    </div>
-                  ) : (
-                    sortedFilteredExpenses.map(renderMobileCard)
-                  )}
+                  {sortedFilteredExpenses.length === 0
+                    ? <div className="text-center text-muted py-4"><p>No expenses found</p></div>
+                    : sortedFilteredExpenses.map(renderMobileCard)
+                  }
                   {isFetchingMore && (
-                    <div className="loading-more">
+                    <div className="text-center py-2">
                       <CSpinner color="primary" size="sm" />
                       <span className="ms-2 text-muted">Loading more...</span>
                     </div>
@@ -2584,29 +2083,23 @@ const ExpenseReport = () => {
                       <CTable className="expenses-table">
                         <CTableHead>
                           <CTableRow>
-                            <CTableHeaderCell onClick={() => handleSort('sr_no')} style={{ cursor: 'pointer' }}>
-                              Sr No <span style={getSortIconStyle('sr_no')}>{getSortIcon('sr_no')}</span>
-                            </CTableHeaderCell>
-                            <CTableHeaderCell onClick={() => handleSort('expense_date')} style={{ cursor: 'pointer' }}>
-                              Date <span style={getSortIconStyle('expense_date')}>{getSortIcon('expense_date')}</span>
-                            </CTableHeaderCell>
-                            <CTableHeaderCell onClick={() => handleSort('customer_name')} style={{ cursor: 'pointer' }}>
-                              Project <span style={getSortIconStyle('customer_name')}>{getSortIcon('customer_name')}</span>
-                            </CTableHeaderCell>
+                            {[
+                              ['sr_no','Sr No'],['expense_date','Date'],['customer_name','Project'],
+                            ].map(([key, label]) => (
+                              <CTableHeaderCell key={key} onClick={() => handleSort(key)} style={{ cursor: 'pointer' }}>
+                                {label} <span style={getSortIconStyle(key)}>{getSortIcon(key)}</span>
+                              </CTableHeaderCell>
+                            ))}
                             <CTableHeaderCell>Party Name</CTableHeaderCell>
-                            <CTableHeaderCell>Party GST Number</CTableHeaderCell> 
+                            <CTableHeaderCell>Party GST Number</CTableHeaderCell>
                             <CTableHeaderCell>Party Address</CTableHeaderCell>
-                            <CTableHeaderCell onClick={() => handleSort('expense_type')} style={{ cursor: 'pointer' }}>
-                              Expense Type <span style={getSortIconStyle('expense_type')}>{getSortIcon('expense_type')}</span>
-                            </CTableHeaderCell>
+                            {[['expense_type','Expense Type'],['price','Price'],['total_price','Total']].map(([key, label]) => (
+                              <CTableHeaderCell key={key} onClick={() => handleSort(key)} style={{ cursor: 'pointer' }}>
+                                {label} <span style={getSortIconStyle(key)}>{getSortIcon(key)}</span>
+                              </CTableHeaderCell>
+                            ))}
                             <CTableHeaderCell>Category</CTableHeaderCell>
                             <CTableHeaderCell>Qty</CTableHeaderCell>
-                            <CTableHeaderCell onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>
-                              Price <span style={getSortIconStyle('price')}>{getSortIcon('price')}</span>
-                            </CTableHeaderCell>
-                            <CTableHeaderCell onClick={() => handleSort('total_price')} style={{ cursor: 'pointer' }}>
-                              Total <span style={getSortIconStyle('total_price')}>{getSortIcon('total_price')}</span>
-                            </CTableHeaderCell>
                             <CTableHeaderCell>GST Rs</CTableHeaderCell>
                             <CTableHeaderCell>CGST Rs</CTableHeaderCell>
                             <CTableHeaderCell>SGST Rs</CTableHeaderCell>
@@ -2626,9 +2119,7 @@ const ExpenseReport = () => {
                         <CTableBody>
                           {sortedFilteredExpenses.length === 0 ? (
                             <CTableRow>
-                              <CTableDataCell colSpan={22} className="text-center py-4">
-                                <p>No expenses found</p>
-                              </CTableDataCell>
+                              <CTableDataCell colSpan={25} className="text-center py-4">No expenses found</CTableDataCell>
                             </CTableRow>
                           ) : (
                             sortedFilteredExpenses.map((expense) => (
@@ -2640,49 +2131,41 @@ const ExpenseReport = () => {
                                 <CTableDataCell>{expense.party_gst_number || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.party_address || '-'}</CTableDataCell>
                                 <CTableDataCell>{expenseType[expense.expense_id] || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.expense_type?.expense_category || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.qty || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.price ? formatIndianNumber(expense.price) : '-'}</CTableDataCell>
                                 <CTableDataCell>
-                                  <span style={{ fontWeight: '500', color: '#dc3545' }}>
-                                    {formatCurrency(expense.total_price)}
-                                  </span>
+                                  <span style={{ fontWeight: '500', color: '#dc3545' }}>{formatCurrency(expense.total_price)}</span>
                                 </CTableDataCell>
-                                <CTableDataCell>{expense.isGst ? (expense.gst !== null ? `${expense.gst}Rs` : '-') : '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.isGst ? (expense.cgst !== null ? `${expense.cgst}Rs` : '-') : '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.isGst ? (expense.sgst !== null ? `${expense.sgst}Rs` : '-') : '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.isGst ? (expense.igst !== null ? `${expense.igst}Rs` : '-') : '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.payment_by || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.expense_type?.expense_category || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.qty || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.isGst ? (expense.gst  != null ? `${expense.gst}Rs`  : '-') : '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.isGst ? (expense.cgst != null ? `${expense.cgst}Rs` : '-') : '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.isGst ? (expense.sgst != null ? `${expense.sgst}Rs` : '-') : '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.isGst ? (expense.igst != null ? `${expense.igst}Rs` : '-') : '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.payment_by   || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.payment_type || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.contact || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.bank_name || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.acc_number || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.ifsc || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.contact      || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.bank_name    || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.acc_number   || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.ifsc         || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.transaction_id || '-'}</CTableDataCell>
-                                <CTableDataCell>{expense.name || '-'}</CTableDataCell>
+                                <CTableDataCell>{expense.name         || '-'}</CTableDataCell>
                                 <CTableDataCell>{expense.photo_remark || '-'}</CTableDataCell>
                                 <CTableDataCell>
-                                  <div className="action-buttons">
+                                  <div className="d-flex gap-1 flex-wrap">
                                     {(usertype === 1 || usertype === 3) ? (
                                       <>
                                         <CBadge role="button" color={expense.show ? 'success' : 'danger'} onClick={() => handleEdit(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
                                           {expense.show ? 'Valid' : 'Invalid'}
                                         </CBadge>
-                                        <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
-                                          Edit
-                                        </CBadge>
-                                        <CBadge role="button" color="danger" onClick={() => handleDelete(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
-                                          Delete
-                                        </CBadge>
+                                        <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>Edit</CBadge>
+                                        <CBadge role="button" color="danger"  onClick={() => handleDelete(expense)}     style={{ cursor: 'pointer', fontSize: '0.75em' }}>Delete</CBadge>
                                       </>
                                     ) : (
-                                      <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
-                                        Edit
-                                      </CBadge>
+                                      <CBadge role="button" color="primary" onClick={() => handleEditExpense(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>Edit</CBadge>
                                     )}
                                     {((expense.photos && expense.photos.length > 0) || (expense.photo_url && expense.photo_url !== "NA")) && (
                                       <CBadge role="button" color="secondary" onClick={() => handleViewImage(expense)} style={{ cursor: 'pointer', fontSize: '0.75em' }}>
-                                        View {expense.photos && expense.photos.length > 1 ? `(${expense.photos.length})` : ''}
+                                        View {expense.photos?.length > 1 ? `(${expense.photos.length})` : ''}
                                       </CBadge>
                                     )}
                                   </div>
@@ -2694,7 +2177,7 @@ const ExpenseReport = () => {
                       </CTable>
                     </div>
                     {isFetchingMore && (
-                      <div className="loading-more">
+                      <div className="text-center py-2">
                         <CSpinner color="primary" size="sm" />
                         <span className="ms-2 text-muted">Loading more...</span>
                       </div>
@@ -2707,186 +2190,75 @@ const ExpenseReport = () => {
         </CCol>
       </CRow>
 
-
-
-
-
-
-
-
-    {/* Photo Gallery Modal - Grid View */}
-      <CModal 
-        visible={showPhotoGalleryModal} 
-        onClose={() => setShowPhotoGalleryModal(false)}
-        size="lg"
-        scrollable
-      >
+      {/* ── Photo Gallery Modal ────────────────────────────── */}
+      <CModal visible={showPhotoGalleryModal} onClose={() => setShowPhotoGalleryModal(false)} size="lg" scrollable>
         <CModalHeader style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
           <CModalTitle>
             <strong>Expense Photos</strong>
             <CBadge color="primary" className="ms-2">{currentExpensePhotos.length}</CBadge>
           </CModalTitle>
         </CModalHeader>
-        <CModalBody style={{ padding: '20px', backgroundColor: '#fff' }}>
+        <CModalBody style={{ padding: '20px' }}>
           {currentExpensePhotos.length > 0 ? (
             <div className="row g-3">
               {currentExpensePhotos.map((photo, index) => {
-                const fileName = photo.photo_url.split('/').pop().split('.')[0];
-                const fileExtension = photo.photo_url.split('.').pop();
-                const displayName = photo.remark 
-                  ? photo.remark 
-                  : `Photo ${index + 1}`;
-                
+                const resolvedUrl  = resolvePhotoUrl(photo.photo_url);   // ← KEY FIX
+                const fileExtension = (photo.photo_url || '').split('.').pop().split('?')[0];
+                const displayName   = photo.remark || `Photo ${index + 1}`;
+
                 return (
                   <div key={photo.id} className="col-6 col-md-4">
-                    <CCard 
-                      className="h-100"
-                      style={{ 
-                        transition: 'all 0.2s',
-                        cursor: 'pointer',
-                        border: '1px solid #dee2e6'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
+                    <CCard className="h-100" style={{ transition: 'all .2s', cursor: 'pointer', border: '1px solid #dee2e6' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow='0 8px 16px rgba(0,0,0,.1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)';    e.currentTarget.style.boxShadow='none'; }}
                     >
-                      {/* Image Preview */}
-                      <div 
-                        style={{ 
-                          height: '160px',
-                          backgroundColor: '#f8f9fa',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          overflow: 'hidden',
-                          borderBottom: '1px solid #dee2e6',
-                          position: 'relative'
-                        }}
-                        onClick={() => {
-                          setCurrentPhotoIndex(index);
-                          setShowImageModal(true);
-                          setSelectedImage(photo.photo_url);
-                        }}
+                      {/* Thumbnail */}
+                      <div
+                        style={{ height:'160px', backgroundColor:'#f8f9fa', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', borderBottom:'1px solid #dee2e6', position:'relative' }}
+                        onClick={() => { setSelectedImage(resolvedUrl); setCurrentPhotoIndex(index); setShowImageModal(true); }}
                       >
                         {photo.photo_type === 'pdf' ? (
                           <div className="text-center p-3">
                             <CIcon icon={cilCloudUpload} size="3xl" style={{ color: '#dc3545' }} />
-                            <div className="mt-2">
-                              <CBadge color="danger" style={{ fontSize: '0.7rem' }}>PDF</CBadge>
-                            </div>
+                            <div className="mt-2"><CBadge color="danger" style={{ fontSize: '.7rem' }}>PDF</CBadge></div>
                           </div>
                         ) : (
                           <img
-                            src={`/${photo.photo_url}`}
+                            src={resolvedUrl}               /* ← Full S3 URL or resolved local URL */
                             alt={displayName}
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              objectFit: 'contain'
-                            }}
+                            style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }}
+                            onError={e => { e.target.style.display='none'; }}
                           />
                         )}
-                        
-                        {/* Hover Overlay */}
-                        <div 
-                          className="position-absolute top-0 start-0 w-100 h-100"
-                          style={{
-                            backgroundColor: 'rgba(0,0,0,0)',
-                            transition: 'background-color 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.5)';
-                            e.currentTarget.querySelector('.preview-icon').style.opacity = '1';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0)';
-                            e.currentTarget.querySelector('.preview-icon').style.opacity = '0';
-                          }}
+                        {/* Hover overlay */}
+                        <div className="position-absolute top-0 start-0 w-100 h-100"
+                          style={{ backgroundColor:'rgba(0,0,0,0)', transition:'background-color .2s', display:'flex', alignItems:'center', justifyContent:'center' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor='rgba(0,0,0,.5)'; e.currentTarget.querySelector('.pv-icon').style.opacity='1'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor='rgba(0,0,0,0)'; e.currentTarget.querySelector('.pv-icon').style.opacity='0'; }}
                         >
-                          <div 
-                            className="preview-icon"
-                            style={{
-                              opacity: 0,
-                              transition: 'opacity 0.2s',
-                              color: 'white',
-                              fontSize: '1.5rem',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            👁️ View
-                          </div>
+                          <div className="pv-icon" style={{ opacity:0, transition:'opacity .2s', color:'white', fontSize:'1.5rem', fontWeight:'bold' }}>👁️ View</div>
                         </div>
                       </div>
 
-                      {/* Card Body */}
+                      {/* Card body */}
                       <CCardBody style={{ padding: '12px' }}>
-                        {/* File Name */}
-                        <div 
-                          className="text-truncate mb-2" 
-                          style={{ 
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            color: '#212529'
-                          }}
-                          title={displayName}
-                        >
-                          {displayName}
-                        </div>
-
-                        {/* File Info */}
+                        <div className="text-truncate mb-2" style={{ fontSize:'.875rem', fontWeight:'600' }} title={displayName}>{displayName}</div>
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-                            {photo.file_size ? `${photo.file_size} KB` : fileExtension.toUpperCase()}
-                          </small>
-                          <CBadge 
-                            color="light" 
-                            style={{ 
-                              fontSize: '0.65rem',
-                              color: '#6c757d',
-                              border: '1px solid #dee2e6'
-                            }}
-                          >
-                            {fileExtension.toUpperCase()}
-                          </CBadge>
+                          <small className="text-muted" style={{ fontSize:'.75rem' }}>{photo.file_size ? `${photo.file_size} KB` : fileExtension.toUpperCase()}</small>
+                          <CBadge color="light" style={{ fontSize:'.65rem', color:'#6c757d', border:'1px solid #dee2e6' }}>{fileExtension.toUpperCase()}</CBadge>
                         </div>
 
-                        {/* Download Button */}
-                        <CButton
-                          color="primary"
-                          size="sm"
-                          className="w-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadPhoto(photo.photo_url, index);
-                          }}
-                          style={{ fontSize: '0.75rem', padding: '6px' }}
+                        {/* Download button — uses blob fetch so cross-origin S3 URLs work */}
+                        <CButton color="primary" size="sm" className="w-100"
+                          onClick={e => { e.stopPropagation(); handleDownloadPhoto(photo.photo_url); }}
+                          style={{ fontSize:'.75rem', padding:'6px' }}
                         >
                           <CIcon icon={cilCloudDownload} size="sm" /> Download
                         </CButton>
 
-                        {/* Remark if exists */}
                         {photo.remark && photo.remark !== displayName && (
-                          <div 
-                            className="mt-2 p-2" 
-                            style={{ 
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '4px',
-                              fontSize: '0.7rem',
-                              color: '#6c757d',
-                              borderLeft: '2px solid #0d6efd'
-                            }}
-                          >
-                            <div className="text-truncate" title={photo.remark}>
-                              {photo.remark}
-                            </div>
+                          <div className="mt-2 p-2" style={{ backgroundColor:'#f8f9fa', borderRadius:'4px', fontSize:'.7rem', color:'#6c757d', borderLeft:'2px solid #0d6efd' }}>
+                            <div className="text-truncate" title={photo.remark}>{photo.remark}</div>
                           </div>
                         )}
                       </CCardBody>
@@ -2899,26 +2271,16 @@ const ExpenseReport = () => {
             <div className="text-center py-5">
               <CIcon icon={cilCloudUpload} size="4xl" className="text-muted mb-3" />
               <h6 className="text-muted">No photos available</h6>
-              <p className="text-muted small">This expense has no photos attached.</p>
             </div>
           )}
         </CModalBody>
-        <CModalFooter style={{ backgroundColor: '#f8f9fa', borderTop: '2px solid #dee2e6' }}>
+        <CModalFooter style={{ backgroundColor:'#f8f9fa', borderTop:'2px solid #dee2e6' }}>
           <div className="d-flex justify-content-between align-items-center w-100">
-            <small className="text-muted">
-              Click on any photo to view full size
-            </small>
-            <CButton color="secondary" onClick={() => setShowPhotoGalleryModal(false)}>
-              Close
-            </CButton>
+            <small className="text-muted">Click any photo to view full size</small>
+            <CButton color="secondary" onClick={() => setShowPhotoGalleryModal(false)}>Close</CButton>
           </div>
         </CModalFooter>
       </CModal>
-
-
-
-
-
     </>
   );
 };

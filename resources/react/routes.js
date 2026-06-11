@@ -388,6 +388,9 @@ export default function fetchRoutes(){
    { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
 
+      { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+
+
   ]
   }
    else if(user===3){
@@ -472,7 +475,9 @@ export default function fetchRoutes(){
 
    { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+      { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
  
+
    ]
   }
 
@@ -561,6 +566,8 @@ export default function fetchRoutes(){
 
    { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+      { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+
  
     ]}
 
@@ -643,6 +650,7 @@ export default function fetchRoutes(){
 
    { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+      { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
 
   ]
   }

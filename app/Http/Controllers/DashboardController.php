@@ -291,7 +291,7 @@ class DashboardController extends Controller
         $categories = [
             'drilling'        => DrillingRecord::class,
             'expense'         => Expense::class,
-            'machine_reading' => MachineReading::class,
+            // 'machine_reading' => MachineReading::class,
             'stock_update'    => MachineryStockUpdate::class,
             'order'           => Order::class,
             'proforma'        => ProformaInvoice::class,
@@ -523,7 +523,7 @@ if ($drillings->count() > 0) {
         $queries = [
             DrillingRecord::where('user_id', $userId),
             Expense::where('created_by', $userId),
-            MachineReading::where('user_id', $userId),
+            // MachineReading::where('user_id', $userId),
             MachineryStockUpdate::where('created_by', $userId),
             Order::where('created_by', $userId),
             ProformaInvoice::where('created_by', $userId),

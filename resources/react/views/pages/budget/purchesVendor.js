@@ -1,4 +1,814 @@
 
+// import React, { useEffect, useRef, useState, useCallback } from 'react';
+// import {
+//   CButton,
+//   CCard,
+//   CCardHeader,
+//   CCardBody,
+//   CTable,
+//   CTableHead,
+//   CTableRow,
+//   CTableHeaderCell,
+//   CTableBody,
+//   CTableDataCell,
+//   CSpinner,
+//   CAlert,
+//   CModal,
+//   CModalHeader,
+//   CModalTitle,
+//   CBadge,
+//   CModalBody,
+//   CModalFooter,
+// } from '@coreui/react';
+// import Select from 'react-select';
+// import { getAPICall, deleteAPICall } from '../../../util/api';
+// import { getUserData, getUserType } from '../../../util/session';
+// import ConfirmationModal from '../../common/ConfirmationModal';
+// import { useToast } from '../../common/toast/ToastContext';
+// import PurchaseForm from './PurchaseForm';
+// import EditPurchaseModal from './EditPurchaseModal';
+// import jsPDF from 'jspdf';
+// import 'jspdf-autotable';
+// import { host } from '../../../util/constants';
+// import CIcon from '@coreui/icons-react';
+// import { cilCloudDownload, cilImage } from '@coreui/icons';
+
+// const PurchaseList = () => {
+//   const [purchases, setPurchases] = useState([]);
+//   const [vendors, setVendors] = useState([]);
+//   const [projects, setProjects] = useState([]);
+
+//   const [loading, setLoading] = useState(false);
+//   const [loadingMore, setLoadingMore] = useState(false);
+//   const [hasMore, setHasMore] = useState(true);
+//   const [nextCursor, setNextCursor] = useState(null);
+
+//   const [showAddModal, setShowAddModal] = useState(false);
+//   const [showEditModal, setShowEditModal] = useState(false);
+//   const [editItem, setEditItem] = useState(null);
+
+//   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+//   const [deleteItemId, setDeleteItemId] = useState(null);
+
+//   const [showImageModal, setShowImageModal] = useState(false);
+//   const [selectedImages, setSelectedImages] = useState([]);
+//   const [selectedPurchaseTitle, setSelectedPurchaseTitle] = useState('');
+
+//   const { showToast } = useToast();
+//   const usertype = getUserType();
+
+//   // Filter states
+//   const [filterProject, setFilterProject] = useState(null);
+//   const [filterVendor, setFilterVendor] = useState(null);
+
+//   const observerTarget = useRef(null);
+
+//   // Fetch vendors & projects
+//   const fetchVendors = async () => {
+//     try {
+//       const res = await getAPICall('/api/getPurchesVendor');
+//       setVendors(res || []);
+//     } catch {
+//       showToast('danger', 'Error loading vendors');
+//     }
+//   };
+
+//   const fetchProjects = async () => {
+//     try {
+//       const res = await getAPICall('/api/projects');
+//       setProjects(res || []);
+//     } catch {
+//       showToast('danger', 'Failed to load projects');
+//     }
+//   };
+
+//   // Paginated fetch
+//   const fetchPurchases = async (cursor = null, isLoadMore = false) => {
+//     try {
+//       if (isLoadMore) setLoadingMore(true);
+//       else setLoading(true);
+
+//       const url = cursor
+//         ? `/api/purchesVendor?cursor=${cursor}&perPage=10`
+//         : '/api/purchesVendor?perPage=10';
+
+//       const res = await getAPICall(url);
+//       const newData = res?.data || [];
+
+//       if (isLoadMore) {
+//         setPurchases((prev) => [...prev, ...newData]);
+//       } else {
+//         setPurchases(newData);
+//       }
+
+//       setNextCursor(res.next_cursor);
+//       setHasMore(res.has_more_pages);
+//     } catch (err) {
+//       showToast('danger', 'Failed to load purchases');
+//       if (!isLoadMore) setPurchases([]);
+//     } finally {
+//       setLoading(false);
+//       setLoadingMore(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchVendors();
+//     fetchProjects();
+//     fetchPurchases();
+//   }, []);
+
+//   const loadMore = useCallback(() => {
+//     if (!loadingMore && !loading && hasMore && nextCursor) {
+//       fetchPurchases(nextCursor, true);
+//     }
+//   }, [loadingMore, loading, hasMore, nextCursor]);
+
+//   useEffect(() => {
+//     const observer = new IntersectionObserver(
+//       (entries) => {
+//         if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+//           loadMore();
+//         }
+//       },
+//       { threshold: 0.1, rootMargin: '100px' }
+//     );
+
+//     const current = observerTarget.current;
+//     if (current) observer.observe(current);
+
+//     return () => {
+//       if (current) observer.unobserve(current);
+//     };
+//   }, [hasMore, loadingMore, loading, loadMore]);
+
+//   const refreshTable = () => {
+//     setPurchases([]);
+//     setNextCursor(null);
+//     setHasMore(true);
+//     fetchPurchases();
+//   };
+
+//   const openEdit = (purchase) => {
+//     setEditItem(purchase);
+//     setShowEditModal(true);
+//   };
+
+//   const openImageModal = (purchase) => {
+//     setSelectedImages(purchase.images || []);
+//     setSelectedPurchaseTitle(
+//       `${purchase.project?.project_name || ''} - ${purchase.material_name}`
+//     );
+//     setShowImageModal(true);
+//   };
+
+//   const downloadImage = (image) => {
+//     const fullUrl = `${host}/${image.image_path}`;
+//     const link = document.createElement('a');
+//     link.href = fullUrl;
+//     link.download = image.original_name || `purchase-image-${image.id}`;
+//     document.body.appendChild(link);
+//     link.click();
+//     document.body.removeChild(link);
+//   };
+
+//   const handleDelete = async () => {
+//     if (!deleteItemId) return;
+//     try {
+//       const res = await deleteAPICall(`/api/purchesVendorById/${deleteItemId}`);
+//       showToast('success', res.message || 'Deleted successfully');
+//       setDeleteModalVisible(false);
+//       refreshTable();
+//     } catch (err) {
+//       showToast('danger', 'Failed to delete purchase');
+//     }
+//   };
+
+//   const openDeleteModal = (id) => {
+//     setDeleteItemId(id);
+//     setDeleteModalVisible(true);
+//   };
+
+//   // Filter (client-side)
+//   const filteredData = purchases.filter((p) => {
+//     const byProject = filterProject ? p.project_id === filterProject.value : true;
+//     const byVendor = filterVendor ? p.vendor_id === filterVendor.value : true;
+//     return byProject && byVendor;
+//   });
+
+// const formatIndianNumber = (number) => {
+//   return new Intl.NumberFormat('en-IN', {
+//     minimumFractionDigits: 2,
+//     maximumFractionDigits: 2
+//   }).format(number || 0);
+// };
+
+// const formatDate = (date) => {
+//   if (!date) return '—';
+//   return new Date(date).toLocaleDateString('en-GB', {
+//     day: '2-digit',
+//     month: 'short',
+//     year: 'numeric'
+//   });
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//   // ───────────────────────────────────────────────
+//   // DOWNLOAD PDF - With repeating header + border on every page
+//   // ───────────────────────────────────────────────
+ 
+
+
+// const downloadPDF = () => {
+//   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+//   const margin = 40;
+
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+
+//   // ────────────────────────────────────────────────
+//   // Draw header + border (called on EVERY page)
+//   // ────────────────────────────────────────────────
+// // ────────────────────────────────────────────────
+// // Draw header + border (called on EVERY page)
+// // ────────────────────────────────────────────────
+// const drawHeader = (isFirstPage = false) => {
+//   // 1. Outer border
+//   doc.setDrawColor(80, 80, 80);
+//   doc.setLineWidth(1);
+//   doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+//   // 2. Logo (top-right)
+//   const logoSize = 70;
+//   const logoX = pageWidth - margin - logoSize - 15;
+//   const logoY = margin + 15;
+
+//   let logoUrl = null;
+//   if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//     logoUrl = `${host}/img/${companyInfo.logo}`;
+//   }
+
+//   if (logoUrl) {
+//     try {
+//       doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+//     } catch (err) {
+//       console.warn("Logo failed to load:", err);
+//       fallbackLogoPlaceholder();
+//     }
+//   } else {
+//     fallbackLogoPlaceholder();
+//   }
+
+//   function fallbackLogoPlaceholder() {
+//     doc.setFillColor(220, 220, 240);
+//     doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//     doc.setFontSize(12);
+//     doc.setTextColor(100);
+//     doc.text("LOGO", logoX + 15, logoY + 40);
+//   }
+
+//   // 3. Company name & details (top-left)
+//   const textX = margin + 15;
+//   let y = margin + 30;
+
+//   doc.setFont("helvetica", "bold");
+//   doc.setFontSize(20);
+//   doc.setTextColor(40, 40, 60);
+//   doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, y);
+
+//   y += 22;
+//   doc.setFont("helvetica", "normal");
+//   doc.setFontSize(11);
+//   doc.setTextColor(60);
+
+//   const details = [
+//     companyInfo.land_mark || "Urali Kanchan, Pune",
+//     `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//     `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//     `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+//   ];
+
+//   details.forEach(line => {
+//     if (line?.trim()) {
+//       doc.text(line, textX, y);
+//       y += 15;
+//     }
+//   });
+
+//   // 4. Separator line (HR)
+// // 4. Separator line
+// doc.setLineWidth(1.5);
+// doc.setDrawColor(0, 0, 0);
+
+// const lineY = y + 10;
+
+// doc.line(
+//   margin + 10,
+//   lineY,
+//   pageWidth - margin - 10,
+//   lineY
+// );
+
+// // ✅ Only 3px gap after HR line
+// let nextY = lineY + 3;
+
+
+//   // ─── Changed part ───────────────────────────────────────
+//   // Previously: let nextY = y + 25;
+//   // Now: explicit 3 px gap after the line → total space after line = 3 + extra breathing room
+//   // let nextY = lineY + 13;   // = lineY + 10 (old) + 3 px gap
+//   // You can increase to 15–18 if you want slightly more breathing room
+//   // ─────────────────────────────────────────────────────────
+
+//   // Title + Generated date → only first page
+//   if (isFirstPage) {
+//     doc.setFontSize(18);
+//     doc.setFont("helvetica", "bold");
+//     doc.setTextColor(0);
+//     doc.text('PURCHASE REPORT', pageWidth / 2, nextY + 15, { align: 'center' });
+
+//     doc.setFontSize(10);
+//     doc.setFont("helvetica", "normal");
+//     doc.setTextColor(70);
+//     const generatedDate = new Date().toLocaleDateString('en-GB');
+//     doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, nextY + 35, { align: 'center' });
+
+//     nextY += 55;   // space after generated date
+//   }
+
+//   return nextY;
+// };
+
+//   // ────────────────────────────────────────────────
+//   // Grand Total summary (only first page)
+//   // ────────────────────────────────────────────────
+//   const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+//   const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
+//   const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
+
+//   // Start first page
+//   let startY = drawHeader(true);
+
+//   if (startY > pageHeight - 180) {
+//     doc.addPage();
+//     startY = drawHeader(false);
+//   }
+
+//   // Grand total box
+//   doc.setFillColor(231, 76, 60);
+//   doc.setDrawColor(192, 57, 43);
+//   doc.setLineWidth(2);
+//   doc.rect(margin, startY, pageWidth - margin * 2, 35, 'FD');
+
+//   doc.setFontSize(10);
+//   doc.setFont("helvetica", "bold");
+//   doc.setTextColor(255, 255, 255);
+//   const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
+//   doc.text(grandText, pageWidth / 2, startY + 23, { align: 'center' });
+
+//   startY += 50;
+
+//   // ────────────────────────────────────────────────
+//   // Table setup
+//   // ────────────────────────────────────────────────
+//   const tableColumn = [
+//     "Sr No", "Project", "Vendor", "Material",
+//     "Price/Unit", "Qty", "Total", "Date", "About"
+//   ];
+
+//   const tableRows = filteredData.map((p, index) => [
+//     index + 1,
+//     p.project?.project_name || "—",
+//     p.vendor?.name || "—",
+//     p.material_name,
+//     formatIndianNumber(parseFloat(p.price_per_unit || 0)),
+//     p.qty || "—",
+//     formatIndianNumber(parseFloat(p.total || 0)),
+//     formatDate(p.date),
+//     p.about || "—"
+//   ]);
+
+//   // Add total row
+//   tableRows.push([
+//     { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
+//     formatIndianNumber(totalPricePerUnit),
+//     totalQty,
+//     formatIndianNumber(totalAmount),
+//     "",
+//     ""
+//   ]);
+
+//   doc.autoTable({
+//     head: [tableColumn],
+//     body: tableRows,
+//     startY: startY,
+//     theme: "grid",
+//     showHead: 'everyPage',           // ← important
+//     margin: { left: margin, right: margin, top: 170, bottom: 80 },
+//     // margin: { left: margin, right: margin, bottom: 60 },
+
+//     headStyles: {
+//       fillColor: [30, 115, 120],
+//       textColor: 255,
+//       fontSize: 10,
+//       halign: "center",
+//     },
+//     bodyStyles: {
+//       fontSize: 9,
+//       halign: "center",
+//       valign: "middle",
+//       cellPadding: 4,
+//     },
+//     styles: {
+//       lineWidth: 0.25,
+//       lineColor: [120, 120, 120],
+//     },
+//     alternateRowStyles: {
+//       fillColor: [245, 245, 245],
+//     },
+//     rowPageBreak: 'avoid',
+//     didDrawPage: (data) => {
+//       const isFirst = data.pageNumber === 1;
+
+//       // Draw header on current page
+//       drawHeader(isFirst);
+
+//       // Page number (bottom center)
+//       doc.setFontSize(8);
+//       doc.setTextColor(128, 128, 128);
+//       doc.text(
+//         `Page ${data.pageNumber}`,
+//         pageWidth / 2,
+//         pageHeight - 20,
+//         { align: 'center' }
+//       );
+//     },
+//   });
+
+//   // ────────────────────────────────────────────────
+//   // Final footer text on ALL pages
+//   // ────────────────────────────────────────────────
+//   const totalPages = doc.internal.getNumberOfPages();
+//   for (let i = 1; i <= totalPages; i++) {
+//     doc.setPage(i);
+//     doc.setFontSize(8);
+//     doc.setTextColor(128, 128, 128);
+//     doc.text(
+//       `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+//       pageWidth / 2,
+//       pageHeight - 35,
+//       { align: 'center' }
+//     );
+//   }
+
+//   const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+//   doc.save(fileName);
+//   showToast('success', 'PDF file downloaded successfully!');
+// };
+
+
+
+//   // ───────────────────────────────────────────────
+//   // EXCEL DOWNLOAD (unchanged - already good)
+//   // ───────────────────────────────────────────────
+//   const downloadExcel = () => {
+//     import('xlsx').then(XLSX => {
+//       const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+//       const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
+//       const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
+
+//       const worksheetData = filteredData.map((p, index) => ({
+//         "Sr No": index + 1,
+//         "Project": p.project?.project_name || "—",
+//         "Vendor": p.vendor?.name || "—",
+//         "Material": p.material_name,
+//         "Price/Unit": parseFloat(p.price_per_unit).toFixed(2),
+//         "Qty": p.qty,
+//         "Total": parseFloat(p.total).toFixed(2),
+//         "Date": new Date(p.date).toLocaleDateString(),
+//         "About": p.about || "—",
+//       }));
+
+//       worksheetData.push({
+//         "Sr No": "",
+//         "Project": "",
+//         "Vendor": "",
+//         "Material": "Total:",
+//         "Price/Unit": totalPricePerUnit.toFixed(2),
+//         "Qty": totalQty,
+//         "Total": totalAmount.toFixed(2),
+//         "Date": "",
+//         "About": "",
+//       });
+
+//       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+//       const workbook = XLSX.utils.book_new();
+//       XLSX.utils.book_append_sheet(workbook, worksheet, "Purchases");
+//       XLSX.writeFile(workbook, "purchase_report.xlsx");
+//     });
+//   };
+
+//   // ───────────────────────────────────────────────
+//   // RENDER
+//   // ───────────────────────────────────────────────
+//   return (
+//     <>
+//       <CCard className="mb-4">
+//         <CCardHeader
+//           className="d-flex justify-content-between align-items-center flex-wrap gap-3"
+//           style={{ paddingBottom: "1rem" }}
+//         >
+//           <strong>Purchase History</strong>
+
+//           <div className="d-flex align-items-center gap-3 flex-wrap">
+//             <CButton color="primary" onClick={downloadPDF}>
+//               Download PDF
+//             </CButton>
+
+//             <CButton color="info" onClick={downloadExcel}>
+//               Download Excel
+//             </CButton>
+
+//             <div style={{ width: 200 }}>
+//               <Select
+//                 placeholder="Filter by Project"
+//                 options={projects.map((p) => ({
+//                   value: p.id,
+//                   label: p.project_name,
+//                 }))}
+//                 value={filterProject}
+//                 onChange={setFilterProject}
+//                 isClearable
+//               />
+//             </div>
+
+//             <div style={{ width: 200 }}>
+//               <Select
+//                 placeholder="Filter by Vendor"
+//                 options={vendors.map((v) => ({
+//                   value: v.id,
+//                   label: v.name,
+//                 }))}
+//                 value={filterVendor}
+//                 onChange={setFilterVendor}
+//                 isClearable
+//               />
+//             </div>
+
+//             <CButton color="success" onClick={() => setShowAddModal(true)}>
+//               Add Purchase
+//             </CButton>
+//           </div>
+//         </CCardHeader>
+
+//         <CCardBody>
+//           {loading && purchases.length === 0 ? (
+//             <div className="text-center py-4">
+//               <CSpinner />
+//             </div>
+//           ) : filteredData.length > 0 ? (
+//             <>
+//               <div className="table-responsive">
+//                 <CTable striped hover bordered>
+//                   <CTableHead color="light">
+//                     <CTableRow>
+//                       <CTableHeaderCell>Sr. No.</CTableHeaderCell>
+//                       <CTableHeaderCell>Project</CTableHeaderCell>
+//                       <CTableHeaderCell>Vendor</CTableHeaderCell>
+//                       <CTableHeaderCell>Material</CTableHeaderCell>
+//                       <CTableHeaderCell>Price/Unit</CTableHeaderCell>
+//                       <CTableHeaderCell>Qty</CTableHeaderCell>
+//                       <CTableHeaderCell>Total</CTableHeaderCell>
+//                       <CTableHeaderCell>Include GST</CTableHeaderCell>
+//                       <CTableHeaderCell>Date</CTableHeaderCell>
+//                       <CTableHeaderCell>About</CTableHeaderCell>
+//                       <CTableHeaderCell>Images</CTableHeaderCell>
+//                       <CTableHeaderCell>Action</CTableHeaderCell>
+//                     </CTableRow>
+//                   </CTableHead>
+
+//                   <CTableBody>
+//                     {filteredData.map((p, i) => (
+//                       <CTableRow key={p.id}>
+//                         <CTableDataCell>{i + 1}</CTableDataCell>
+//                         <CTableDataCell>{p.project?.project_name || '—'}</CTableDataCell>
+//                         <CTableDataCell>{p.vendor?.name || '—'}</CTableDataCell>
+//                         <CTableDataCell>{p.material_name}</CTableDataCell>
+//                         <CTableDataCell>₹{parseFloat(p.price_per_unit).toFixed(2)}</CTableDataCell>
+//                         <CTableDataCell>{p.qty}</CTableDataCell>
+//                         <CTableDataCell>
+//                           <strong>₹{parseFloat(p.total).toFixed(2)}</strong>
+//                         </CTableDataCell>
+//                         <CTableDataCell>
+//                           {p.gst_included ? (
+//                             <CBadge color="success">Yes</CBadge>
+//                           ) : (
+//                             <CBadge color="danger">No</CBadge>
+//                           )}
+//                         </CTableDataCell>
+//                         <CTableDataCell>{new Date(p.date).toLocaleDateString()}</CTableDataCell>
+//                         <CTableDataCell>{p.about || '—'}</CTableDataCell>
+
+// <CTableDataCell>
+//                         {p.images && p.images.length > 0 ? (
+//                           <CButton 
+//                             color="info" 
+//                             size="sm" 
+//                             onClick={() => openImageModal(p)}
+//                           >
+//                             <CIcon icon={cilImage} className="me-1" />
+//                             View ({p.images.length})
+//                           </CButton>
+//                         ) : (
+//                           <CBadge color="secondary">No Images</CBadge>
+//                         )}
+//                       </CTableDataCell>
+
+//                         <CTableDataCell>
+//                           <div className="d-flex gap-2">
+//                             <CButton color="warning" size="sm" onClick={() => openEdit(p)}>
+//                               Edit
+//                             </CButton>
+//                             {usertype === 1 && (
+//                               <CButton color="danger" size="sm" onClick={() => openDeleteModal(p.id)}>
+//                                 Delete
+//                               </CButton>
+//                             )}
+//                           </div>
+//                         </CTableDataCell>
+//                       </CTableRow>
+//                     ))}
+//                   </CTableBody>
+//                 </CTable>
+//               </div>
+
+//               <div ref={observerTarget} style={{ height: '20px', margin: '20px 0' }}>
+//                 {loadingMore && (
+//                   <div className="text-center">
+//                     <CSpinner size="sm" className="me-2" />
+//                     <span className="text-muted small">Loading more purchases...</span>
+//                   </div>
+//                 )}
+//                 {!hasMore && purchases.length > 0 && (
+//                   <div className="text-center text-muted small">
+//                     <hr />
+//                     <p>All {purchases.length} purchases loaded</p>
+//                   </div>
+//                 )}
+//               </div>
+//             </>
+//           ) : (
+//             <CAlert color="info" className="text-center">
+//               No matching purchases found.
+//             </CAlert>
+//           )}
+//         </CCardBody>
+//       </CCard>
+
+
+
+// {/* ===================== IMAGE PREVIEW MODAL with Download ===================== */}
+//       <CModal visible={showImageModal} onClose={() => setShowImageModal(false)} size="xl" scrollable>
+//         <CModalHeader>
+//           <CModalTitle>Images - {selectedPurchaseTitle}</CModalTitle>
+//         </CModalHeader>
+//         <CModalBody>
+//           {selectedImages.length > 0 ? (
+//             <div className="row g-3">
+//               {selectedImages.map((img, index) => (
+//                 <div key={img.id || index} className="col-md-6 col-lg-4">
+//                   <CCard className="h-100 shadow-sm">
+//                     <div 
+//                       className="d-flex align-items-center justify-content-center bg-light" 
+//                       style={{ height: '220px', overflow: 'hidden' }}
+//                     >
+//                       {img.type === 'pdf' ? (
+//                         <div className="text-center">
+//                           <CIcon icon={cilCloudUpload} size="5xl" className="text-danger" />
+//                           <div className="mt-2"><CBadge color="danger">PDF</CBadge></div>
+//                         </div>
+//                       ) : (
+//                         <img 
+//                           src={`${host}/${img.image_path}`} 
+//                           alt={img.original_name} 
+//                           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+//                           onError={(e) => { e.target.src = '/placeholder-image.png'; }}
+//                         />
+//                       )}
+//                     </div>
+
+//                     <CCardBody>
+//                       <small className="text-muted d-block mb-2">
+//                         <strong>{img.original_name}</strong>
+//                       </small>
+//                       {img.remark && <small className="text-info d-block">Remark: {img.remark}</small>}
+
+//                       <CButton 
+//                         color="primary" 
+//                         size="sm" 
+//                         className="w-100 mt-2"
+//                         onClick={() => downloadImage(img)}
+//                       >
+//                         <CIcon icon={cilCloudDownload} className="me-1" />
+//                         Download
+//                       </CButton>
+//                     </CCardBody>
+//                   </CCard>
+//                 </div>
+//               ))}
+//             </div>
+//           ) : (
+//             <div className="text-center py-5">
+//               <CIcon icon={cilImage} size="4xl" className="text-muted mb-3" />
+//               <p className="text-muted">No images available for this purchase.</p>
+//             </div>
+//           )}
+//         </CModalBody>
+//         <CModalFooter>
+//           <CButton color="secondary" onClick={() => setShowImageModal(false)}>
+//             Close
+//           </CButton>
+//         </CModalFooter>
+//       </CModal>
+
+
+
+
+//       {/* Modals */}
+//       <CModal size="xl" visible={showAddModal} onClose={() => setShowAddModal(false)} backdrop="static">
+//         <CModalHeader closeButton>
+//           <CModalTitle>Add New Purchase</CModalTitle>
+//         </CModalHeader>
+//         <PurchaseForm
+//           vendors={vendors}
+//           onSuccess={() => {
+//             setShowAddModal(false);
+//             refreshTable();
+//           }}
+//           onCancel={() => setShowAddModal(false)}
+//         />
+//       </CModal>
+
+//       {editItem && (
+//         <EditPurchaseModal
+//           visible={showEditModal}
+//           purchase={editItem}
+//           vendors={vendors}
+//           onClose={() => {
+//             setShowEditModal(false);
+//             setEditItem(null);
+//           }}
+//           onSuccess={refreshTable}
+//         />
+//       )}
+
+//       <ConfirmationModal
+//         visible={deleteModalVisible}
+//         setVisible={setDeleteModalVisible}
+//         resource="Purchase Record"
+//         onYes={handleDelete}
+//       />
+//     </>
+//   );
+// };
+
+// export default PurchaseList;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   CButton,
@@ -31,7 +841,42 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { host } from '../../../util/constants';
 import CIcon from '@coreui/icons-react';
-import { cilCloudDownload, cilImage } from '@coreui/icons';
+import { cilCloudDownload, cilImage, cilCloudUpload } from '@coreui/icons';
+
+// ─────────────────────────────────────────────────────────────
+// Resolve any stored image_path to a usable <img src> / href.
+//   • Full https:// URL  → use as-is  (new S3 / Spaces uploads)
+//   • Old local path     → prepend host  (legacy local uploads)
+// ─────────────────────────────────────────────────────────────
+const resolveImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Legacy: "img/purchase-vendors/file.jpg" → prepend host
+  return `${host}/${path.replace(/^\//, '')}`;
+};
+
+// Download helper — uses blob fetch so cross-origin S3 URLs
+// actually trigger a file save instead of opening in a new tab.
+const downloadImageByUrl = async (imagePath, originalName) => {
+  const url = resolveImageUrl(imagePath);
+  const fileName = originalName || imagePath.split('/').pop().split('?')[0];
+  try {
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob    = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link    = document.createElement('a');
+    link.href     = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    // Fallback: open in new tab
+    window.open(url, '_blank');
+  }
+};
 
 const PurchaseList = () => {
   const [purchases, setPurchases] = useState([]);
@@ -57,13 +902,11 @@ const PurchaseList = () => {
   const { showToast } = useToast();
   const usertype = getUserType();
 
-  // Filter states
   const [filterProject, setFilterProject] = useState(null);
   const [filterVendor, setFilterVendor] = useState(null);
 
   const observerTarget = useRef(null);
 
-  // Fetch vendors & projects
   const fetchVendors = async () => {
     try {
       const res = await getAPICall('/api/getPurchesVendor');
@@ -82,7 +925,6 @@ const PurchaseList = () => {
     }
   };
 
-  // Paginated fetch
   const fetchPurchases = async (cursor = null, isLoadMore = false) => {
     try {
       if (isLoadMore) setLoadingMore(true);
@@ -133,13 +975,9 @@ const PurchaseList = () => {
       },
       { threshold: 0.1, rootMargin: '100px' }
     );
-
     const current = observerTarget.current;
     if (current) observer.observe(current);
-
-    return () => {
-      if (current) observer.unobserve(current);
-    };
+    return () => { if (current) observer.unobserve(current); };
   }, [hasMore, loadingMore, loading, loadMore]);
 
   const refreshTable = () => {
@@ -162,16 +1000,6 @@ const PurchaseList = () => {
     setShowImageModal(true);
   };
 
-  const downloadImage = (image) => {
-    const fullUrl = `${host}/${image.image_path}`;
-    const link = document.createElement('a');
-    link.href = fullUrl;
-    link.download = image.original_name || `purchase-image-${image.id}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleDelete = async () => {
     if (!deleteItemId) return;
     try {
@@ -189,308 +1017,176 @@ const PurchaseList = () => {
     setDeleteModalVisible(true);
   };
 
-  // Filter (client-side)
   const filteredData = purchases.filter((p) => {
     const byProject = filterProject ? p.project_id === filterProject.value : true;
-    const byVendor = filterVendor ? p.vendor_id === filterVendor.value : true;
+    const byVendor  = filterVendor  ? p.vendor_id  === filterVendor.value  : true;
     return byProject && byVendor;
   });
 
-const formatIndianNumber = (number) => {
-  return new Intl.NumberFormat('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(number || 0);
-};
+  const formatIndianNumber = (number) =>
+    new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number || 0);
 
-const formatDate = (date) => {
-  if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
-};
+  const formatDate = (date) => {
+    if (!date) return '—';
+    return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
+  // ── PDF Download ────────────────────────────────────────────
+  const downloadPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const pageWidth  = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
 
+    const user        = getUserData();
+    const companyInfo = user?.company_info || {};
 
+    const drawHeader = (isFirstPage = false) => {
+      doc.setDrawColor(80, 80, 80);
+      doc.setLineWidth(1);
+      doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
+      const logoSize = 70;
+      const logoX    = pageWidth - margin - logoSize - 15;
+      const logoY    = margin + 15;
 
+      let logoUrl = null;
+      if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+        logoUrl = `${host}/img/${companyInfo.logo}`;
+      }
 
+      if (logoUrl) {
+        try { doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize); }
+        catch { fallbackLogo(); }
+      } else { fallbackLogo(); }
 
+      function fallbackLogo() {
+        doc.setFillColor(220, 220, 240);
+        doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text("LOGO", logoX + 15, logoY + 40);
+      }
 
+      const textX = margin + 15;
+      let y = margin + 30;
 
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(40, 40, 60);
+      doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, y);
+      y += 22;
 
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(60);
+      [
+        companyInfo.land_mark || "Urali Kanchan, Pune",
+        `Phone: ${companyInfo.phone_no || "9173635656"}`,
+        `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+        `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+      ].forEach(line => { if (line?.trim()) { doc.text(line, textX, y); y += 15; } });
 
+      doc.setLineWidth(1.5);
+      doc.setDrawColor(0, 0, 0);
+      const lineY = y + 10;
+      doc.line(margin + 10, lineY, pageWidth - margin - 10, lineY);
+      let nextY = lineY + 3;
 
+      if (isFirstPage) {
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
+        doc.text('PURCHASE REPORT', pageWidth / 2, nextY + 15, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(70);
+        doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')}`, pageWidth / 2, nextY + 35, { align: 'center' });
+        nextY += 55;
+      }
+      return nextY;
+    };
 
+    const totalQty          = filteredData.reduce((s, i) => s + Number(i.qty || 0), 0);
+    const totalAmount       = filteredData.reduce((s, i) => s + Number(i.total || 0), 0);
+    const totalPricePerUnit = filteredData.reduce((s, i) => s + Number(i.price_per_unit || 0), 0);
 
+    let startY = drawHeader(true);
+    if (startY > pageHeight - 180) { doc.addPage(); startY = drawHeader(false); }
 
-  // ───────────────────────────────────────────────
-  // DOWNLOAD PDF - With repeating header + border on every page
-  // ───────────────────────────────────────────────
- 
-
-
-const downloadPDF = () => {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 40;
-
-  const user = getUserData();
-  const companyInfo = user?.company_info || {};
-
-  // ────────────────────────────────────────────────
-  // Draw header + border (called on EVERY page)
-  // ────────────────────────────────────────────────
-// ────────────────────────────────────────────────
-// Draw header + border (called on EVERY page)
-// ────────────────────────────────────────────────
-const drawHeader = (isFirstPage = false) => {
-  // 1. Outer border
-  doc.setDrawColor(80, 80, 80);
-  doc.setLineWidth(1);
-  doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
-
-  // 2. Logo (top-right)
-  const logoSize = 70;
-  const logoX = pageWidth - margin - logoSize - 15;
-  const logoY = margin + 15;
-
-  let logoUrl = null;
-  if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-    logoUrl = `${host}/img/${companyInfo.logo}`;
-  }
-
-  if (logoUrl) {
-    try {
-      doc.addImage(logoUrl, 'PNG', logoX, logoY, logoSize, logoSize);
-    } catch (err) {
-      console.warn("Logo failed to load:", err);
-      fallbackLogoPlaceholder();
-    }
-  } else {
-    fallbackLogoPlaceholder();
-  }
-
-  function fallbackLogoPlaceholder() {
-    doc.setFillColor(220, 220, 240);
-    doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text("LOGO", logoX + 15, logoY + 40);
-  }
-
-  // 3. Company name & details (top-left)
-  const textX = margin + 15;
-  let y = margin + 30;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(40, 40, 60);
-  doc.text(companyInfo.company_name || "Deshmukh Infra Soft", textX, y);
-
-  y += 22;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(60);
-
-  const details = [
-    companyInfo.land_mark || "Urali Kanchan, Pune",
-    `Phone: ${companyInfo.phone_no || "9173635656"}`,
-    `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-    `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-  ];
-
-  details.forEach(line => {
-    if (line?.trim()) {
-      doc.text(line, textX, y);
-      y += 15;
-    }
-  });
-
-  // 4. Separator line (HR)
-// 4. Separator line
-doc.setLineWidth(1.5);
-doc.setDrawColor(0, 0, 0);
-
-const lineY = y + 10;
-
-doc.line(
-  margin + 10,
-  lineY,
-  pageWidth - margin - 10,
-  lineY
-);
-
-// ✅ Only 3px gap after HR line
-let nextY = lineY + 3;
-
-
-  // ─── Changed part ───────────────────────────────────────
-  // Previously: let nextY = y + 25;
-  // Now: explicit 3 px gap after the line → total space after line = 3 + extra breathing room
-  // let nextY = lineY + 13;   // = lineY + 10 (old) + 3 px gap
-  // You can increase to 15–18 if you want slightly more breathing room
-  // ─────────────────────────────────────────────────────────
-
-  // Title + Generated date → only first page
-  if (isFirstPage) {
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    doc.text('PURCHASE REPORT', pageWidth / 2, nextY + 15, { align: 'center' });
-
+    doc.setFillColor(231, 76, 60);
+    doc.setDrawColor(192, 57, 43);
+    doc.setLineWidth(2);
+    doc.rect(margin, startY, pageWidth - margin * 2, 35, 'FD');
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(70);
-    const generatedDate = new Date().toLocaleDateString('en-GB');
-    doc.text(`Generated on: ${generatedDate}`, pageWidth / 2, nextY + 35, { align: 'center' });
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(
+      `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`,
+      pageWidth / 2, startY + 23, { align: 'center' }
+    );
+    startY += 50;
 
-    nextY += 55;   // space after generated date
-  }
+    const tableRows = filteredData.map((p, index) => [
+      index + 1,
+      p.project?.project_name || "—",
+      p.vendor?.name || "—",
+      p.material_name,
+      formatIndianNumber(parseFloat(p.price_per_unit || 0)),
+      p.qty || "—",
+      formatIndianNumber(parseFloat(p.total || 0)),
+      formatDate(p.date),
+      p.about || "—",
+    ]);
+    tableRows.push([
+      { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
+      formatIndianNumber(totalPricePerUnit),
+      totalQty,
+      formatIndianNumber(totalAmount),
+      "", "",
+    ]);
 
-  return nextY;
-};
+    doc.autoTable({
+      head: [["Sr No","Project","Vendor","Material","Price/Unit","Qty","Total","Date","About"]],
+      body: tableRows,
+      startY,
+      theme: "grid",
+      showHead: 'everyPage',
+      margin: { left: margin, right: margin, top: 170, bottom: 80 },
+      headStyles: { fillColor: [30, 115, 120], textColor: 255, fontSize: 10, halign: "center" },
+      bodyStyles: { fontSize: 9, halign: "center", valign: "middle", cellPadding: 4 },
+      styles: { lineWidth: 0.25, lineColor: [120, 120, 120] },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      rowPageBreak: 'avoid',
+      didDrawPage: (data) => {
+        drawHeader(data.pageNumber === 1);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${data.pageNumber}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+      },
+    });
 
-  // ────────────────────────────────────────────────
-  // Grand Total summary (only first page)
-  // ────────────────────────────────────────────────
-  const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-  const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
-  const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
-
-  // Start first page
-  let startY = drawHeader(true);
-
-  if (startY > pageHeight - 180) {
-    doc.addPage();
-    startY = drawHeader(false);
-  }
-
-  // Grand total box
-  doc.setFillColor(231, 76, 60);
-  doc.setDrawColor(192, 57, 43);
-  doc.setLineWidth(2);
-  doc.rect(margin, startY, pageWidth - margin * 2, 35, 'FD');
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  const grandText = `Grand Total : Qty: ${totalQty} | Price/Unit Sum: ${formatIndianNumber(totalPricePerUnit)} | Total Amount: ${formatIndianNumber(totalAmount)}`;
-  doc.text(grandText, pageWidth / 2, startY + 23, { align: 'center' });
-
-  startY += 50;
-
-  // ────────────────────────────────────────────────
-  // Table setup
-  // ────────────────────────────────────────────────
-  const tableColumn = [
-    "Sr No", "Project", "Vendor", "Material",
-    "Price/Unit", "Qty", "Total", "Date", "About"
-  ];
-
-  const tableRows = filteredData.map((p, index) => [
-    index + 1,
-    p.project?.project_name || "—",
-    p.vendor?.name || "—",
-    p.material_name,
-    formatIndianNumber(parseFloat(p.price_per_unit || 0)),
-    p.qty || "—",
-    formatIndianNumber(parseFloat(p.total || 0)),
-    formatDate(p.date),
-    p.about || "—"
-  ]);
-
-  // Add total row
-  tableRows.push([
-    { content: "Total:", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
-    formatIndianNumber(totalPricePerUnit),
-    totalQty,
-    formatIndianNumber(totalAmount),
-    "",
-    ""
-  ]);
-
-  doc.autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: startY,
-    theme: "grid",
-    showHead: 'everyPage',           // ← important
-    margin: { left: margin, right: margin, top: 170, bottom: 80 },
-    // margin: { left: margin, right: margin, bottom: 60 },
-
-    headStyles: {
-      fillColor: [30, 115, 120],
-      textColor: 255,
-      fontSize: 10,
-      halign: "center",
-    },
-    bodyStyles: {
-      fontSize: 9,
-      halign: "center",
-      valign: "middle",
-      cellPadding: 4,
-    },
-    styles: {
-      lineWidth: 0.25,
-      lineColor: [120, 120, 120],
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-    rowPageBreak: 'avoid',
-    didDrawPage: (data) => {
-      const isFirst = data.pageNumber === 1;
-
-      // Draw header on current page
-      drawHeader(isFirst);
-
-      // Page number (bottom center)
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Page ${data.pageNumber}`,
-        pageWidth / 2,
-        pageHeight - 20,
-        { align: 'center' }
+        `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
+        pageWidth / 2, pageHeight - 35, { align: 'center' }
       );
-    },
-  });
+    }
 
-  // ────────────────────────────────────────────────
-  // Final footer text on ALL pages
-  // ────────────────────────────────────────────────
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Purchase Report | Generated: ${new Date().toLocaleDateString('en-GB')}`,
-      pageWidth / 2,
-      pageHeight - 35,
-      { align: 'center' }
-    );
-  }
+    doc.save(`Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('success', 'PDF file downloaded successfully!');
+  };
 
-  const fileName = `Purchase_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(fileName);
-  showToast('success', 'PDF file downloaded successfully!');
-};
-
-
-
-  // ───────────────────────────────────────────────
-  // EXCEL DOWNLOAD (unchanged - already good)
-  // ───────────────────────────────────────────────
+  // ── Excel Download ──────────────────────────────────────────
   const downloadExcel = () => {
     import('xlsx').then(XLSX => {
-      const totalQty = filteredData.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-      const totalAmount = filteredData.reduce((sum, item) => sum + Number(item.total || 0), 0);
-      const totalPricePerUnit = filteredData.reduce((sum, item) => sum + Number(item.price_per_unit || 0), 0);
+      const totalQty          = filteredData.reduce((s, i) => s + Number(i.qty || 0), 0);
+      const totalAmount       = filteredData.reduce((s, i) => s + Number(i.total || 0), 0);
+      const totalPricePerUnit = filteredData.reduce((s, i) => s + Number(i.price_per_unit || 0), 0);
 
       const worksheetData = filteredData.map((p, index) => ({
         "Sr No": index + 1,
@@ -505,82 +1201,54 @@ let nextY = lineY + 3;
       }));
 
       worksheetData.push({
-        "Sr No": "",
-        "Project": "",
-        "Vendor": "",
-        "Material": "Total:",
+        "Sr No": "", "Project": "", "Vendor": "", "Material": "Total:",
         "Price/Unit": totalPricePerUnit.toFixed(2),
         "Qty": totalQty,
         "Total": totalAmount.toFixed(2),
-        "Date": "",
-        "About": "",
+        "Date": "", "About": "",
       });
 
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-      const workbook = XLSX.utils.book_new();
+      const workbook  = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Purchases");
       XLSX.writeFile(workbook, "purchase_report.xlsx");
     });
   };
 
-  // ───────────────────────────────────────────────
-  // RENDER
-  // ───────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────
   return (
     <>
       <CCard className="mb-4">
-        <CCardHeader
-          className="d-flex justify-content-between align-items-center flex-wrap gap-3"
-          style={{ paddingBottom: "1rem" }}
-        >
+        <CCardHeader className="d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ paddingBottom: "1rem" }}>
           <strong>Purchase History</strong>
-
           <div className="d-flex align-items-center gap-3 flex-wrap">
-            <CButton color="primary" onClick={downloadPDF}>
-              Download PDF
-            </CButton>
-
-            <CButton color="info" onClick={downloadExcel}>
-              Download Excel
-            </CButton>
-
+            <CButton color="primary" onClick={downloadPDF}>Download PDF</CButton>
+            <CButton color="info"    onClick={downloadExcel}>Download Excel</CButton>
             <div style={{ width: 200 }}>
               <Select
                 placeholder="Filter by Project"
-                options={projects.map((p) => ({
-                  value: p.id,
-                  label: p.project_name,
-                }))}
+                options={projects.map(p => ({ value: p.id, label: p.project_name }))}
                 value={filterProject}
                 onChange={setFilterProject}
                 isClearable
               />
             </div>
-
             <div style={{ width: 200 }}>
               <Select
                 placeholder="Filter by Vendor"
-                options={vendors.map((v) => ({
-                  value: v.id,
-                  label: v.name,
-                }))}
+                options={vendors.map(v => ({ value: v.id, label: v.name }))}
                 value={filterVendor}
                 onChange={setFilterVendor}
                 isClearable
               />
             </div>
-
-            <CButton color="success" onClick={() => setShowAddModal(true)}>
-              Add Purchase
-            </CButton>
+            <CButton color="success" onClick={() => setShowAddModal(true)}>Add Purchase</CButton>
           </div>
         </CCardHeader>
 
         <CCardBody>
           {loading && purchases.length === 0 ? (
-            <div className="text-center py-4">
-              <CSpinner />
-            </div>
+            <div className="text-center py-4"><CSpinner /></div>
           ) : filteredData.length > 0 ? (
             <>
               <div className="table-responsive">
@@ -601,7 +1269,6 @@ let nextY = lineY + 3;
                       <CTableHeaderCell>Action</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
-
                   <CTableBody>
                     {filteredData.map((p, i) => (
                       <CTableRow key={p.id}>
@@ -611,43 +1278,27 @@ let nextY = lineY + 3;
                         <CTableDataCell>{p.material_name}</CTableDataCell>
                         <CTableDataCell>₹{parseFloat(p.price_per_unit).toFixed(2)}</CTableDataCell>
                         <CTableDataCell>{p.qty}</CTableDataCell>
+                        <CTableDataCell><strong>₹{parseFloat(p.total).toFixed(2)}</strong></CTableDataCell>
                         <CTableDataCell>
-                          <strong>₹{parseFloat(p.total).toFixed(2)}</strong>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {p.gst_included ? (
-                            <CBadge color="success">Yes</CBadge>
-                          ) : (
-                            <CBadge color="danger">No</CBadge>
-                          )}
+                          {p.gst_included ? <CBadge color="success">Yes</CBadge> : <CBadge color="danger">No</CBadge>}
                         </CTableDataCell>
                         <CTableDataCell>{new Date(p.date).toLocaleDateString()}</CTableDataCell>
                         <CTableDataCell>{p.about || '—'}</CTableDataCell>
-
-<CTableDataCell>
-                        {p.images && p.images.length > 0 ? (
-                          <CButton 
-                            color="info" 
-                            size="sm" 
-                            onClick={() => openImageModal(p)}
-                          >
-                            <CIcon icon={cilImage} className="me-1" />
-                            View ({p.images.length})
-                          </CButton>
-                        ) : (
-                          <CBadge color="secondary">No Images</CBadge>
-                        )}
-                      </CTableDataCell>
-
+                        <CTableDataCell>
+                          {p.images && p.images.length > 0 ? (
+                            <CButton color="info" size="sm" onClick={() => openImageModal(p)}>
+                              <CIcon icon={cilImage} className="me-1" />
+                              View ({p.images.length})
+                            </CButton>
+                          ) : (
+                            <CBadge color="secondary">No Images</CBadge>
+                          )}
+                        </CTableDataCell>
                         <CTableDataCell>
                           <div className="d-flex gap-2">
-                            <CButton color="warning" size="sm" onClick={() => openEdit(p)}>
-                              Edit
-                            </CButton>
+                            <CButton color="warning" size="sm" onClick={() => openEdit(p)}>Edit</CButton>
                             {usertype === 1 && (
-                              <CButton color="danger" size="sm" onClick={() => openDeleteModal(p.id)}>
-                                Delete
-                              </CButton>
+                              <CButton color="danger" size="sm" onClick={() => openDeleteModal(p.id)}>Delete</CButton>
                             )}
                           </div>
                         </CTableDataCell>
@@ -673,16 +1324,12 @@ let nextY = lineY + 3;
               </div>
             </>
           ) : (
-            <CAlert color="info" className="text-center">
-              No matching purchases found.
-            </CAlert>
+            <CAlert color="info" className="text-center">No matching purchases found.</CAlert>
           )}
         </CCardBody>
       </CCard>
 
-
-
-{/* ===================== IMAGE PREVIEW MODAL with Download ===================== */}
+      {/* ── Image Preview Modal ──────────────────────────────── */}
       <CModal visible={showImageModal} onClose={() => setShowImageModal(false)} size="xl" scrollable>
         <CModalHeader>
           <CModalTitle>Images - {selectedPurchaseTitle}</CModalTitle>
@@ -690,47 +1337,52 @@ let nextY = lineY + 3;
         <CModalBody>
           {selectedImages.length > 0 ? (
             <div className="row g-3">
-              {selectedImages.map((img, index) => (
-                <div key={img.id || index} className="col-md-6 col-lg-4">
-                  <CCard className="h-100 shadow-sm">
-                    <div 
-                      className="d-flex align-items-center justify-content-center bg-light" 
-                      style={{ height: '220px', overflow: 'hidden' }}
-                    >
-                      {img.type === 'pdf' ? (
-                        <div className="text-center">
-                          <CIcon icon={cilCloudUpload} size="5xl" className="text-danger" />
-                          <div className="mt-2"><CBadge color="danger">PDF</CBadge></div>
-                        </div>
-                      ) : (
-                        <img 
-                          src={`${host}/${img.image_path}`} 
-                          alt={img.original_name} 
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          onError={(e) => { e.target.src = '/placeholder-image.png'; }}
-                        />
-                      )}
-                    </div>
+              {selectedImages.map((img, index) => {
+                // ← KEY FIX: resolveImageUrl handles both S3 full URLs and old local paths
+                const resolvedUrl = resolveImageUrl(img.image_path);
 
-                    <CCardBody>
-                      <small className="text-muted d-block mb-2">
-                        <strong>{img.original_name}</strong>
-                      </small>
-                      {img.remark && <small className="text-info d-block">Remark: {img.remark}</small>}
-
-                      <CButton 
-                        color="primary" 
-                        size="sm" 
-                        className="w-100 mt-2"
-                        onClick={() => downloadImage(img)}
+                return (
+                  <div key={img.id || index} className="col-md-6 col-lg-4">
+                    <CCard className="h-100 shadow-sm">
+                      <div
+                        className="d-flex align-items-center justify-content-center bg-light"
+                        style={{ height: '220px', overflow: 'hidden' }}
                       >
-                        <CIcon icon={cilCloudDownload} className="me-1" />
-                        Download
-                      </CButton>
-                    </CCardBody>
-                  </CCard>
-                </div>
-              ))}
+                        {img.type === 'pdf' ? (
+                          <div className="text-center">
+                            <CIcon icon={cilCloudUpload} size="5xl" className="text-danger" />
+                            <div className="mt-2"><CBadge color="danger">PDF</CBadge></div>
+                          </div>
+                        ) : (
+                          <img
+                            src={resolvedUrl}               /* ← Full S3 URL or resolved local */
+                            alt={img.original_name}
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        )}
+                      </div>
+
+                      <CCardBody>
+                        <small className="text-muted d-block mb-2">
+                          <strong>{img.original_name}</strong>
+                        </small>
+                        {img.remark && (
+                          <small className="text-info d-block mb-2">Remark: {img.remark}</small>
+                        )}
+                        {/* Download via blob fetch — works for cross-origin S3 URLs */}
+                        <CButton
+                          color="primary" size="sm" className="w-100 mt-2"
+                          onClick={() => downloadImageByUrl(img.image_path, img.original_name)}
+                        >
+                          <CIcon icon={cilCloudDownload} className="me-1" />
+                          Download
+                        </CButton>
+                      </CCardBody>
+                    </CCard>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-5">
@@ -740,39 +1392,29 @@ let nextY = lineY + 3;
           )}
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => setShowImageModal(false)}>
-            Close
-          </CButton>
+          <CButton color="secondary" onClick={() => setShowImageModal(false)}>Close</CButton>
         </CModalFooter>
       </CModal>
 
-
-
-
-      {/* Modals */}
+      {/* ── Add Modal ────────────────────────────────────────── */}
       <CModal size="xl" visible={showAddModal} onClose={() => setShowAddModal(false)} backdrop="static">
         <CModalHeader closeButton>
           <CModalTitle>Add New Purchase</CModalTitle>
         </CModalHeader>
         <PurchaseForm
           vendors={vendors}
-          onSuccess={() => {
-            setShowAddModal(false);
-            refreshTable();
-          }}
+          onSuccess={() => { setShowAddModal(false); refreshTable(); }}
           onCancel={() => setShowAddModal(false)}
         />
       </CModal>
 
+      {/* ── Edit Modal ───────────────────────────────────────── */}
       {editItem && (
         <EditPurchaseModal
           visible={showEditModal}
           purchase={editItem}
           vendors={vendors}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditItem(null);
-          }}
+          onClose={() => { setShowEditModal(false); setEditItem(null); }}
           onSuccess={refreshTable}
         />
       )}
@@ -788,25 +1430,3 @@ let nextY = lineY + 3;
 };
 
 export default PurchaseList;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
