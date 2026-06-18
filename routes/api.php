@@ -57,7 +57,9 @@ use App\Http\Controllers\PurchesVendorController;
 use App\Http\Controllers\MachineryStockUpdateController;  
 
 use App\Http\Controllers\DashboardController;
- use App\Http\Controllers\SubcontractVendorController;
+ use App\Http\Controllers\SubcontractVendorController; 
+
+use App\Http\Controllers\LadgerController;
 
 
 // New debugging and sync routes
@@ -209,6 +211,9 @@ Route::patch('/operators/{id}', [OperatorController::class, 'update']); // optio
 // Delete specific operator
 Route::delete('/operators/{id}', [OperatorController::class, 'destroy']);
 
+Route::get('/typeTwoVendor', [OperatorController::class, 'getTypeTwoOperators']);
+
+
 // users data
 Route::get('/usersData', [AuthController::class, 'getCompanyType2Users']);
 
@@ -355,6 +360,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/order/{id}/address', [OrderController::class, 'updateAddress']);
 
    
+    
+    Route::get('/RegularProjectLedgerReport', [LadgerController::class, 'ledgerReport']);
+    Route::get('/purchase-vendor-ledger', [LadgerController::class, 'purchaseVendorLedgerReport']);
+    Route::get('/vendor-ledger-report', [LadgerController::class, 'vendorLedgerReport']);
     
 });
 

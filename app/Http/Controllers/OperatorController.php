@@ -213,5 +213,16 @@ public function showPurchesVendors()
     return response()->json($vendors);
 }
 
+
+public function getTypeTwoOperators()
+{
+    $operators = Operator::where('type', 2)->get();
+
+    return response()->json([
+        'status' => true,
+        'data' => $operators
+    ]);
+}
+
     
 }

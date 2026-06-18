@@ -86,7 +86,7 @@ export default function fetchNavItems(t1) {
     ];
   }
 
-  
+
   // Admin (user === 1) - Simple navigation
   else if (user === 1) {
     _nav = [
@@ -94,20 +94,20 @@ export default function fetchNavItems(t1) {
         component: CNavItem,
         name: t("LABELS.dashboard"),
         to: '/dashboard',
-        icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+        icon: <CIcon icon={cibElasticStack} customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
 
 
-         {
+      {
         component: CNavItem,
         name: "Daily Activity Dashboard",
         to: '/dailyActivityDashboard',
-        icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+        icon: <CIcon icon={cibElasticStack} customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
 
-      
+
 
 
       {
@@ -116,11 +116,11 @@ export default function fetchNavItems(t1) {
         to: '/worklog',
         icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
       },
-       {
+      {
         component: CNavItem,
         name: t("LABELS.new_expense"),
         to: '/expense/new',
-        icon: <CIcon icon={cilDollar}  customClassName="nav-icon" />,
+        icon: <CIcon icon={cilDollar} customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
       {
@@ -130,50 +130,51 @@ export default function fetchNavItems(t1) {
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
 
-         {
+      {
         component: CNavGroup,
         name: "Bills",
         icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
         items: [
 
-           {
-        component: CNavItem,
-        name: "Create Invoice",
-        to: '/invoice',
-        // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
-      }, 
-       {
-        component: CNavItem,
-        name: "All Invoices",
-        to: '/invoiceTable',
-        // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
-      },
-      {
-        component: CNavItem,
-        name:"Vendor Budget",
-        to: '/budget',
-        // icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
-      },
-
-     
-
-
-
-        ]},
-      {
+          {
             component: CNavItem,
-            name: 'Project Summary Report',
-            to: '/ProjectSummeryReport',
-            icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
-            
+            name: "Create Invoice",
+            to: '/invoice',
+            // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
           },
-      
+          {
+            component: CNavItem,
+            name: "All Invoices",
+            to: '/invoiceTable',
+            // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Vendor Budget",
+            to: '/budget',
+            // icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
+          },
+
+
+
+
+
+        ]
+      },
+      {
+        component: CNavItem,
+        name: 'Project Summary Report',
+        to: '/ProjectSummeryReport',
+        icon: <CIcon icon={cilLayers} customClassName="nav-icon" />,
+
+      },
+
 
 
       {
@@ -181,42 +182,43 @@ export default function fetchNavItems(t1) {
         name: "Payments",
         icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
         items: [
- {
-        component: CNavItem,
-        name: 'Oprator Payment',
-        to: '/operatorReport',
-        // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-        className: 'ms-2',
+          {
+            component: CNavItem,
+            name: 'Oprator Payment',
+            to: '/operatorReport',
+            // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'Vendor Payment',
+            to: '/vendorReport',
+            // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
+            className: 'ms-2',
+          },
+
+
+          {
+            component: CNavItem,
+            name: 'Income Report',
+            to: '/incomeTable',
+            // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
+            className: 'ms-2',
+
+          },
+          {
+            component: CNavItem,
+            name: 'Internal Money Transfer',
+            to: '/internal-money-transfer',
+            // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
+            className: 'ms-2',
+
+          },
+        ]
       },
-       {
-        component: CNavItem,
-        name: 'Vendor Payment',
-        to: '/vendorReport',
-        // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-        className: 'ms-2',
-      },
-
-      
-       {
-        component: CNavItem,
-        name: 'Income Report',
-        to: '/incomeTable',
-        // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-        className: 'ms-2',
-
-      },
-      {
-        component: CNavItem,
-        name: 'Internal Money Transfer',
-        to: '/internal-money-transfer',
-        // icon: <CIcon icon={cilCash} customClassName="nav-icon" />,
-        className: 'ms-2',
-
-      },
-        ]},
 
 
-  
+
 
       {
         component: CNavGroup,
@@ -229,7 +231,7 @@ export default function fetchNavItems(t1) {
             to: 'Reports/Reports',
             className: 'ms-2',
           },
-         
+
           {
             component: CNavItem,
             name: t("LABELS.expense_report"),
@@ -238,7 +240,7 @@ export default function fetchNavItems(t1) {
           },
 
 
-            {
+          {
             component: CNavItem,
             name: "Seprate All Data",
             to: '/seprateAllData',
@@ -246,31 +248,64 @@ export default function fetchNavItems(t1) {
           },
 
 
-            {
-            component: CNavItem,
-            name: "Sub Contract Ladger",
-            to: '/subcontractLadger',
-            className: 'ms-2',
-          },
+          //   {
+          //   component: CNavItem,
+          //   name: "Sub Contract Ladger",
+          //   to: '/subcontractLadger',
+          //   className: 'ms-2',
+          // },
 
 
         ],
       },
 
 
+      {
+        component: CNavGroup,
+        name: 'Ladgers',
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: "Sub Contract Ladger",
+            to: '/subcontractLadger',
+            className: 'ms-2',
+          },
+           {
+            component: CNavItem,
+            name: "Regular Project Ladger",
+            to: '/RegularProjectsLadger',
+            className: 'ms-2',
+          },
+           {
+            component: CNavItem,
+            name: "Purchase Vendor Ladger",
+            to: '/PurchaseVendorLadger',
+            className: 'ms-2',
+          },
+           {
+            component: CNavItem,
+            name: "Vendor Ladger",
+            to: '/VendorLadger',
+            className: 'ms-2',
+          },
+        ]
+      },
 
 
-       {
+
+      {
         component: CNavGroup,
         name: 'Purchase Vendor ',
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
 
-{component: CNavItem,
-    name: 'Add Purches Vendor',
-   to: '/displayPurchesVendors',
-className: 'ms-2',
-},
+          {
+            component: CNavItem,
+            name: 'Add Purches Vendor',
+            to: '/displayPurchesVendors',
+            className: 'ms-2',
+          },
 
           {
             component: CNavItem,
@@ -279,21 +314,21 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-        
-          
-    {
-        component: CNavItem,
-        name: ' Make Vendor Payment',
-        to: '/vendorPurchesPayment',
-        className: 'ms-2',
-      },
 
-         {
-        component: CNavItem,
-        name: 'Purchase Vendor Report',
-        to: '/PurchaseVendorReport',
-        className: 'ms-2',
-      },
+
+          {
+            component: CNavItem,
+            name: ' Make Vendor Payment',
+            to: '/vendorPurchesPayment',
+            className: 'ms-2',
+          },
+
+          {
+            component: CNavItem,
+            name: 'Purchase Vendor Report',
+            to: '/PurchaseVendorReport',
+            className: 'ms-2',
+          },
 
 
 
@@ -304,33 +339,33 @@ className: 'ms-2',
 
 
 
-     
+
       {
         component: CNavGroup,
         name: "Manage Software",
         icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: "Project Types Config",
             to: '/project-types',
             className: 'ms-2',
           },
-           {
+          {
             component: CNavItem,
             name: t("LABELS.all_customers"),
             to: '/project',
             className: 'ms-2',
           },
-          
+
           {
             component: CNavItem,
             name: t("LABELS.all_expense_types"),
             to: '/expense/all-type',
             className: 'ms-2',
           },
-          
+
           {
             component: CNavItem,
             // name: t("LABELS.all_oprator"),
@@ -338,7 +373,7 @@ className: 'ms-2',
             to: '/OpratorList',
             className: 'ms-2',
           },
-          
+
           {
             component: CNavItem,
             // name: t("LABELS.supervisor"),
@@ -347,38 +382,38 @@ className: 'ms-2',
             className: 'ms-2',
           },
           {
-                component: CNavItem,
-                name: "All Raw Materials",
-                to: '/showRawMaterials',
-                className: 'ms-2',
-              },
-           {
-                component: CNavItem,
-                name: "All Machinary",
-                to: '/MachineriesTable',
-                className: 'ms-2',
-              },
+            component: CNavItem,
+            name: "All Raw Materials",
+            to: '/showRawMaterials',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "All Machinary",
+            to: '/MachineriesTable',
+            className: 'ms-2',
+          },
 
-             
 
-                 {
-                component: CNavItem,
-                name: "Machinary Stock Table",
-                to: '/machineryStockTable',
-                className: 'ms-2',
-              },
-              
+
+          {
+            component: CNavItem,
+            name: "Machinary Stock Table",
+            to: '/machineryStockTable',
+            className: 'ms-2',
+          },
+
 
         ],
 
       },
 
-      
+
 
     ];
   }
-  
-  
+
+
   else if (user === 2) {
     _nav = [
       {
@@ -387,7 +422,7 @@ className: 'ms-2',
         to: '/worklog',
         icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
       },
-       {
+      {
         component: CNavItem,
         name: t("LABELS.new_expense"),
         to: '/expense/new',
@@ -399,13 +434,13 @@ className: 'ms-2',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
-    
+
       {
         component: CNavGroup,
         name: t("LABELS.report"),
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: t("LABELS.expense_report"),
@@ -414,7 +449,7 @@ className: 'ms-2',
           },
         ],
       },
-     
+
       {
         component: CNavGroup,
         name: "Manage Software",
@@ -451,28 +486,28 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-              {
-                component: CNavItem,
-                name: "Machinary Stock Table",
-                to: '/machineryStockTable',
-                className: 'ms-2',
-              },
+          {
+            component: CNavItem,
+            name: "Machinary Stock Table",
+            to: '/machineryStockTable',
+            className: 'ms-2',
+          },
 
         ],
       },
     ];
   }
-  
+
   // Employee/Partner (user === 3) - Fixed missing navigation
   else if (user === 3) {
     _nav = [
 
 
-          {
+      {
         component: CNavItem,
         name: "Daily Activity Dashboard",
         to: '/dailyActivityDashboard',
-        icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+        icon: <CIcon icon={cibElasticStack} customClassName="nav-icon" />,
         // style: { backgroundColor: 'cyan', color: 'black' },
       },
 
@@ -484,7 +519,7 @@ className: 'ms-2',
         to: '/worklog',
         icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
       },
-       {
+      {
         component: CNavItem,
         name: t("LABELS.new_expense"),
         to: '/expense/new',
@@ -496,13 +531,13 @@ className: 'ms-2',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
-      
+
       {
         component: CNavGroup,
         name: t("LABELS.report"),
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: t("LABELS.expense_report"),
@@ -512,53 +547,55 @@ className: 'ms-2',
         ],
       },
 
-       {
+      {
         component: CNavGroup,
         name: "Bills",
         icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
         items: [
 
-           {
-        component: CNavItem,
-        name: "Create Invoice",
-        to: '/invoice',
-        // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
-      }, 
-       {
-        component: CNavItem,
-        name: "All Invoices",
-        to: '/invoiceTable',
-        // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
+          {
+            component: CNavItem,
+            name: "Create Invoice",
+            to: '/invoice',
+            // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "All Invoices",
+            to: '/invoiceTable',
+            // icon: <CIcon icon={cibElasticStack}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Vendor Budget",
+            to: '/budget',
+            // icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
+            // style: { backgroundColor: 'cyan', color: 'black' },
+            className: 'ms-2',
+          },
+
+        ]
       },
+
+
+
+
       {
-        component: CNavItem,
-        name:"Vendor Budget",
-        to: '/budget',
-        // icon: <CIcon icon={cilLayers}  customClassName="nav-icon" />,
-        // style: { backgroundColor: 'cyan', color: 'black' },
-        className: 'ms-2',
-      },
-
-        ]},
-
-
-
-
-         {
         component: CNavGroup,
         name: 'Purchase Vendor ',
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
 
-{component: CNavItem,
-    name: 'Add Purches Vendor',
-   to: '/displayPurchesVendors',
-className: 'ms-2',
-},
+          {
+            component: CNavItem,
+            name: 'Add Purches Vendor',
+            to: '/displayPurchesVendors',
+            className: 'ms-2',
+          },
 
           {
             component: CNavItem,
@@ -567,27 +604,27 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-        
-          
-    {
-        component: CNavItem,
-        name: ' Make Vendor Payment',
-        to: '/vendorPurchesPayment',
-        className: 'ms-2',
-      },
 
 
-       {
-        component: CNavItem,
-        name: 'Purchase Vendor Report',
-        to: '/PurchaseVendorReport',
-        className: 'ms-2',
-      },
+          {
+            component: CNavItem,
+            name: ' Make Vendor Payment',
+            to: '/vendorPurchesPayment',
+            className: 'ms-2',
+          },
+
+
+          {
+            component: CNavItem,
+            name: 'Purchase Vendor Report',
+            to: '/PurchaseVendorReport',
+            className: 'ms-2',
+          },
 
         ],
       },
 
-     
+
       {
         component: CNavGroup,
         name: "Manage Software",
@@ -632,12 +669,12 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-             {
-                component: CNavItem,
-                name: "Machinary Stock Table",
-                to: '/machineryStockTable',
-                className: 'ms-2',
-              },
+          {
+            component: CNavItem,
+            name: "Machinary Stock Table",
+            to: '/machineryStockTable',
+            className: 'ms-2',
+          },
 
         ],
       },
@@ -652,19 +689,19 @@ className: 'ms-2',
 
 
 
-   // Employee/Partner (user === 3) - Fixed missing navigation
+  // Employee/Partner (user === 3) - Fixed missing navigation
   else if (user === 4) {
     _nav = [
 
 
 
-            {
+      {
         component: CNavItem,
         name: 'Work Log',
         to: '/worklog',
         icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
       },
-       {
+      {
         component: CNavItem,
         name: t("LABELS.new_expense"),
         to: '/expense/new',
@@ -676,13 +713,13 @@ className: 'ms-2',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
-    
+
       {
         component: CNavGroup,
         name: t("LABELS.report"),
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: t("LABELS.expense_report"),
@@ -694,17 +731,18 @@ className: 'ms-2',
 
 
 
-         {
+      {
         component: CNavGroup,
         name: 'Purchase Vendor ',
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
 
-{component: CNavItem,
-    name: 'Add Purches Vendor',
-   to: '/displayPurchesVendors',
-className: 'ms-2',
-},
+          {
+            component: CNavItem,
+            name: 'Add Purches Vendor',
+            to: '/displayPurchesVendors',
+            className: 'ms-2',
+          },
 
           {
             component: CNavItem,
@@ -713,53 +751,53 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-        
-          
-    {
-        component: CNavItem,
-        name: ' Make Vendor Payment',
-        to: '/vendorPurchesPayment',
-        className: 'ms-2',
-      },
 
 
-       {
-        component: CNavItem,
-        name: 'Purchase Vendor Report',
-        to: '/PurchaseVendorReport',
-        className: 'ms-2',
-      },
+          {
+            component: CNavItem,
+            name: ' Make Vendor Payment',
+            to: '/vendorPurchesPayment',
+            className: 'ms-2',
+          },
+
+
+          {
+            component: CNavItem,
+            name: 'Purchase Vendor Report',
+            to: '/PurchaseVendorReport',
+            className: 'ms-2',
+          },
 
         ],
       },
 
 
-        {
+      {
         component: CNavGroup,
         name: "Manage Software",
         icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: "Project Types Config",
             to: '/project-types',
             className: 'ms-2',
           },
-           {
+          {
             component: CNavItem,
             name: t("LABELS.all_customers"),
             to: '/project',
             className: 'ms-2',
           },
-          
+
           {
             component: CNavItem,
             name: t("LABELS.all_expense_types"),
             to: '/expense/all-type',
             className: 'ms-2',
           },
-          
+
           {
             component: CNavItem,
             // name: t("LABELS.all_oprator"),
@@ -767,38 +805,38 @@ className: 'ms-2',
             to: '/OpratorList',
             className: 'ms-2',
           },
-          
-         
-           {
-                component: CNavItem,
-                name: "All Machinary",
-                to: '/MachineriesTable',
-                className: 'ms-2',
-              },
 
-             
 
-                 {
-                component: CNavItem,
-                name: "Machinary Stock Table",
-                to: '/machineryStockTable',
-                className: 'ms-2',
-              },
+          {
+            component: CNavItem,
+            name: "All Machinary",
+            to: '/MachineriesTable',
+            className: 'ms-2',
+          },
 
-          
-              
+
+
+          {
+            component: CNavItem,
+            name: "Machinary Stock Table",
+            to: '/machineryStockTable',
+            className: 'ms-2',
+          },
+
+
+
 
         ],
 
       },
-    
+
     ];
 
   }
 
 
 
-    // Manager (user === 2) - Simple navigation
+  // Manager (user === 2) - Simple navigation
   else if (user === 5) {
     _nav = [
       {
@@ -807,7 +845,7 @@ className: 'ms-2',
         to: '/worklog',
         icon: <CIcon icon={cilColorBorder} customClassName="nav-icon" />,
       },
-       {
+      {
         component: CNavItem,
         name: t("LABELS.new_expense"),
         to: '/expense/new',
@@ -819,13 +857,13 @@ className: 'ms-2',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
-    
+
       {
         component: CNavGroup,
         name: t("LABELS.report"),
         icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
         items: [
-          
+
           {
             component: CNavItem,
             name: t("LABELS.expense_report"),
@@ -834,7 +872,7 @@ className: 'ms-2',
           },
         ],
       },
-     
+
       {
         component: CNavGroup,
         name: "Manage Software",
@@ -858,7 +896,7 @@ className: 'ms-2',
           //   to: '/OpratorList',
           //   className: 'ms-2',
           // },
-         
+
           {
             component: CNavItem,
             name: "All Machinary",
@@ -866,12 +904,12 @@ className: 'ms-2',
             className: 'ms-2',
           },
 
-           {
-                component: CNavItem,
-                name: "Machinary Stock Table",
-                to: '/machineryStockTable',
-                className: 'ms-2',
-              },
+          {
+            component: CNavItem,
+            name: "Machinary Stock Table",
+            to: '/machineryStockTable',
+            className: 'ms-2',
+          },
 
         ],
       },

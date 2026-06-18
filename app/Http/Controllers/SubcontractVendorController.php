@@ -420,82 +420,162 @@ class SubcontractVendorController extends Controller
 
 
 
-    public function subcontractLedgerReport(Request $request)
+public function subcontractLedgerReport(Request $request)
 {
     try {
-
-        $query = SubcontractVendor::with([
-            'project',
-           
-            'order',
-            'operator',
-            'paymentLogs'
+        $request->validate([
+            'project_id'   => 'nullable|integer',
+            'vendor_id'    => 'nullable|integer',
+            'start_date'   => 'nullable|date',
+            'end_date'     => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        // Optional Filters
-        if ($request->project_id) {
-            $query->where('project_id', $request->project_id);
-        }
+        $projectId = $request->input('project_id');
+        $vendorId  = $request->input('vendor_id');
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
 
-        if ($request->vendor_id) {
-            $query->where('vendor_id', $request->vendor_id);
-        }
+        // Query all subcontracts matching filters (excluding date, date filters entries)
+        $subcontracts = SubcontractVendor::with(['project', 'operator', 'order', 'paymentLogs'])
+            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($vendorId, fn($q) => $q->where('vendor_id', $vendorId))
+            ->get();
 
-        if ($request->from_date && $request->to_date) {
-            $query->whereHas('paymentLogs', function ($q) use ($request) {
-                $q->whereBetween('payment_date', [
-                    $request->from_date,
-                    $request->to_date
-                ]);
-            });
-        }
+        // Group by Vendor (operator)
+        $groupedSubcontracts = $subcontracts->groupBy('vendor_id');
 
-        $subcontracts = $query->latest()->get();
+        $grandTotal = [
+            'vendor_count'   => 0,
+            'total_debit'    => 0, // Total Subcontract Value
+            'total_credit'   => 0, // Total Paid
+            'net_balance'    => 0,
+        ];
 
         $ledger = [];
 
-        foreach ($subcontracts as $subcontract) {
+        foreach ($groupedSubcontracts as $vid => $vendorSubcontracts) {
+            $operator = $vendorSubcontracts->first()->operator;
+            if (!$operator) continue;
 
-            // Opening Entry
-            $ledger[] = [
-                'date'            => optional($subcontract->created_at)->format('d-m-Y'),
-                'project_name'    => $subcontract->project->project_name ?? '-',
-                'vendor_name'     => $subcontract->operator->name ?? '-',
-                'invoice_no'      => $subcontract->order->invoice_number ?? '-',
-                'type'            => 'Subcontract Created',
-                'debit'           => $subcontract->total_amount,
-                'credit'          => 0,
-                'balance'         => $subcontract->pending_amount,
-                'description'     => 'Initial subcontract amount',
-            ];
+            $openingBalance = 0;
+            $entries = collect();
 
-            // Payment Entries
-            foreach ($subcontract->paymentLogs as $payment) {
+            $lifetimeDebit = 0;
+            $lifetimeCredit = 0;
 
-                $ledger[] = [
-                    'date'            => optional($payment->payment_date)->format('d-m-Y'),
-                    'project_name'    => $subcontract->project->project_name ?? '-',
-                    'vendor_name'     => $subcontract->operator->name ?? '-',
-                    'invoice_no'      => $subcontract->order->invoice_number ?? '-',
-                    'type'            => 'Payment',
-                    'debit'           => 0,
-                    'credit'          => $payment->amount,
-                    'balance'         => $subcontract->pending_amount,
-                    'description'     => $payment->description,
-                    'payment_type'    => $payment->payment_type,
-                    'paid_by'         => $payment->paid_by,
-                ];
+            foreach ($vendorSubcontracts as $subcontract) {
+                $projectName = $subcontract->project->project_name ?? 'N/A';
+
+                // Subcontract Value (Debit)
+                $subDate = $subcontract->created_at ? $subcontract->created_at->format('Y-m-d') : date('Y-m-d');
+                $lifetimeDebit += (float)$subcontract->total_amount;
+
+                if ($startDate && $subDate < $startDate) {
+                    $openingBalance += (float)$subcontract->total_amount;
+                } else if (!$endDate || $subDate <= $endDate) {
+                    $entries->push([
+                        'date'        => $subDate,
+                        'particulars' => 'Subcontract Created - [Project: ' . $projectName . ']',
+                        'vch_type'    => 'Subcontract',
+                        'vch_no'      => 'SC-' . $subcontract->id,
+                        'debit'       => (float)$subcontract->total_amount, // We owe them (Credit balance technically, but Tally standard usually lists Bill as Credit, wait. Subcontract value increases payable. Payable is Credit. Debit decreases payable.
+                        // wait, in my previous ledger, Purchase is Credit, Payment is Debit.
+                        // Let's stick to the same: Bill = Credit, Paid = Debit.
+                        'credit'      => (float)$subcontract->total_amount,
+                        'debit'       => 0,
+                        'type'        => 'subcontract_bill',
+                    ]);
+                }
+
+                // Payment Logs (Debit / Reduces Payable)
+                foreach ($subcontract->paymentLogs as $payment) {
+                    $pDate = $payment->payment_date ? date('Y-m-d', strtotime($payment->payment_date)) : null;
+                    $lifetimeCredit += (float)$payment->amount;
+
+                    if ($startDate && $pDate && $pDate < $startDate) {
+                        $openingBalance -= (float)$payment->amount;
+                    } else if (!$endDate || !$pDate || $pDate <= $endDate) {
+                        $entries->push([
+                            'date'        => $pDate,
+                            'particulars' => 'Payment - ' . ($payment->payment_type ?? 'Cash') .
+                                             ($payment->description ? ' - ' . $payment->description : ''),
+                            'vch_type'    => 'Payment',
+                            'vch_no'      => 'SCP-' . $payment->id,
+                            'debit'       => (float)$payment->amount,
+                            'credit'      => 0,
+                            'type'        => 'payment',
+                        ]);
+                    }
+                }
             }
+
+            $lifetimeBalance = $lifetimeDebit - $lifetimeCredit;
+
+            $entries = $entries->sortBy('date')->values();
+
+            $running = $openingBalance;
+            $ledgerEntries = collect();
+
+            if ($startDate) {
+                $ledgerEntries->push([
+                    'date'         => $startDate,
+                    'particulars'  => 'Opening Balance',
+                    'vch_type'     => '',
+                    'vch_no'       => '',
+                    'debit'        => $openingBalance < 0 ? abs($openingBalance) : 0,
+                    'credit'       => $openingBalance > 0 ? abs($openingBalance) : 0,
+                    'balance'      => abs($openingBalance),
+                    'balance_type' => $openingBalance >= 0 ? 'Cr' : 'Dr',
+                    'is_opening'   => true
+                ]);
+            }
+
+            foreach ($entries as $entry) {
+                $running += ($entry['credit'] - $entry['debit']);
+                $entry['balance']      = abs($running);
+                $entry['balance_type'] = $running >= 0 ? 'Cr' : 'Dr';
+                $ledgerEntries->push($entry);
+            }
+
+            $periodPurchase = $entries->where('type', 'subcontract_bill')->sum('credit');
+            $periodPaid     = $entries->where('type', 'payment')->sum('debit');
+
+            $grandTotal['vendor_count']++;
+            $grandTotal['total_debit']  += $lifetimeDebit;
+            $grandTotal['total_credit'] += $lifetimeCredit;
+            $grandTotal['net_balance']  += $lifetimeBalance;
+
+            $ledger[] = [
+                'vendor' => [
+                    'id'      => $operator->id,
+                    'name'    => $operator->name,
+                    'mobile'  => $operator->mobile,
+                    'address' => $operator->address,
+                    'project_id' => $operator->project_id,
+                ],
+                'ledger_entries' => $ledgerEntries,
+                'summary' => [
+                    'opening_balance' => round($openingBalance, 2),
+                    'period_purchase' => round($periodPurchase, 2),
+                    'period_paid'     => round($periodPaid, 2),
+                    'closing_balance' => round($running, 2),
+                    'balance_status'  => $running >= 0 ? 'payable' : 'receivable',
+                    'entry_count'     => $ledgerEntries->count(),
+                ],
+            ];
         }
 
+        $grandTotal = array_map(fn($v) => round($v, 2), $grandTotal);
+        $grandTotal['overall_status'] = $grandTotal['net_balance'] >= 0 ? 'payable' : 'receivable';
+
         return response()->json([
-            'success' => true,
-            'message' => 'Subcontract ledger report fetched successfully',
-            'data'    => $ledger
+            'success'     => true,
+            'data'        => $ledger,
+            'grand_total' => $grandTotal,
+            'filters_applied' => $request->only(['project_id', 'vendor_id', 'start_date', 'end_date'])
         ]);
 
     } catch (\Exception $e) {
-
         return response()->json([
             'success' => false,
             'message' => $e->getMessage()
