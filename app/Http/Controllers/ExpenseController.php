@@ -1400,7 +1400,7 @@ class ExpenseController extends Controller
         $region = env('AWS_DEFAULT_REGION');
         return "https://{$bucket}.{$region}.digitaloceanspaces.com/{$s3Path}";
     }
-
+ 
     /**
      * Resolve any stored photo_url to a publicly accessible URL.
      *
@@ -1428,7 +1428,7 @@ class ExpenseController extends Controller
      */
     private function saveUploadedImageToS3($file, string $folder): ?string
     {
-        if (!$file || !$file->isValid()) {
+        if (!$file || !$file->isValid()) { 
             \Log::warning("saveUploadedImageToS3: Invalid file received");
             return null;
         }

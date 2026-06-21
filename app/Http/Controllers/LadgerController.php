@@ -166,6 +166,9 @@ class LadgerController extends Controller
         if (!is_null($maxBalance) && $netBalance > $maxBalance) continue;
         if ($hasPending && ($totalIncomePending <= 0 && $totalExpPending <= 0)) continue;
 
+        $voucherTypeFilter = $request->input('voucher_type');
+        $transactionTypeFilter = $request->input('transaction_type');
+
         // Accumulate Grand Total
         $grandTotal['total_project_cost']    += $project->project_cost ?? 0;
         $grandTotal['total_billing_amount']  += $totalBilling;
@@ -235,11 +238,42 @@ class LadgerController extends Controller
 
         // Calculate Running Balance
         $runningBalance = $openingBalance;
-        $ledgerEntries = $entries->map(function ($entry) use (&$runningBalance) {
-            $runningBalance += ($entry['debit'] - $entry['credit']);
-            $entry['balance'] = round($runningBalance, 2);
-            return $entry;
-        });
+        $periodDebit = 0;
+        $periodCredit = 0;
+        
+        $ledgerEntries = collect();
+        if ($startDate) {
+            $ledgerEntries->push([
+                'date'         => $startDate,
+                'particulars'  => 'Opening Balance',
+                'vch_type'     => '',
+                'vch_no'       => '',
+                'debit'        => $openingBalance < 0 ? abs($openingBalance) : 0,
+                'credit'       => $openingBalance > 0 ? abs($openingBalance) : 0,
+                'balance'      => abs($openingBalance),
+                'balance_type' => $openingBalance >= 0 ? 'Cr' : 'Dr',
+                'is_opening'   => true
+            ]);
+        }
+
+        foreach ($entries as $entry) {
+            $periodDebit += $entry['debit'];
+            $periodCredit += $entry['credit'];
+            $runningBalance += ($entry['credit'] - $entry['debit']);
+            $entry['balance'] = abs($runningBalance);
+            $entry['balance_type'] = $runningBalance >= 0 ? 'Cr' : 'Dr';
+            
+            // Apply voucher/transaction type filters for display
+            $showEntry = true;
+            if ($voucherTypeFilter && stripos($entry['vch_type'], $voucherTypeFilter) === false) $showEntry = false;
+            if ($transactionTypeFilter) {
+                if (strtolower($transactionTypeFilter) === 'debit' && $entry['debit'] == 0) $showEntry = false;
+                if (strtolower($transactionTypeFilter) === 'credit' && $entry['credit'] == 0) $showEntry = false;
+            }
+            if ($showEntry) {
+                $ledgerEntries->push($entry);
+            }
+        }
 
         $ledger[] = [
             'project' => [
@@ -258,6 +292,8 @@ class LadgerController extends Controller
             'summary' => [
                 'opening_balance'       => round($openingBalance, 2),
                 'closing_balance'       => round($runningBalance, 2),
+                'total_debit'           => round($periodDebit, 2),
+                'total_credit'          => round($periodCredit, 2),
                 'total_orders_amount'   => round($totalOrders, 2),
                 'total_billing_amount'  => round($totalBilling, 2),
                 'total_received_amount' => round($totalReceived, 2),
@@ -305,6 +341,8 @@ public function purchaseVendorLedgerReport(Request $request)
     $search    = $request->input('search');
     $startDate = $request->input('start_date');
     $endDate   = $request->input('end_date');
+    $voucherTypeFilter = $request->input('voucher_type');
+    $transactionTypeFilter = $request->input('transaction_type');
 
     // ── 2. Get Purchase Vendors (type = 3) ───────────────────────
     $vendors = Operator::query()
@@ -444,7 +482,17 @@ public function purchaseVendorLedgerReport(Request $request)
             $running += ($entry['credit'] - $entry['debit']);
             $entry['balance']      = abs($running);
             $entry['balance_type'] = $running >= 0 ? 'Cr' : 'Dr';
-            $ledgerEntries->push($entry);
+            
+            // Apply filters
+            $showEntry = true;
+            if ($voucherTypeFilter && stripos($entry['vch_type'], $voucherTypeFilter) === false) $showEntry = false;
+            if ($transactionTypeFilter) {
+                if (strtolower($transactionTypeFilter) === 'debit' && $entry['debit'] == 0) $showEntry = false;
+                if (strtolower($transactionTypeFilter) === 'credit' && $entry['credit'] == 0) $showEntry = false;
+            }
+            if ($showEntry) {
+                $ledgerEntries->push($entry);
+            }
         }
 
         // Period Summary
@@ -467,6 +515,8 @@ public function purchaseVendorLedgerReport(Request $request)
             'ledger_entries' => $ledgerEntries,
             'summary' => [
                 'opening_balance' => round($openingBalance, 2),
+                'total_debit'     => round($periodPaid, 2),
+                'total_credit'    => round($periodPurchase, 2),
                 'period_purchase' => round($periodPurchase, 2),
                 'period_paid'     => round($periodPaid, 2),
                 'closing_balance' => round($running, 2),
@@ -509,6 +559,8 @@ public function vendorLedgerReport(Request $request)
     $search    = $request->input('search');
     $startDate = $request->input('start_date');
     $endDate   = $request->input('end_date');
+    $voucherTypeFilter = $request->input('voucher_type');
+    $transactionTypeFilter = $request->input('transaction_type');
 
     // ── 2. Get Vendors (type = 2) ───────────────────────────────
     $vendors = Operator::query()
@@ -679,7 +731,17 @@ public function vendorLedgerReport(Request $request)
             $running += ($entry['credit'] - $entry['debit']);
             $entry['balance']      = abs($running);
             $entry['balance_type'] = $running >= 0 ? 'Cr' : 'Dr';
-            $ledgerEntries->push($entry);
+            
+            // Apply filters
+            $showEntry = true;
+            if ($voucherTypeFilter && stripos($entry['vch_type'], $voucherTypeFilter) === false) $showEntry = false;
+            if ($transactionTypeFilter) {
+                if (strtolower($transactionTypeFilter) === 'debit' && $entry['debit'] == 0) $showEntry = false;
+                if (strtolower($transactionTypeFilter) === 'credit' && $entry['credit'] == 0) $showEntry = false;
+            }
+            if ($showEntry) {
+                $ledgerEntries->push($entry);
+            }
         }
 
         // Period Summary
@@ -704,6 +766,8 @@ public function vendorLedgerReport(Request $request)
 
             'summary' => [
                 'opening_balance' => round($openingBalance, 2),
+                'total_debit'     => round($periodPaid, 2),
+                'total_credit'    => round($periodPurchase, 2),
                 'period_purchase' => round($periodPurchase, 2),
                 'period_paid'     => round($periodPaid, 2),
                 'closing_balance' => round($running, 2),

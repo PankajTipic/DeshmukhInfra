@@ -434,6 +434,8 @@ public function subcontractLedgerReport(Request $request)
         $vendorId  = $request->input('vendor_id');
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
+        $voucherTypeFilter = $request->input('voucher_type');
+        $transactionTypeFilter = $request->input('transaction_type');
 
         // Query all subcontracts matching filters (excluding date, date filters entries)
         $subcontracts = SubcontractVendor::with(['project', 'operator', 'order', 'paymentLogs'])
@@ -467,7 +469,8 @@ public function subcontractLedgerReport(Request $request)
                 $projectName = $subcontract->project->project_name ?? 'N/A';
 
                 // Subcontract Value (Debit)
-                $subDate = $subcontract->created_at ? $subcontract->created_at->format('Y-m-d') : date('Y-m-d');
+                $orderInvoiceDate = $subcontract->order ? $subcontract->order->invoiceDate : null;
+                $subDate = $orderInvoiceDate ? date('Y-m-d', strtotime($orderInvoiceDate)) : ($subcontract->created_at ? $subcontract->created_at->format('Y-m-d') : date('Y-m-d'));
                 $lifetimeDebit += (float)$subcontract->total_amount;
 
                 if ($startDate && $subDate < $startDate) {
@@ -534,7 +537,17 @@ public function subcontractLedgerReport(Request $request)
                 $running += ($entry['credit'] - $entry['debit']);
                 $entry['balance']      = abs($running);
                 $entry['balance_type'] = $running >= 0 ? 'Cr' : 'Dr';
-                $ledgerEntries->push($entry);
+                
+                // Apply filters
+                $showEntry = true;
+                if ($voucherTypeFilter && stripos($entry['vch_type'], $voucherTypeFilter) === false) $showEntry = false;
+                if ($transactionTypeFilter) {
+                    if (strtolower($transactionTypeFilter) === 'debit' && $entry['debit'] == 0) $showEntry = false;
+                    if (strtolower($transactionTypeFilter) === 'credit' && $entry['credit'] == 0) $showEntry = false;
+                }
+                if ($showEntry) {
+                    $ledgerEntries->push($entry);
+                }
             }
 
             $periodPurchase = $entries->where('type', 'subcontract_bill')->sum('credit');
@@ -556,6 +569,8 @@ public function subcontractLedgerReport(Request $request)
                 'ledger_entries' => $ledgerEntries,
                 'summary' => [
                     'opening_balance' => round($openingBalance, 2),
+                    'total_debit'     => round($periodPaid, 2),
+                    'total_credit'    => round($periodPurchase, 2),
                     'period_purchase' => round($periodPurchase, 2),
                     'period_paid'     => round($periodPaid, 2),
                     'closing_balance' => round($running, 2),

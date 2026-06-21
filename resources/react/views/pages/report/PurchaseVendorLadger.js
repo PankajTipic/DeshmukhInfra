@@ -39,8 +39,35 @@ const PurchaseVendorLadger = () => {
   const [filterVendor, setFilterVendor] = useState(null);
   const [projects, setProjects] = useState([]);
   const [vendors, setVendors] = useState([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const defaultFYStart = new Date().getMonth() + 1 >= 4 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  const defaultFYLabel = `${defaultFYStart}-${(defaultFYStart + 1).toString().slice(2)}`;
+  const defaultFYValue = { label: defaultFYLabel, value: defaultFYLabel };
+
+  const [startDate, setStartDate] = useState(`${defaultFYStart}-04-01`);
+  const [filterFinancialYear, setFilterFinancialYear] = useState(defaultFYValue);
+  const [filterVoucherType, setFilterVoucherType] = useState('');
+  const [filterTransactionType, setFilterTransactionType] = useState('');
+
+  const financialYears = [];
+  const currentYear = new Date().getFullYear();
+  for (let i = currentYear - 5; i <= currentYear + 1; i++) {
+      financialYears.push({ label: `${i}-${(i + 1).toString().slice(2)}`, value: `${i}-${(i + 1).toString().slice(2)}` });
+  }
+
+  const handleFYChange = (selected) => {
+      setFilterFinancialYear(selected);
+      if (!selected) {
+          setStartDate('');
+          setEndDate('');
+          return;
+      }
+      const year = parseInt(selected.value.split('-')[0]);
+      const nextYear = year + 1;
+      setStartDate(`${year}-04-01`);
+      setEndDate(`${nextYear}-03-31`);
+  };
+
+  const [endDate, setEndDate] = useState(`${defaultFYStart + 1}-03-31`);
 
   const getAuthToken = () => localStorage.getItem('auth_token');
 
@@ -52,6 +79,8 @@ const PurchaseVendorLadger = () => {
       if (filterVendor?.value) params.append("vendor_id", filterVendor.value);
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
+      if (filterVoucherType) params.append("voucher_type", filterVoucherType.value);
+      if (filterTransactionType) params.append("transaction_type", filterTransactionType.value);
 
       const response = await getAPICall(`/api/purchase-vendor-ledger?${params.toString()}`);
       setData(response.data || []);
@@ -155,15 +184,15 @@ const PurchaseVendorLadger = () => {
       
       const formatBal = (bal) => {
           if (Math.abs(bal) < 0.01) return "0.00";
-          return Math.abs(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (bal >= 0 ? " Cr" : " Dr");
+          return Math.abs(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (bal >= 0 ? " CR" : " DR");
       };
 
-      const columns = ['Date', 'Particulars', 'Vch Type', 'Vch No.', 'Debit', 'Credit', 'Balance'];
+      const columns = ['Date', 'Particulars', 'Vch Type', 'Vch No.', 'Debit', 'Credit', 'Running Balance'];
       const rows = [];
 
       rows.push([
           startDate || '',
-          'Balance Forward',
+          parseFloat(runningBalance) >= 0 ? 'CR Opening Balance' : 'DR Opening Balance',
           '',
           '',
           runningBalance < 0 ? formatCurrency(Math.abs(runningBalance)) : '',
@@ -229,17 +258,16 @@ const PurchaseVendorLadger = () => {
             textColor: 0, 
         },
         headStyles: {
-            fontStyle: 'bold',
-            halign: 'right',
+            fontStyle: 'bold'
         },
         columnStyles: {
             0: { cellWidth: 70, halign: 'left' },    // Date
             1: { cellWidth: 260, halign: 'left' },   // Particulars
             2: { cellWidth: 70, halign: 'center' },  // Vch Type
             3: { cellWidth: 70, halign: 'center' },  // Vch No
-            4: { cellWidth: 80, halign: 'right' },   // Debit
-            5: { cellWidth: 80, halign: 'right' },   // Credit
-            6: { cellWidth: 90, halign: 'right' },   // Balance
+            4: { cellWidth: 80, halign: 'left' },   // Debit
+            5: { cellWidth: 80, halign: 'left' },   // Credit
+            6: { cellWidth: 90, halign: 'left' },   // Balance
         },
         willDrawCell: function(data) {
             const setDash = () => {
@@ -287,18 +315,60 @@ const PurchaseVendorLadger = () => {
   };
 
   const exportExcel = () => {
-    const ws = XLSXUtils.json_to_sheet(data.map(item => ({
-      Vendor: item.vendor.name,
-      Mobile: item.vendor.mobile,
-      Address: item.vendor.address,
-      'Total Purchase': item.summary.period_purchase,
-      'Total Paid': item.summary.period_paid,
-      'Net Balance': item.summary.closing_balance,
-      Status: item.summary.balance_status,
-    })));
+    const exportData = [];
+    data.forEach(item => {
+      exportData.push({
+        Date: '',
+        'Voucher No': '',
+        Particulars: `Vendor: ${item.vendor.name} - ${item.vendor.mobile}`,
+        Debit: '',
+        Credit: '',
+        'Running Balance': ''
+      });
+      
+      const ob = parseFloat(item.summary.opening_balance) || 0;
+      exportData.push({
+        Date: startDate || '',
+        'Voucher No': '',
+        Particulars: ob >= 0 ? 'CR Opening Balance' : 'DR Opening Balance',
+        Debit: ob < 0 ? Math.abs(ob) : '',
+        Credit: ob >= 0 ? Math.abs(ob) : '',
+        'Running Balance': Math.abs(ob) + (ob >= 0 ? ' CR' : ' DR')
+      });
+      
+      let runningBalance = ob;
+      if (item.ledger_entries) {
+        item.ledger_entries.filter(e => !e.is_opening).forEach(entry => {
+          const deb = parseFloat(entry.debit) || 0;
+          const cre = parseFloat(entry.credit) || 0;
+          runningBalance += (cre - deb);
+          exportData.push({
+            Date: entry.date,
+            'Voucher No': entry.vch_no ? `${entry.vch_type} - ${entry.vch_no}` : entry.vch_type,
+            Particulars: entry.particulars,
+            Debit: deb > 0 ? deb : '',
+            Credit: cre > 0 ? cre : '',
+            'Running Balance': Math.abs(runningBalance).toFixed(2) + (runningBalance >= 0 ? ' CR' : ' DR')
+          });
+        });
+      }
+      
+      exportData.push({
+        Date: endDate || '',
+        'Voucher No': '',
+        Particulars: runningBalance >= 0 ? 'CR Closing Balance' : 'DR Closing Balance',
+        Debit: runningBalance < 0 ? Math.abs(runningBalance) : '',
+        Credit: runningBalance >= 0 ? Math.abs(runningBalance) : '',
+        'Running Balance': Math.abs(runningBalance).toFixed(2) + (runningBalance >= 0 ? ' CR' : ' DR')
+      });
+      
+      exportData.push({ Date: '', 'Voucher No': '', Particulars: '', Debit: '', Credit: '', 'Running Balance': '' });
+    });
+
+    const ws = XLSXUtils.json_to_sheet(exportData);
     const wb = XLSXUtils.book_new();
     XLSXUtils.book_append_sheet(wb, ws, 'Ledger');
-    XLSXWriteFile(wb, 'Purchase_Vendor_Ledger.xlsx');
+    XLSXWriteFile(wb, 'Ledger_Report.xlsx');
   };
 
   const dateWiseEntries = data
@@ -342,6 +412,16 @@ const PurchaseVendorLadger = () => {
               />
             </CCol>
             <CCol md={2}>
+              <CFormLabel>Financial Year</CFormLabel>
+              <Select
+                placeholder="Select FY"
+                options={financialYears}
+                value={filterFinancialYear}
+                onChange={handleFYChange}
+                isClearable
+              />
+            </CCol>
+            <CCol md={2}>
               <CFormLabel>Start Date</CFormLabel>
               <CFormInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </CCol>
@@ -358,8 +438,8 @@ const PurchaseVendorLadger = () => {
           <CRow className="mb-4">
             <CCol>
               <CButton color="info" onClick={generatePdf} disabled={loading} className="text-white me-2">PDF</CButton>
-              <CButton color="success" onClick={exportExcel} disabled={loading} className="text-white">Excel</CButton>
-            </CCol>
+              <CButton color="success" onClick={exportExcel} disabled={loading} className="text-white me-2">Excel</CButton>
+              </CCol>
           </CRow>
 
           <CButtonGroup className="mb-4">
@@ -424,12 +504,12 @@ const PurchaseVendorLadger = () => {
                             </CTableDataCell>
                             <CTableDataCell>{vendor.mobile}</CTableDataCell>
                             <CTableDataCell className="text-end">
-                              ₹{formatCurrency(Math.abs(summary.opening_balance))} {summary.opening_balance >= 0 ? 'Cr' : 'Dr'}
+                              ₹{formatCurrency(Math.abs(summary.opening_balance))} {summary.opening_balance >= 0 ? 'CR' : 'DR'}
                             </CTableDataCell>
                             <CTableDataCell className="text-end text-danger">₹{formatCurrency(summary.period_purchase)}</CTableDataCell>
                             <CTableDataCell className="text-end text-success">₹{formatCurrency(summary.period_paid)}</CTableDataCell>
                             <CTableDataCell className="text-end fw-bold">
-                              ₹{formatCurrency(Math.abs(summary.closing_balance))} {summary.closing_balance >= 0 ? 'Cr' : 'Dr'}
+                              ₹{formatCurrency(Math.abs(summary.closing_balance))} {summary.closing_balance >= 0 ? 'CR' : 'DR'}
                             </CTableDataCell>
                             <CTableDataCell className="text-center">
                               <CBadge color={summary.balance_status === 'receivable' ? 'success' : 'danger'}>
@@ -447,43 +527,42 @@ const PurchaseVendorLadger = () => {
                                     <CTableHead color="dark">
                                       <CTableRow>
                                         <CTableHeaderCell>Date</CTableHeaderCell>
+                                        <CTableHeaderCell>Voucher No</CTableHeaderCell>
                                         <CTableHeaderCell>Particulars</CTableHeaderCell>
-                                        <CTableHeaderCell>Vch Type</CTableHeaderCell>
-                                        <CTableHeaderCell>Vch No.</CTableHeaderCell>
                                         <CTableHeaderCell className="text-end">Debit</CTableHeaderCell>
                                         <CTableHeaderCell className="text-end">Credit</CTableHeaderCell>
-                                        <CTableHeaderCell className="text-end">Balance</CTableHeaderCell>
+                                        <CTableHeaderCell className="text-end">Running Balance</CTableHeaderCell>
                                       </CTableRow>
                                     </CTableHead>
                                     <CTableBody>
                                       <CTableRow>
                                         <CTableDataCell className="fw-bold">{startDate || ''}</CTableDataCell>
-                                        <CTableDataCell className="fw-bold text-center" colSpan="3">
-                                          {parseFloat(summary.opening_balance) >= 0 ? 'Cr Opening Balance' : 'Dr Opening Balance'}
+                                        <CTableDataCell></CTableDataCell>
+                                        <CTableDataCell className="fw-bold text-center">
+                                          {parseFloat(summary.opening_balance) >= 0 ? 'CR Opening Balance' : 'DR Opening Balance'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">
+                                        <CTableDataCell className="text-end fw-bold text-danger">
                                           {parseFloat(summary.opening_balance) < 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">
-                                          {parseFloat(summary.opening_balance) > 0 ? formatCurrency(summary.opening_balance) : '-'}
+                                        <CTableDataCell className="text-end fw-bold text-success">
+                                          {parseFloat(summary.opening_balance) > 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.opening_balance))}</CTableDataCell>
+                                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.opening_balance))} {parseFloat(summary.opening_balance) >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                                       </CTableRow>
                                       
                                       {item.ledger_entries && item.ledger_entries.length > 0 ? (
                                         item.ledger_entries.filter(e => !e.is_opening).map((entry, idx) => (
                                           <CTableRow key={idx}>
                                             <CTableDataCell>{entry.date}</CTableDataCell>
+                                            <CTableDataCell>{entry.vch_type} - {entry.vch_no}</CTableDataCell>
                                             <CTableDataCell>{entry.particulars}</CTableDataCell>
-                                            <CTableDataCell>{entry.vch_type}</CTableDataCell>
-                                            <CTableDataCell>{entry.vch_no}</CTableDataCell>
-                                            <CTableDataCell className="text-end">
+                                            <CTableDataCell className="text-end text-danger">
                                               {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
                                             </CTableDataCell>
-                                            <CTableDataCell className="text-end">
+                                            <CTableDataCell className="text-end text-success">
                                               {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                                             </CTableDataCell>
-                                            <CTableDataCell className="text-end text-muted">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance >= 0 ? 'Cr' : 'Dr'}</CTableDataCell>
+                                            <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance_type}</CTableDataCell>
                                           </CTableRow>
                                         ))
                                       ) : (
@@ -496,16 +575,17 @@ const PurchaseVendorLadger = () => {
 
                                       <CTableRow className="table-active">
                                         <CTableDataCell className="fw-bold">{endDate || ''}</CTableDataCell>
-                                        <CTableDataCell className="fw-bold text-center" colSpan="3">
-                                          {parseFloat(summary.closing_balance) >= 0 ? 'Cr Closing Balance' : 'Dr Closing Balance'}
+                                        <CTableDataCell></CTableDataCell>
+                                        <CTableDataCell className="fw-bold text-center">
+                                          {parseFloat(summary.closing_balance) >= 0 ? 'CR Closing Balance' : 'DR Closing Balance'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">
+                                        <CTableDataCell className="text-end fw-bold text-danger">
                                           {parseFloat(summary.closing_balance) < 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">
-                                          {parseFloat(summary.closing_balance) > 0 ? formatCurrency(summary.closing_balance) : '-'}
+                                        <CTableDataCell className="text-end fw-bold text-success">
+                                          {parseFloat(summary.closing_balance) > 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
                                         </CTableDataCell>
-                                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.closing_balance))}</CTableDataCell>
+                                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.closing_balance))} {parseFloat(summary.closing_balance) >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                                       </CTableRow>
                                     </CTableBody>
                                   </CTable>
@@ -556,7 +636,7 @@ const PurchaseVendorLadger = () => {
                         <CTableDataCell className="text-end">
                           {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                         </CTableDataCell>
-                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance >= 0 ? 'Cr' : 'Dr'}</CTableDataCell>
+                        <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                       </CTableRow>
                     ))}
                     {dateWiseEntries.length === 0 && !loading && (
