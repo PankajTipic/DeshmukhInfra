@@ -50,20 +50,20 @@ const SubcontractLedgerReport = () => {
   const financialYears = [];
   const currentYear = new Date().getFullYear();
   for (let i = currentYear - 5; i <= currentYear + 1; i++) {
-      financialYears.push({ label: `${i}-${(i + 1).toString().slice(2)}`, value: `${i}-${(i + 1).toString().slice(2)}` });
+    financialYears.push({ label: `${i}-${(i + 1).toString().slice(2)}`, value: `${i}-${(i + 1).toString().slice(2)}` });
   }
 
   const handleFYChange = (selected) => {
-      setFilterFinancialYear(selected);
-      if (!selected) {
-          setStartDate('');
-          setEndDate('');
-          return;
-      }
-      const year = parseInt(selected.value.split('-')[0]);
-      const nextYear = year + 1;
-      setStartDate(`${year}-04-01`);
-      setEndDate(`${nextYear}-03-31`);
+    setFilterFinancialYear(selected);
+    if (!selected) {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    const year = parseInt(selected.value.split('-')[0]);
+    const nextYear = year + 1;
+    setStartDate(`${year}-04-01`);
+    setEndDate(`${nextYear}-03-31`);
   };
 
   const [endDate, setEndDate] = useState(`${defaultFYStart + 1}-03-31`);
@@ -147,7 +147,7 @@ const SubcontractLedgerReport = () => {
 
     const drawHeader = (vendor) => {
       let currentY = margin + 15;
-      
+
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.text(companyInfo.company_name || "Deshmukh Infra Solutions LLP", pageWidth / 2, currentY, { align: "center" });
@@ -159,7 +159,7 @@ const SubcontractLedgerReport = () => {
       const today = new Date();
       doc.text(`Date - ${today.toLocaleDateString()}`, pageWidth - margin, currentY, { align: "right" });
       doc.text(`Time - ${today.toLocaleTimeString()}`, pageWidth - margin, currentY + 10, { align: "right" });
-      
+
       const dateRangeStr = (startDate && endDate) ? `${startDate} To ${endDate}` : (startDate ? `From ${startDate}` : (endDate ? `Up to ${endDate}` : 'All Dates'));
       doc.text(`Period - ${dateRangeStr}`, pageWidth - margin, currentY + 20, { align: "right" });
 
@@ -180,69 +180,69 @@ const SubcontractLedgerReport = () => {
       let yPosition = drawHeader(item.vendor);
 
       let runningBalance = parseFloat(item.summary.opening_balance) || 0;
-      
+
       const formatBal = (bal) => {
-          if (Math.abs(bal) < 0.01) return "0.00";
-          return Math.abs(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (bal >= 0 ? " CR" : " DR");
+        if (Math.abs(bal) < 0.01) return "0.00";
+        return Math.abs(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (bal >= 0 ? " CR" : " DR");
       };
 
-      const columns = ['Date', 'Particulars', 'Vch Type', 'Vch No.', 'Debit', 'Credit', 'Running Balance'];
+      const columns = ['Date', 'Particulars', 'Vch Type', 'Vch No.', 'Debit (Money You Paid)', 'Credit (Work They Billed)', 'Running Balance'];
       const rows = [];
 
       rows.push([
-          startDate || '',
-          parseFloat(runningBalance) >= 0 ? 'CR Opening Balance' : 'DR Opening Balance',
-          '',
-          '',
-          runningBalance < 0 ? formatCurrency(Math.abs(runningBalance)) : '',
-          runningBalance > 0 ? formatCurrency(runningBalance) : '',
-          formatBal(runningBalance)
+        startDate || '',
+        parseFloat(runningBalance) >= 0 ? 'CR Opening Balance' : 'DR Opening Balance',
+        '',
+        '',
+        runningBalance > 0 ? formatCurrency(runningBalance) : '',
+        runningBalance < 0 ? formatCurrency(Math.abs(runningBalance)) : '',
+        formatBal(runningBalance)
       ]);
 
       let periodTotalDebit = 0;
       let periodTotalCredit = 0;
 
       item.ledger_entries.forEach(entry => {
-          // Exclude opening balance row from ledger_entries if it was added by controller
-          if (entry.is_opening) return;
+        // Exclude opening balance row from ledger_entries if it was added by controller
+        if (entry.is_opening) return;
 
-          let deb = parseFloat(entry.debit) || 0;
-          let cre = parseFloat(entry.credit) || 0;
-          
-          periodTotalDebit += deb;
-          periodTotalCredit += cre;
-          
-          runningBalance += (cre - deb); 
+        let deb = parseFloat(entry.credit) || 0;
+        let cre = parseFloat(entry.debit) || 0;
 
-          rows.push([
-              entry.date || '',
-              entry.particulars || '',
-              entry.vch_type || '',
-              entry.vch_no || '',
-              deb > 0 ? formatCurrency(deb) : '',
-              cre > 0 ? formatCurrency(cre) : '',
-              formatBal(runningBalance)
-          ]);
+        periodTotalDebit += deb;
+        periodTotalCredit += cre;
+
+        runningBalance += (cre - deb);
+
+        rows.push([
+          entry.date || '',
+          entry.particulars || '',
+          entry.vch_type || '',
+          entry.vch_no || '',
+          deb > 0 ? formatCurrency(deb) : '',
+          cre > 0 ? formatCurrency(cre) : '',
+          formatBal(runningBalance)
+        ]);
       });
 
       rows.push([
-          '',
-          'Period Total Transactions',
-          '',
-          '',
-          periodTotalDebit > 0 ? formatCurrency(periodTotalDebit) : '',
-          periodTotalCredit > 0 ? formatCurrency(periodTotalCredit) : '',
-          ''
+        '',
+        'Period Total Transactions',
+        '',
+        '',
+        periodTotalDebit > 0 ? formatCurrency(periodTotalDebit) : '',
+        periodTotalCredit > 0 ? formatCurrency(periodTotalCredit) : '',
+        ''
       ]);
 
       rows.push([
-          endDate || '',
-          'Period End Balance',
-          '',
-          '',
-          '',
-          '',
-          formatBal(runningBalance)
+        endDate || '',
+        'Period End Balance',
+        '',
+        '',
+        '',
+        '',
+        formatBal(runningBalance)
       ]);
 
       // A4 Landscape = 841.89pt. Margins 30+30=60. Usable = 781.89pt
@@ -253,60 +253,60 @@ const SubcontractLedgerReport = () => {
         body: rows,
         theme: 'plain',
         styles: {
-            font: 'helvetica',
-            fontSize: 8,
-            cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
-            textColor: 0,
-            overflow: 'linebreak',
+          font: 'helvetica',
+          fontSize: 8,
+          cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
+          textColor: 0,
+          overflow: 'linebreak',
         },
         headStyles: {
-            fontStyle: 'bold',
+          fontStyle: 'bold',
         },
         columnStyles: {
-            0: { cellWidth: 75,  halign: 'left'   },  // Date
-            1: { cellWidth: 225, halign: 'left'   },  // Particulars
-            2: { cellWidth: 82,  halign: 'left'   },  // Vch Type
-            3: { cellWidth: 74,  halign: 'left'   },  // Vch No
-            4: { cellWidth: 90,  halign: 'left'  },  // Debit
-            5: { cellWidth: 90,  halign: 'left'  },  // Credit
-            6: { cellWidth: 145, halign: 'left'  },  // Running Balance
+          0: { cellWidth: 75, halign: 'left' },  // Date
+          1: { cellWidth: 225, halign: 'left' },  // Particulars
+          2: { cellWidth: 82, halign: 'left' },  // Vch Type
+          3: { cellWidth: 74, halign: 'left' },  // Vch No
+          4: { cellWidth: 90, halign: 'left' },  // Debit
+          5: { cellWidth: 90, halign: 'left' },  // Credit
+          6: { cellWidth: 145, halign: 'left' },  // Running Balance
         },
-        willDrawCell: function(data) {
-            const setDash = () => {
-               if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([3, 3], 0);
-               else if (typeof doc.setLineDash === 'function') doc.setLineDash([3, 3], 0);
-            };
-            const resetDash = () => {
-               if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([], 0);
-               else if (typeof doc.setLineDash === 'function') doc.setLineDash([], 0);
-            };
+        willDrawCell: function (data) {
+          const setDash = () => {
+            if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([3, 3], 0);
+            else if (typeof doc.setLineDash === 'function') doc.setLineDash([3, 3], 0);
+          };
+          const resetDash = () => {
+            if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([], 0);
+            else if (typeof doc.setLineDash === 'function') doc.setLineDash([], 0);
+          };
 
-            if (data.row.section === 'head') {
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.5);
-                setDash();
-                doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
-                doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-                resetDash();
-            }
+          if (data.row.section === 'head') {
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            setDash();
+            doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
+            doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            resetDash();
+          }
 
-            const rowIndex = data.row.index;
-            if (rowIndex === 0 || rowIndex >= rows.length - 2) {
-                doc.setFont("helvetica", "bold");
-            }
+          const rowIndex = data.row.index;
+          if (rowIndex === 0 || rowIndex >= rows.length - 2) {
+            doc.setFont("helvetica", "bold");
+          }
 
-            if (rowIndex === rows.length - 2) {
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.5);
-                setDash();
-                doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
-                resetDash();
-            }
+          if (rowIndex === rows.length - 2) {
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            setDash();
+            doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
+            resetDash();
+          }
         },
         didDrawPage: (data) => {
-           doc.setFontSize(8);
-           doc.setFont("helvetica", "normal");
-           doc.text(`Page - ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - margin, margin, { align: 'right' });
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Page - ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - margin, margin, { align: 'right' });
         },
         margin: { top: margin, left: margin, right: margin }
       });
@@ -318,7 +318,7 @@ const SubcontractLedgerReport = () => {
 
 
 
- 
+
 
 
 
@@ -329,48 +329,48 @@ const SubcontractLedgerReport = () => {
         Date: '',
         'Voucher No': '',
         Particulars: `Vendor: ${item.vendor.name} - ${item.vendor.mobile}`,
-        Debit: '',
-        Credit: '',
+        'Debit (Money You Paid)': '',
+        'Credit (Work They Billed)': '',
         'Running Balance': ''
       });
-      
+
       const ob = parseFloat(item.summary.opening_balance) || 0;
       exportData.push({
         Date: startDate || '',
         'Voucher No': '',
         Particulars: ob >= 0 ? 'CR Opening Balance' : 'DR Opening Balance',
-        Debit: ob < 0 ? Math.abs(ob) : '',
-        Credit: ob >= 0 ? Math.abs(ob) : '',
+        'Debit (Money You Paid)': ob >= 0 ? Math.abs(ob) : '',
+        'Credit (Work They Billed)': ob < 0 ? Math.abs(ob) : '',
         'Running Balance': Math.abs(ob) + (ob >= 0 ? ' CR' : ' DR')
       });
-      
+
       let runningBalance = ob;
       if (item.ledger_entries) {
         item.ledger_entries.filter(e => !e.is_opening).forEach(entry => {
-          const deb = parseFloat(entry.debit) || 0;
-          const cre = parseFloat(entry.credit) || 0;
+          const deb = parseFloat(entry.credit) || 0;
+          const cre = parseFloat(entry.debit) || 0;
           runningBalance += (cre - deb);
           exportData.push({
             Date: entry.date,
             'Voucher No': entry.vch_no ? `${entry.vch_type} - ${entry.vch_no}` : entry.vch_type,
             Particulars: entry.particulars,
-            Debit: deb > 0 ? deb : '',
-            Credit: cre > 0 ? cre : '',
+            'Debit (Money You Paid)': deb > 0 ? deb : '',
+            'Credit (Work They Billed)': cre > 0 ? cre : '',
             'Running Balance': Math.abs(runningBalance).toFixed(2) + (runningBalance >= 0 ? ' CR' : ' DR')
           });
         });
       }
-      
+
       exportData.push({
         Date: endDate || '',
         'Voucher No': '',
         Particulars: runningBalance >= 0 ? 'CR Closing Balance' : 'DR Closing Balance',
-        Debit: runningBalance < 0 ? Math.abs(runningBalance) : '',
-        Credit: runningBalance >= 0 ? Math.abs(runningBalance) : '',
+        'Debit (Money You Paid)': runningBalance >= 0 ? Math.abs(runningBalance) : '',
+        'Credit (Work They Billed)': runningBalance < 0 ? Math.abs(runningBalance) : '',
         'Running Balance': Math.abs(runningBalance).toFixed(2) + (runningBalance >= 0 ? ' CR' : ' DR')
       });
-      
-      exportData.push({ Date: '', 'Voucher No': '', Particulars: '', Debit: '', Credit: '', 'Running Balance': '' });
+
+      exportData.push({ Date: '', 'Voucher No': '', Particulars: '', 'Debit (Money You Paid)': '', 'Credit (Work They Billed)': '', 'Running Balance': '' });
     });
 
     const ws = XLSXUtils.json_to_sheet(exportData);
@@ -382,12 +382,12 @@ const SubcontractLedgerReport = () => {
   const dateWiseEntries = data
     .flatMap((item) =>
       (item.ledger_entries || [])
-      .filter((entry) => !entry.is_opening)
-      .map((entry) => ({
-        ...entry,
-        vendor_name: item.vendor.name,
-        vendor_mobile: item.vendor.mobile,
-      }))
+        .filter((entry) => !entry.is_opening)
+        .map((entry) => ({
+          ...entry,
+          vendor_name: item.vendor.name,
+          vendor_mobile: item.vendor.mobile,
+        }))
     )
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -447,7 +447,7 @@ const SubcontractLedgerReport = () => {
             <CCol>
               <CButton color="info" onClick={generatePdf} disabled={loading} className="text-white me-2">PDF</CButton>
               <CButton color="success" onClick={exportExcel} disabled={loading} className="text-white me-2">Excel</CButton>
-              </CCol>
+            </CCol>
           </CRow>
 
           <CButtonGroup className="mb-4">
@@ -537,8 +537,8 @@ const SubcontractLedgerReport = () => {
                                         <CTableHeaderCell>Date</CTableHeaderCell>
                                         <CTableHeaderCell>Voucher No</CTableHeaderCell>
                                         <CTableHeaderCell>Particulars</CTableHeaderCell>
-                                        <CTableHeaderCell className="text-end">Debit</CTableHeaderCell>
-                                        <CTableHeaderCell className="text-end">Credit</CTableHeaderCell>
+                                        <CTableHeaderCell className="text-end">Debit (Money You Paid)</CTableHeaderCell>
+                                        <CTableHeaderCell className="text-end">Credit (Work They Billed)</CTableHeaderCell>
                                         <CTableHeaderCell className="text-end">Running Balance</CTableHeaderCell>
                                       </CTableRow>
                                     </CTableHead>
@@ -550,14 +550,14 @@ const SubcontractLedgerReport = () => {
                                           {parseFloat(summary.opening_balance) >= 0 ? 'CR Opening Balance' : 'DR Opening Balance'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold text-danger">
-                                          {parseFloat(summary.opening_balance) < 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
+                                          {parseFloat(summary.opening_balance) > 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold text-success">
-                                          {parseFloat(summary.opening_balance) > 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
+                                          {parseFloat(summary.opening_balance) < 0 ? formatCurrency(Math.abs(summary.opening_balance)) : '-'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.opening_balance))} {parseFloat(summary.opening_balance) >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                                       </CTableRow>
-                                      
+
                                       {item.ledger_entries && item.ledger_entries.length > 0 ? (
                                         item.ledger_entries.filter(e => !e.is_opening).map((entry, idx) => (
                                           <CTableRow key={idx}>
@@ -565,10 +565,10 @@ const SubcontractLedgerReport = () => {
                                             <CTableDataCell>{entry.vch_type} - {entry.vch_no}</CTableDataCell>
                                             <CTableDataCell>{entry.particulars}</CTableDataCell>
                                             <CTableDataCell className="text-end text-danger">
-                                              {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
+                                              {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                                             </CTableDataCell>
                                             <CTableDataCell className="text-end text-success">
-                                              {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
+                                              {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
                                             </CTableDataCell>
                                             <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance_type}</CTableDataCell>
                                           </CTableRow>
@@ -582,16 +582,33 @@ const SubcontractLedgerReport = () => {
                                       )}
 
                                       <CTableRow className="table-active">
+                                        <CTableDataCell colSpan="3" className="text-end fw-bold">Period Total Transactions</CTableDataCell>
+                                        <CTableDataCell className="text-end fw-bold text-danger">
+                                          {(() => {
+                                            const tot = item.ledger_entries ? item.ledger_entries.filter(e => !e.is_opening).reduce((sum, e) => sum + (parseFloat(e.credit) || 0), 0) : 0;
+                                            return tot > 0 ? formatCurrency(tot) : '';
+                                          })()}
+                                        </CTableDataCell>
+                                        <CTableDataCell className="text-end fw-bold text-success">
+                                          {(() => {
+                                            const tot = item.ledger_entries ? item.ledger_entries.filter(e => !e.is_opening).reduce((sum, e) => sum + (parseFloat(e.debit) || 0), 0) : 0;
+                                            return tot > 0 ? formatCurrency(tot) : '';
+                                          })()}
+                                        </CTableDataCell>
+                                        <CTableDataCell></CTableDataCell>
+                                      </CTableRow>
+
+                                      <CTableRow className="table-active">
                                         <CTableDataCell className="fw-bold">{endDate || ''}</CTableDataCell>
                                         <CTableDataCell></CTableDataCell>
                                         <CTableDataCell className="fw-bold text-center">
                                           {parseFloat(summary.closing_balance) >= 0 ? 'CR Closing Balance' : 'DR Closing Balance'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold text-danger">
-                                          {parseFloat(summary.closing_balance) < 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
+                                          {parseFloat(summary.closing_balance) > 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold text-success">
-                                          {parseFloat(summary.closing_balance) > 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
+                                          {parseFloat(summary.closing_balance) < 0 ? formatCurrency(Math.abs(summary.closing_balance)) : '-'}
                                         </CTableDataCell>
                                         <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(summary.closing_balance))} {parseFloat(summary.closing_balance) >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                                       </CTableRow>
@@ -625,9 +642,9 @@ const SubcontractLedgerReport = () => {
                       <CTableHeaderCell>Particulars</CTableHeaderCell>
                       <CTableHeaderCell>Vch Type</CTableHeaderCell>
                       <CTableHeaderCell>Vch No.</CTableHeaderCell>
-                      <CTableHeaderCell className="text-end">Debit</CTableHeaderCell>
-                      <CTableHeaderCell className="text-end">Credit</CTableHeaderCell>
-                      <CTableHeaderCell className="text-end">Balance</CTableHeaderCell>
+                      <CTableHeaderCell className="text-end">Debit (Money You Paid)</CTableHeaderCell>
+                      <CTableHeaderCell className="text-end">Credit (Work They Billed)</CTableHeaderCell>
+                      <CTableHeaderCell className="text-end">Running Balance</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
@@ -639,10 +656,10 @@ const SubcontractLedgerReport = () => {
                         <CTableDataCell>{entry.vch_type}</CTableDataCell>
                         <CTableDataCell>{entry.vch_no}</CTableDataCell>
                         <CTableDataCell className="text-end">
-                          {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
+                          {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                         </CTableDataCell>
                         <CTableDataCell className="text-end">
-                          {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
+                          {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
                         </CTableDataCell>
                         <CTableDataCell className="text-end fw-bold">₹{formatCurrency(Math.abs(entry.balance))} {entry.balance >= 0 ? 'CR' : 'DR'}</CTableDataCell>
                       </CTableRow>
@@ -650,6 +667,18 @@ const SubcontractLedgerReport = () => {
                     {dateWiseEntries.length === 0 && !loading && (
                       <CTableRow>
                         <CTableDataCell colSpan="8" className="text-center py-5 text-muted">No ledger entries found.</CTableDataCell>
+                      </CTableRow>
+                    )}
+                    {dateWiseEntries.length > 0 && (
+                      <CTableRow className="table-active">
+                        <CTableDataCell colSpan="5" className="text-end fw-bold">Grand Total</CTableDataCell>
+                        <CTableDataCell className="text-end fw-bold">
+                          {formatCurrency(dateWiseEntries.reduce((sum, e) => sum + (parseFloat(e.credit) || 0), 0))}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-end fw-bold">
+                          {formatCurrency(dateWiseEntries.reduce((sum, e) => sum + (parseFloat(e.debit) || 0), 0))}
+                        </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
                       </CTableRow>
                     )}
                   </CTableBody>

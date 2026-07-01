@@ -19,6 +19,7 @@ use App\Models\CompressorRpm;
 use App\Models\RawMaterialLog;
 use App\Models\UsesRawMaterial;
 use App\Models\RawMaterial;
+use App\Models\Machinery;
 
 use Carbon\Carbon;
 use App\Models\Order;
@@ -54,57 +55,77 @@ public function store(Request $request)
 
     // ✅ Step 1: Validate
     $validated = $request->validate([
-        'project_id'        => 'nullable|integer',
-        'date'              => 'nullable|date',
-        'oprator_helper'    => 'nullable|numeric',
+        'diesel_used'    => 'nullable|numeric',
+        'diesel_balance' => 'nullable|numeric',
        
     ]);
 
     // ✅ Step 2: Always override company_id with logged-in user
-    $drillingRecord = DrillingRecord::create(array_merge($validated, [
+    $drillingRecord = DrillingRecord::create([
         'user_id'        => $userId,
         'company_id'     => $companyId,
+        'project_id'     => $request->project_id ?? null,
+        'date'           => $request->date ?? now()->toDateString(),
         'oprator_helper' => $request->oprator_helper,
-    ]));
+    ]);
 
     $operatorId = $drillingRecord->oprator_helper;
 
-    // ✅ Step 2.1: Create Machine Reading entries
-if ($request->has('machineReading') && is_array($request->machineReading)) {
-    foreach ($request->machineReading as $reading) {
-        MachineReading::create([
-            'company_id'        => $companyId,
-            'drilling_record_id' => $drillingRecord->id, // ✅ now it will save
-            'oprator_id'        => $reading['oprator_id'] ?? null,         //$operatorId ?? null,
-            'project_id'        => $request->project_id ?? null,
-            'user_id'           => $userId,
-            'machine_id'        => $reading['machine_id'] ?? null,
-            'machine_start'     => $reading['machine_start'] ?? null,
-            'machine_end'       => $reading['machine_end'] ?? null,
-            'actual_machine_hr' => $reading['actual_machine_hr'] ?? null,
-        ]);
+    // ✅ Step 2.1: Create Machine Reading entries & deduct diesel from Machinery
+    if ($request->has('machineReading') && is_array($request->machineReading)) {
+        foreach ($request->machineReading as $reading) {
+            MachineReading::create([
+                'company_id'        => $companyId,
+                'drilling_record_id'=> $drillingRecord->id,
+                'oprator_id'        => $reading['oprator_id'] ?? null,
+                'project_id'        => $request->project_id ?? null,
+                'user_id'           => $userId,
+                'machine_id'        => $reading['machine_id'] ?? null,
+                'machine_start'     => $reading['machine_start'] ?? null,
+                'machine_end'       => $reading['machine_end'] ?? null,
+                'actual_machine_hr' => $reading['actual_machine_hr'] ?? null,
+                'diesel_used'       => $reading['diesel_used'] ?? null,
+                'diesel_balance'    => $reading['diesel_balance'] ?? null,
+            ]);
+
+            // 🔥 Deduct diesel_used from Machinery.diesel_balance
+            $dieselUsed = floatval($reading['diesel_used'] ?? 0);
+            $machineId  = $reading['machine_id'] ?? null;
+            if ($machineId && $dieselUsed > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselUsed);
+            }
+        }
     }
-}
 
+    // ✅ Step 2.2: Create Compressor RPM entries & deduct diesel from Machinery
+    if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
+        foreach ($request->compressor_rpm as $rpm) {
+            CompressorRpm::create([
+                'company_id'         => $companyId,
+                'drilling_record_id' => $drillingRecord->id,
+                'oprator_id'         => $rpm['oprator_id'] ?? null,
+                'project_id'         => $request->project_id ?? null,
+                'user_id'            => $userId,
+                'machine_id'         => $rpm['machine_id'] ?? null,
+                'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
+                'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
+                'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
+                'diesel_used'        => $rpm['diesel_used'] ?? null,
+                'diesel_balance'     => $rpm['diesel_balance'] ?? null,
+            ]);
 
-
- 
-// ✅ Step 2.2: Create Compressor RPM entries
-if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
-    foreach ($request->compressor_rpm as $rpm) {
-        CompressorRpm::create([
-            'company_id'         => $companyId,
-            'drilling_record_id' => $drillingRecord->id,
-            'oprator_id'         => $rpm['oprator_id'] ?? null,
-            'project_id'         => $request->project_id ?? null,
-            'user_id'            => $userId,
-            'machine_id'         => $rpm['machine_id'] ?? null,
-            'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
-            'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
-            'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
-        ]);
+            // 🔥 Deduct diesel_used from Machinery.diesel_balance
+            $dieselUsed = floatval($rpm['diesel_used'] ?? 0);
+            $machineId  = $rpm['machine_id'] ?? null;
+            if ($machineId && $dieselUsed > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselUsed);
+            }
+        }
     }
-}
 
 
 
@@ -688,25 +709,39 @@ public function update(Request $request, $id)
     $userId    = $user->id;
     $companyId = $user->company_id;
 
-    // ✅ Step 1: Validate
-    $validated = $request->validate([
-        'project_id'        => 'nullable|integer',
-        'date'              => 'nullable|date',
-        'oprator_helper'    => 'nullable|numeric',
-        // 'comp_rpm_start'    => 'nullable|numeric',
-        // 'comp_rpm_end'      => 'nullable|numeric',
-        // 'com_actul_hr'      => 'nullable|numeric',
-    ]);
 
     // ✅ Step 2: Find the existing record
     $drillingRecord = DrillingRecord::where('company_id', $companyId)->findOrFail($id);
 
     // ✅ Step 3: Update drilling record
-    $drillingRecord->update(array_merge($validated, [
-        'oprator_helper' => $request->oprator_helper,
-    ]));
+    $drillingRecord->update([
+        'project_id'     => $request->project_id ?? $drillingRecord->project_id,
+        'date'           => $request->date ?? $drillingRecord->date,
+        'oprator_helper' => $request->oprator_helper ?? $drillingRecord->oprator_helper,
+    ]);
 
-    // ✅ Step 4: Delete old relations before inserting new ones
+    // ✅ Step 4: Restore old diesel to Machinery before deleting old readings
+    $oldMachineReadings = MachineReading::where('drilling_record_id', $drillingRecord->id)->get();
+    foreach ($oldMachineReadings as $oldReading) {
+        $oldDiesel = floatval($oldReading->diesel_used ?? 0);
+        if ($oldReading->machine_id && $oldDiesel > 0) {
+            Machinery::where('id', $oldReading->machine_id)
+                ->where('company_id', $companyId)
+                ->increment('diesel_balance', $oldDiesel);
+        }
+    }
+
+    $oldCompressorReadings = CompressorRPM::where('drilling_record_id', $drillingRecord->id)->get();
+    foreach ($oldCompressorReadings as $oldRpm) {
+        $oldDiesel = floatval($oldRpm->diesel_used ?? 0);
+        if ($oldRpm->machine_id && $oldDiesel > 0) {
+            Machinery::where('id', $oldRpm->machine_id)
+                ->where('company_id', $companyId)
+                ->increment('diesel_balance', $oldDiesel);
+        }
+    }
+
+    // Delete old relations
     MachineReading::where('drilling_record_id', $drillingRecord->id)->delete();
     WorkPointDetail::where('drilling_record_id', $drillingRecord->id)->delete();
     SurveyDetail::where('drilling_record_id', $drillingRecord->id)->delete();
@@ -716,7 +751,7 @@ public function update(Request $request, $id)
     $totalWorkPoints = 0;
     $totalSurveys = 0;
 
-    // ✅ Step 5: Insert Machine Reading entries
+    // ✅ Step 5: Insert Machine Reading entries & deduct diesel
     if ($request->has('machineReading') && is_array($request->machineReading)) {
         foreach ($request->machineReading as $reading) {
             MachineReading::create([
@@ -729,26 +764,48 @@ public function update(Request $request, $id)
                 'machine_start'      => $reading['machine_start'] ?? null,
                 'machine_end'        => $reading['machine_end'] ?? null,
                 'actual_machine_hr'  => $reading['actual_machine_hr'] ?? null,
+                'diesel_used'        => $reading['diesel_used'] ?? null,
+                'diesel_balance'     => $reading['diesel_balance'] ?? null,
             ]);
+
+            // 🔥 Deduct diesel_used from Machinery.diesel_balance
+            $dieselUsed = floatval($reading['diesel_used'] ?? 0);
+            $machineId  = $reading['machine_id'] ?? null;
+            if ($machineId && $dieselUsed > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselUsed);
+            }
         }
     }
 
-     // ✅ Step 5: Insert Machine Reading entries
- if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
-    foreach ($request->compressor_rpm as $rpm) {
-        CompressorRpm::create([
-            'company_id'         => $companyId,
-            'drilling_record_id' => $drillingRecord->id,
-            'oprator_id'         => $rpm['oprator_id'] ?? null,
-            'project_id'         => $request->project_id ?? null,
-            'user_id'            => $userId,
-            'machine_id'         => $rpm['machine_id'] ?? null,
-            'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
-            'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
-            'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
-        ]);
+    // ✅ Step 6: Insert Compressor RPM entries & deduct diesel
+    if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
+        foreach ($request->compressor_rpm as $rpm) {
+            CompressorRpm::create([
+                'company_id'         => $companyId,
+                'drilling_record_id' => $drillingRecord->id,
+                'oprator_id'         => $rpm['oprator_id'] ?? null,
+                'project_id'         => $request->project_id ?? null,
+                'user_id'            => $userId,
+                'machine_id'         => $rpm['machine_id'] ?? null,
+                'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
+                'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
+                'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
+                'diesel_used'        => $rpm['diesel_used'] ?? null,
+                'diesel_balance'     => $rpm['diesel_balance'] ?? null,
+            ]);
+
+            // 🔥 Deduct diesel_used from Machinery.diesel_balance
+            $dieselUsed = floatval($rpm['diesel_used'] ?? 0);
+            $machineId  = $rpm['machine_id'] ?? null;
+            if ($machineId && $dieselUsed > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselUsed);
+            }
+        }
     }
-}
 
     // ✅ Step 6: Insert Work Points
     if ($request->has('work_points') && is_array($request->work_points)) {
@@ -787,7 +844,7 @@ public function update(Request $request, $id)
     }
 
     // ✅ Step 8: Update Work Log Summary
-    $logDate    = $validated['date'] ?? now()->toDateString();
+    $logDate    = $request->date ?? $drillingRecord->date ?? now()->toDateString();
     $projectId  = $request->project_id ?? null;
     $grandTotal = $totalWorkPoints + $totalSurveys;
 

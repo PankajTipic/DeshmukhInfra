@@ -778,8 +778,8 @@ const UpdateDrillingForm = () => {
     project_id: '',
     project_name: '',
     date: '',
-    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0 }],
-    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0 }],
+    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: '' }],
+    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: '' }],
     workDetails: [{ operator_id: '', work_type: '', work_point: 0, rate: 0, total: 0 }],
     surveys: [{ operator_id: '', survey_type: '', survey_point: 0, rate: 0, total: 0 }],
     isGST: false,
@@ -830,7 +830,10 @@ const UpdateDrillingForm = () => {
           machine_id: m.machine_id != null ? Number(m.machine_id) : '',
           machine_start: m.machine_start ?? '',
           machine_end: m.machine_end ?? '',
-          actual_machine_hr: m.actual_machine_hr != null ? Number(m.actual_machine_hr) : 0
+          actual_machine_hr: m.actual_machine_hr != null ? Number(m.actual_machine_hr) : 0,
+          diesel_used: m.diesel_used ?? '',
+          diesel_balance: m.diesel_balance ?? '',
+          old_diesel_used: m.diesel_used ?? 0,
         }));
 
         // map compressor readings
@@ -839,7 +842,10 @@ const UpdateDrillingForm = () => {
           machine_id: c.machine_id != null ? Number(c.machine_id) : '',
           comp_rpm_start: c.comp_rpm_start ?? '',
           comp_rpm_end: c.comp_rpm_end ?? '',
-          com_actul_hr: c.com_actul_hr != null ? Number(c.com_actul_hr) : 0
+          com_actul_hr: c.com_actul_hr != null ? Number(c.com_actul_hr) : 0,
+          diesel_used: c.diesel_used ?? '',
+          diesel_balance: c.diesel_balance ?? '',
+          old_diesel_used: c.diesel_used ?? 0,
         }));
 
         // map work points
@@ -912,7 +918,11 @@ const UpdateDrillingForm = () => {
       .then((res) => {
         const payload = unwrapApi(res);
         const list = Array.isArray(payload) ? payload : (payload?.data || payload || []);
-        setMachineries((Array.isArray(list) ? list : []).map((m) => ({ value: m.id, label: m.machine_name || m.name })));
+        setMachineries((Array.isArray(list) ? list : []).map((m) => ({ 
+          value: m.id, 
+          label: m.machine_name || m.name,
+          diesel_balance: m.diesel_balance || 0 
+        })));
       })
       .catch((err) => console.error('Error fetching machineries:', err));
   }, []);
@@ -973,6 +983,23 @@ const UpdateDrillingForm = () => {
     setFormData((prev) => {
       const updated = prev.machineReading.map((r, i) => i === index ? { ...r } : r);
       updated[index][field] = (field === 'oprator_id' || field === 'machine_id') ? (value === '' ? '' : Number(value)) : value;
+      
+      if (field === 'machine_id') {
+        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
+        updated[index].diesel_balance = currentBal + oldUsed;
+        updated[index].diesel_used = '';
+      }
+
+      if (field === 'diesel_used') {
+        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
+        const used = parseFloat(value) || 0;
+        updated[index].diesel_balance = (currentBal + oldUsed) - used;
+      }
+
       if (field === 'machine_start' || field === 'machine_end') {
         updated[index].actual_machine_hr = calculateMachineHours(updated[index].machine_start, updated[index].machine_end);
       }
@@ -984,6 +1011,23 @@ const UpdateDrillingForm = () => {
     setFormData((prev) => {
       const updated = prev.compressorReading.map((r, i) => i === index ? { ...r } : r);
       updated[index][field] = (field === 'oprator_id' || field === 'machine_id') ? (value === '' ? '' : Number(value)) : value;
+      
+      if (field === 'machine_id') {
+        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
+        updated[index].diesel_balance = currentBal + oldUsed;
+        updated[index].diesel_used = '';
+      }
+
+      if (field === 'diesel_used') {
+        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
+        const used = parseFloat(value) || 0;
+        updated[index].diesel_balance = (currentBal + oldUsed) - used;
+      }
+
       if (field === 'comp_rpm_start' || field === 'comp_rpm_end') {
         updated[index].com_actul_hr = calculateCompressorHours(updated[index].comp_rpm_start, updated[index].comp_rpm_end);
       }
@@ -994,7 +1038,7 @@ const UpdateDrillingForm = () => {
   const addMachineReading = () => {
     setFormData((prev) => ({
       ...prev,
-      machineReading: [...prev.machineReading, { oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0 }]
+      machineReading: [...prev.machineReading, { oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: '' }]
     }));
   };
 
@@ -1005,7 +1049,7 @@ const UpdateDrillingForm = () => {
   const addCompressorReading = () => {
     setFormData((prev) => ({
       ...prev,
-      compressorReading: [...prev.compressorReading, { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0 }]
+      compressorReading: [...prev.compressorReading, { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: '' }]
     }));
   };
 
@@ -1102,6 +1146,38 @@ const UpdateDrillingForm = () => {
       }
     }
 
+    // Diesel Validation (Cross-section sum)
+    const dieselUsageMap = {};
+    const oldDieselMap = {};
+
+    const addDieselUsage = (machineId, used, oldUsed) => {
+      if (!machineId) return;
+      const amount = parseFloat(used) || 0;
+      const oldAmount = parseFloat(oldUsed) || 0;
+      
+      if (!dieselUsageMap[machineId]) dieselUsageMap[machineId] = 0;
+      if (!oldDieselMap[machineId]) oldDieselMap[machineId] = 0;
+      
+      dieselUsageMap[machineId] += amount;
+      oldDieselMap[machineId] += oldAmount;
+    };
+
+    formData.machineReading.forEach(r => addDieselUsage(r.machine_id, r.diesel_used, r.old_diesel_used));
+    formData.compressorReading.forEach(r => addDieselUsage(r.machine_id, r.diesel_used, r.old_diesel_used));
+
+    for (const machineId of Object.keys(dieselUsageMap)) {
+      const machine = machineries.find(m => String(m.value) === String(machineId));
+      const currentBalance = machine ? parseFloat(machine.diesel_balance) || 0 : 0;
+      const oldUsed = oldDieselMap[machineId];
+      const availableBalance = currentBalance + oldUsed;
+      const totalUsed = dieselUsageMap[machineId];
+
+      if (totalUsed > availableBalance) {
+        showToast("danger", `Total diesel used (${totalUsed}) for machine "${machine?.label || 'Unknown'}" exceeds available balance (${availableBalance}).`);
+        return;
+      }
+    }
+
     const payload = {
       project_id: formData.project_id,
       date: formData.date,
@@ -1112,6 +1188,8 @@ const UpdateDrillingForm = () => {
         machine_start: m.machine_start || null,
         machine_end: m.machine_end || null,
         actual_machine_hr: m.actual_machine_hr || 0,
+        diesel_used: m.diesel_used !== '' ? parseFloat(m.diesel_used) : null,
+        diesel_balance: m.diesel_balance !== '' ? parseFloat(m.diesel_balance) : null,
       })),
       compressor_rpm: formData.compressorReading.map((c) => ({
         oprator_id: c.oprator_id || null,
@@ -1119,6 +1197,8 @@ const UpdateDrillingForm = () => {
         comp_rpm_start: c.comp_rpm_start || null,
         comp_rpm_end: c.comp_rpm_end || null,
         com_actul_hr: c.com_actul_hr || 0,
+        diesel_used: c.diesel_used !== '' ? parseFloat(c.diesel_used) : null,
+        diesel_balance: c.diesel_balance !== '' ? parseFloat(c.diesel_balance) : null,
       })),
       work_points: formData.workDetails.map((w) => ({
         operator_id: w.operator_id || null,
@@ -1308,6 +1388,30 @@ const UpdateDrillingForm = () => {
                         </CInputGroup>
                       </CCol>
 
+                      <CCol xs={12} sm={6} md={2} className="p-1">
+                        <CFormLabel>Diesel Used</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9.]*"
+                          value={reading.diesel_used}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9.]/g, '');
+                            handleMachineReadingChange(index, 'diesel_used', val);
+                          }}
+                        />
+                      </CCol>
+
+                      <CCol xs={12} sm={6} md={2} className="p-1">
+                        <CFormLabel>Diesel Balance</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          value={reading.diesel_balance}
+                          readOnly
+                          className="bg-light fw-bold"
+                        />
+                      </CCol>
+
                       <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">
                         {formData.machineReading.length > 1 && (
                           <CButton
@@ -1405,6 +1509,30 @@ const UpdateDrillingForm = () => {
                         <CFormInput type="text" value={String(reading.com_actul_hr ?? 0)} readOnly />
                         <CInputGroupText>hrs</CInputGroupText>
                       </CInputGroup>
+                    </CCol>
+
+                    <CCol xs={12} sm={6} md={2} className="p-1">
+                      <CFormLabel>Diesel Used</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9.]*"
+                        value={reading.diesel_used}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          handleCompressorChange(index, 'diesel_used', val);
+                        }}
+                      />
+                    </CCol>
+
+                    <CCol xs={12} sm={6} md={2} className="p-1">
+                      <CFormLabel>Diesel Balance</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        value={reading.diesel_balance}
+                        readOnly
+                        className="bg-light fw-bold"
+                      />
                     </CCol>
 
                     <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">

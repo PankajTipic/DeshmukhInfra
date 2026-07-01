@@ -111,10 +111,14 @@ function InfraDetailsShowTable() {
             machineStart: machine.machine_start || '',
             machineEnd: machine.machine_end || '',
             machineHr: machine.actual_machine_hr || '',
+            machineDieselUsed: machine.diesel_used ?? '',
+            machineDieselBalance: machine.diesel_balance ?? '',
 
             compressorStart: compressorRpm.comp_rpm_start || '',
             compressorEnd: compressorRpm.comp_rpm_end || '',
             compressorHr: compressorRpm.com_actul_hr || '',
+            compressorDieselUsed: compressorRpm.diesel_used ?? '',
+            compressorDieselBalance: compressorRpm.diesel_balance ?? '',
 
             workType: work.work_type || '',
             workPoint: work.work_point || '',
@@ -153,6 +157,8 @@ function InfraDetailsShowTable() {
       surveyRate: rows.reduce((sum, row) => sum + (parseFloat(row.surveyRate) || 0), 0),
       surveyTotal: rows.reduce((sum, row) => sum + (Number(row.surveyTotal) || 0), 0),
       grandTotal: rows.reduce((sum, row) => sum + (Number(row.rowTotal) || 0), 0),
+      machineDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.machineDieselUsed) || 0), 0),
+      compressorDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.compressorDieselUsed) || 0), 0),
     }
   }, [rows])
 
@@ -182,9 +188,13 @@ function InfraDetailsShowTable() {
       'Machine Start',
       'Machine End',
       'Machine Hr',
+      'Machine Diesel Used',
+      'Machine Diesel Bal',
       'Compressor rpm Start',
       'Compressor rpm End',
       'Compressor rpm Hr',
+      'Comp Diesel Used',
+      'Comp Diesel Bal',
       'Work Type',
       'Point',
       'Rate',
@@ -204,9 +214,13 @@ function InfraDetailsShowTable() {
       row.machineStart,
       row.machineEnd,
       row.machineHr,
+      row.machineDieselUsed,
+      row.machineDieselBalance,
       row.compressorStart,
       row.compressorEnd,
       row.compressorHr,
+      row.compressorDieselUsed,
+      row.compressorDieselBalance,
       row.workType,
       row.workPoint,
       row.workRate,
@@ -220,7 +234,11 @@ function InfraDetailsShowTable() {
 
     // Calculate totals
     const totalsRow = [
-      '', '', '', '', '', '', '', '', '', '', 
+      '', '', '', '',
+      '', '', '',
+      tableTotals.machineDieselUsed.toFixed(2), '',
+      '', '', '',
+      tableTotals.compressorDieselUsed.toFixed(2), '',
       'TOTAL',
       tableTotals.workPoint.toFixed(2),
       tableTotals.workRate.toFixed(2),
@@ -656,10 +674,11 @@ const downloadPDF = () => {
   // TABLE
   // ───────────────────────────────────────────────
   const tableColumn = [
-    'Sr.No.', 'Date', 'Site', 'Operator', 'Machine Start', 'Machine End',
-    'Machine Hr', 'Comp Start', 'Comp End', 'Comp Hr', 'Work Type',
-    'Point', 'Rate', 'Work Total', 'Survey Type', 'Point', 'Rate',
-    'Survey Total', 'Grand Total'
+    'Sr.No.', 'Date', 'Site', 'Operator',
+    'Machine Start', 'Machine End', 'Machine Hr', 'M.Diesel Used', 'M.Diesel Bal',
+    'Comp Start', 'Comp End', 'Comp Hr', 'C.Diesel Used', 'C.Diesel Bal',
+    'Work Type', 'Point', 'Rate', 'Work Total',
+    'Survey Type', 'Point', 'Rate', 'Survey Total', 'Grand Total'
   ];
   const tableRows = rows.map(row => [
     row.srNo,
@@ -669,9 +688,13 @@ const downloadPDF = () => {
     row.machineStart,
     row.machineEnd,
     row.machineHr,
+    row.machineDieselUsed,
+    row.machineDieselBalance,
     row.compressorStart,
     row.compressorEnd,
     row.compressorHr,
+    row.compressorDieselUsed,
+    row.compressorDieselBalance,
     row.workType,
     row.workPoint,
     row.workRate,
@@ -683,7 +706,9 @@ const downloadPDF = () => {
     row.rowTotal,
   ]);
   tableRows.push([
-    '', '', '', '', '', '', '', '', '', '',
+    '', '', '', '',
+    '', '', '', tableTotals.machineDieselUsed.toFixed(2), '',
+    '', '', '', tableTotals.compressorDieselUsed.toFixed(2), '',
     'TOTAL',
     tableTotals.workPoint.toFixed(2),
     tableTotals.workRate.toFixed(2),
@@ -874,9 +899,13 @@ const downloadPDF = () => {
                     <CTableHeaderCell>Machine Start</CTableHeaderCell>
                     <CTableHeaderCell>Machine End</CTableHeaderCell>
                     <CTableHeaderCell>Machine Hr</CTableHeaderCell>
-                    <CTableHeaderCell>Compressor rpm Start</CTableHeaderCell>
-                    <CTableHeaderCell>Compressor rpm End</CTableHeaderCell>
-                    <CTableHeaderCell>Compressor rpm Hr</CTableHeaderCell>
+                    <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
+                    <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
+                    <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
+                    <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
+                    <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
+                    <CTableHeaderCell className="table-info">Diesel Used</CTableHeaderCell>
+                    <CTableHeaderCell className="table-info">Diesel Bal</CTableHeaderCell>
                     <CTableHeaderCell>Work Type</CTableHeaderCell>
                     <CTableHeaderCell>Point</CTableHeaderCell>
                     <CTableHeaderCell>Rate</CTableHeaderCell>
@@ -907,9 +936,13 @@ const downloadPDF = () => {
                       <CTableDataCell>{row.machineStart}</CTableDataCell>
                       <CTableDataCell>{row.machineEnd}</CTableDataCell>
                       <CTableDataCell>{row.machineHr}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-warning">{row.machineDieselUsed}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-warning">{row.machineDieselBalance}</CTableDataCell>
                       <CTableDataCell>{row.compressorStart}</CTableDataCell>
                       <CTableDataCell>{row.compressorEnd}</CTableDataCell>
                       <CTableDataCell>{row.compressorHr}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-info">{row.compressorDieselUsed}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-info">{row.compressorDieselBalance}</CTableDataCell>
                       <CTableDataCell>{row.workType}</CTableDataCell>
                       <CTableDataCell>{row.workPoint}</CTableDataCell>
                       <CTableDataCell>{row.workRate}</CTableDataCell>
@@ -949,10 +982,25 @@ const downloadPDF = () => {
                 {/* Footer with totals */}
                 <CTableFoot>
                   <CTableRow style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
-                    <CTableDataCell colSpan={11} className="text-end">TOTAL</CTableDataCell>
+                    <CTableDataCell colSpan={4} className="text-end">TOTAL</CTableDataCell>
+                    {/* Machine cols */}
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell className="text-center text-warning">{tableTotals.machineDieselUsed.toFixed(2)}</CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    {/* Compressor cols */}
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell className="text-center text-info">{tableTotals.compressorDieselUsed.toFixed(2)}</CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    {/* Work cols */}
+                    <CTableDataCell></CTableDataCell>
                     <CTableDataCell className="text-center">{tableTotals.workPoint.toFixed(2)}</CTableDataCell>
                     <CTableDataCell className="text-center">{tableTotals.workRate.toFixed(2)}</CTableDataCell>
                     <CTableDataCell className="text-center text-primary">{tableTotals.workTotal.toFixed(2)}</CTableDataCell>
+                    {/* Survey cols */}
                     <CTableDataCell></CTableDataCell>
                     <CTableDataCell className="text-center">{tableTotals.surveyPoint.toFixed(2)}</CTableDataCell>
                     <CTableDataCell className="text-center">{tableTotals.surveyRate.toFixed(2)}</CTableDataCell>

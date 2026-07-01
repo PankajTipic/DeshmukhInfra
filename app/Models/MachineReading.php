@@ -67,7 +67,7 @@ class MachineReading extends Model
 
     protected $fillable = [
         'company_id',
-        'drilling_record_id',   // ✅ Add this
+        'drilling_record_id',
         'oprator_id',
         'project_id',
         'user_id',
@@ -75,6 +75,8 @@ class MachineReading extends Model
         'machine_start',
         'machine_end',
         'actual_machine_hr',
+        'diesel_used',
+        'diesel_balance',
     ];
 
     public function drillingRecord()

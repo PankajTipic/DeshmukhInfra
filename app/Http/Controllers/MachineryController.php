@@ -289,6 +289,7 @@ class MachineryController extends Controller
                 'machine_name'    => $validated['machine_name'] ?? $machinery->machine_name,
                 'reg_number'      => $validated['reg_number'] ?? $machinery->reg_number,
                 'ownership_type'  => $validated['ownership_type'] ?? $machinery->ownership_type,
+                'diesel_balance'  => $request->diesel_balance ?? $machinery->diesel_balance,
             ]);
 
             // Update/Create Documents

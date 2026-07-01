@@ -161,6 +161,7 @@ function MachineryForm({ onSuccess }) {
   const [machineName, setMachineName] = useState('')
   const [regNumber, setRegNumber] = useState('')
   const [ownRent, setOwnRent] = useState('')
+  const [dieselBalance, setDieselBalance] = useState('')
 
   // Documents
   const [documents, setDocuments] = useState([
@@ -237,6 +238,7 @@ function MachineryForm({ onSuccess }) {
         machine_name: machineName,
         reg_number: regNumber,
         ownership_type: ownRent,
+        diesel_balance: dieselBalance,
         documents: documents,
       }
 
@@ -250,6 +252,7 @@ function MachineryForm({ onSuccess }) {
       setMachineName('')
       setRegNumber('')
       setOwnRent('')
+      setDieselBalance('')
 
       setDocuments([
         {
@@ -330,6 +333,16 @@ function MachineryForm({ onSuccess }) {
                 <option value="Own">Own</option>
                 <option value="Rent">Rent</option>
               </CFormSelect>
+            </CCol>
+
+            <CCol md={4} className="mt-3">
+              <CFormInput
+                label="Initial Diesel Balance"
+                placeholder="Enter Diesel Balance"
+                type="number"
+                value={dieselBalance}
+                onChange={(e) => setDieselBalance(e.target.value)}
+              />
             </CCol>
 
           </CRow>

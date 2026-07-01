@@ -247,6 +247,7 @@ function MachineriesTable() {
     machine_name: '',
     reg_number: '',
     ownership_type: '',
+    diesel_balance: '',
     documents: [],
   })
 
@@ -313,6 +314,7 @@ function MachineriesTable() {
       machine_name: row.machine_name,
       reg_number: row.reg_number,
       ownership_type: row.ownership_type,
+      diesel_balance: row.diesel_balance,
       documents: row.documents || [],
     })
 
@@ -331,6 +333,8 @@ function MachineriesTable() {
         reg_number: editData.reg_number,
 
         ownership_type: editData.ownership_type,
+
+        diesel_balance: editData.diesel_balance,
 
         documents: editData.documents,
 
@@ -612,7 +616,8 @@ const [expandedRow, setExpandedRow] = useState(null);
                         <div className="col-md-6 mb-3">
                           <strong>Machine Name:</strong> {row.machine_name}<br />
                           <strong>Registration Number:</strong> {row.reg_number}<br />
-                          <strong>Ownership:</strong> {row.ownership_type || 'N/A'}
+                          <strong>Ownership:</strong> {row.ownership_type || 'N/A'}<br />
+                          <strong>Diesel Balance:</strong> {row.diesel_balance || 0}
                         </div>
                       </div>
 
@@ -738,6 +743,22 @@ const [expandedRow, setExpandedRow] = useState(null);
                 <option value="Rent">Rent</option>
 
               </CFormSelect>
+
+            </CCol>
+
+            <CCol md={4} className="mt-3">
+
+              <CFormInput
+                label="Diesel Balance"
+                type="number"
+                value={editData.diesel_balance || ''}
+                onChange={(e) =>
+                  setEditData({
+                    ...editData,
+                    diesel_balance: e.target.value,
+                  })
+                }
+              />
 
             </CCol>
 

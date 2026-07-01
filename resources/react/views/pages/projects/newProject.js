@@ -24,6 +24,7 @@ const ProjectForm = () => {
     project_name: "",
     project_cost:"",
     supervisor_id: "",
+    accountant_id: "",
     work_place: "",
     commission: "",
     start_date: "",
@@ -38,6 +39,7 @@ const ProjectForm = () => {
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [users, setUsers] = useState([]);
+  const [accountants, setAccountants] = useState([]);
   const [projectTypes, setProjectTypes] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -57,10 +59,14 @@ const ProjectForm = () => {
   const fetchUsers = async () => {
     try {
       const response = await getAPICall("/api/usersData");
-      setUsers(response?.users || []);
+      const allUsers = response?.users || [];
+      setUsers(allUsers);
+      // accountants are users with type === 2
+      setAccountants(allUsers.filter((u) => u.type === 2));
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]);
+      setAccountants([]);
     }
   };
 
@@ -99,7 +105,12 @@ const ProjectForm = () => {
     }
 
     try {
-      await post("/api/storeManually", formData);                 // /projects
+      // For User++ (type 3), accountant_id is sent as supervisor_id
+      const payload = {
+        ...formData,
+        supervisor_id: userType === 3 ? (formData.accountant_id || formData.supervisor_id) : formData.supervisor_id,
+      };
+      await post("/api/storeManually", payload);                 // /projects
       setSuccess("Project created successfully!");
       navigate("/project"); // go back to table page
     } catch (error) {
@@ -316,6 +327,32 @@ const ProjectForm = () => {
                         supervisor_id: selected ? selected.value : "",
                       }))
                     }
+                  />
+                </CCol>
+              )}
+
+              {/* Accountant dropdown — visible only for User++ (type 3) */}
+              {userType === 3 && (
+                <CCol md={6}>
+                  <CFormLabel>Accountant <span style={{ color: 'red' }}>*</span></CFormLabel>
+                  <Select
+                    options={accountants.map((a) => ({
+                      value: a.id,
+                      label: `${a.name} (${a.mobile || a.email || ''})`,
+                    }))}
+                    value={
+                      accountants
+                        .map((a) => ({ value: a.id, label: `${a.name} (${a.mobile || a.email || ''})` }))
+                        .find((a) => a.value === formData.accountant_id) || null
+                    }
+                    onChange={(selected) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        accountant_id: selected ? selected.value : "",
+                      }))
+                    }
+                    placeholder="Select Accountant..."
+                    isClearable
                   />
                 </CCol>
               )}

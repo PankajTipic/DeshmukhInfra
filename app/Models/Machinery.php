@@ -14,7 +14,7 @@ class Machinery extends Model
         'machine_name',
         'reg_number',
         'ownership_type',
-
+        'diesel_balance',
          'rc_number',
     'engine_number',
     'chassis_number',

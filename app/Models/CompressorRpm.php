@@ -21,5 +21,7 @@ class CompressorRpm extends Model
         'comp_rpm_start',
         'comp_rpm_end',
         'com_actul_hr',
+        'diesel_used',
+        'diesel_balance',
     ];
 }

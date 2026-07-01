@@ -21,8 +21,8 @@ const MachineUsageForm = () => {
     date: '',
     workDetails: [{ operator_id: '', workType: '', workPoints: '', rate: '', total: 0 }],
     surveys: [{ operator_id: '', survey_type: '', survey_point: '', rate: '', total: 0 }],
-    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0 }],
-    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0 }],
+    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: 0 }],
+    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: 0 }],
     rawMaterials: [{ material_type: '', qty_used: '' }],
   });
 
@@ -77,6 +77,7 @@ const MachineUsageForm = () => {
             res.data.map((m) => ({
               value: m.id,
               label: m.machine_name,
+              diesel_balance: m.diesel_balance || 0,
             }))
           );
         }
@@ -136,6 +137,19 @@ const MachineUsageForm = () => {
     const updated = [...formData.machineReading];
     updated[index][field] = value;
 
+    if (field === "machine_id") {
+      const selectedMachine = machineries.find(m => m.value === value);
+      updated[index].diesel_balance = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+      updated[index].diesel_used = '';
+    }
+
+    if (field === "diesel_used") {
+      const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+      const initialBalance = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+      const used = parseFloat(value) || 0;
+      updated[index].diesel_balance = initialBalance - used;
+    }
+
     if (field === "machine_start" || field === "machine_end") {
       updated[index].actual_machine_hr = calculateMachineHours(
         updated[index].machine_start,
@@ -150,6 +164,19 @@ const MachineUsageForm = () => {
     setFormData(prev => {
       const updated = [...prev.compressorReading];
       updated[index] = { ...updated[index], [field]: value };
+
+      if (field === "machine_id") {
+        const selectedMachine = machineries.find(m => m.value === value);
+        updated[index].diesel_balance = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        updated[index].diesel_used = '';
+      }
+
+      if (field === "diesel_used") {
+        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
+        const initialBalance = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
+        const used = parseFloat(value) || 0;
+        updated[index].diesel_balance = initialBalance - used;
+      }
 
       const start = parseFloat(updated[index].comp_rpm_start || 0);
       const end = parseFloat(updated[index].comp_rpm_end || 0);
@@ -275,8 +302,8 @@ const MachineUsageForm = () => {
     date: '',
     workDetails: [{ operator_id: '', workType: '', workPoints: '', rate: '', total: 0 }],
     surveys: [{ operator_id: '', survey_type: '', survey_point: '', rate: '', total: 0 }],
-    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0 }],
-    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0 }],
+    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: 0 }],
+    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: 0 }],
     rawMaterials: [{ material_type: '', qty_used: '' }],
   };
 
@@ -347,6 +374,34 @@ const MachineUsageForm = () => {
       }
     }
 
+    // Diesel Validation (Cross-section sum)
+    const dieselUsageMap = {};
+
+    const addDieselUsage = (machineId, used) => {
+      if (!machineId || !used) return;
+      const amount = parseFloat(used) || 0;
+      if (amount <= 0) return;
+      
+      if (!dieselUsageMap[machineId]) {
+        dieselUsageMap[machineId] = 0;
+      }
+      dieselUsageMap[machineId] += amount;
+    };
+
+    formData.machineReading.forEach(r => addDieselUsage(r.machine_id, r.diesel_used));
+    formData.compressorReading.forEach(r => addDieselUsage(r.machine_id, r.diesel_used));
+
+    for (const machineId of Object.keys(dieselUsageMap)) {
+      const machine = machineries.find(m => String(m.value) === String(machineId));
+      const availableBalance = machine ? parseFloat(machine.diesel_balance) || 0 : 0;
+      const totalUsed = dieselUsageMap[machineId];
+
+      if (totalUsed > availableBalance) {
+        showToast("danger", `Total diesel used (${totalUsed}) for machine "${machine?.label || 'Unknown'}" exceeds available balance (${availableBalance}).`);
+        return;
+      }
+    }
+
     const payload = {
       project_id: formData.project_id,
       date: formData.date,
@@ -370,6 +425,8 @@ const MachineUsageForm = () => {
         machine_start: machineRead.machine_start,
         machine_end: machineRead.machine_end,
         actual_machine_hr: machineRead.actual_machine_hr,
+        diesel_used: machineRead.diesel_used,
+        diesel_balance: machineRead.diesel_balance,
       })),
       compressor_rpm: formData.compressorReading.map(compRpm => ({
         oprator_id: compRpm.oprator_id,
@@ -377,6 +434,8 @@ const MachineUsageForm = () => {
         comp_rpm_start: compRpm.comp_rpm_start,
         comp_rpm_end: compRpm.comp_rpm_end,
         com_actul_hr: compRpm.com_actul_hr,
+        diesel_used: compRpm.diesel_used,
+        diesel_balance: compRpm.diesel_balance,
       })),
       raw_material_usage: formData.rawMaterials.map(material => ({
         material_id: material.material_type,
@@ -533,7 +592,7 @@ const MachineUsageForm = () => {
                   <CRow className="g-1">
                     {formData.machineReading.map((reading, index) => (
                       <CRow className="mb-2 gx-1" key={index}>
-                        <CCol xs={12} md={3} className="p-1">
+                        <CCol xs={12} md={2} className="p-1">
                           <CFormLabel>Oprator / Helper *</CFormLabel>
                           <Select
                             options={operators}
@@ -557,8 +616,8 @@ const MachineUsageForm = () => {
                             }
                           />
                         </CCol>
-                        <CCol xs={12} sm={6} md={2} className="p-1">
-                          <CFormLabel>Excavator Meter Start</CFormLabel>
+                        <CCol xs={12} sm={6} md={1} className="p-1">
+                          <CFormLabel>Meter Start</CFormLabel>
                           <CFormInput
                             type="text"
                             inputMode="numeric"
@@ -571,8 +630,8 @@ const MachineUsageForm = () => {
                             }}
                           />
                         </CCol>
-                        <CCol xs={12} sm={6} md={2} className="p-1">
-                          <CFormLabel>Excavator Meter End</CFormLabel>
+                        <CCol xs={12} sm={6} md={1} className="p-1">
+                          <CFormLabel>Meter End</CFormLabel>
                           <CFormInput
                             type="text"
                             inputMode="numeric"
@@ -586,11 +645,28 @@ const MachineUsageForm = () => {
                           />
                         </CCol>
                         <CCol xs={12} sm={6} md={2} className="p-1">
-                          <CFormLabel>Actual Hours</CFormLabel>
+                          <CFormLabel>Actual Hrs</CFormLabel>
                           <CInputGroup>
                             <CFormInput type="text" value={reading.actual_machine_hr} readOnly />
                             <CInputGroupText>hrs</CInputGroupText>
                           </CInputGroup>
+                        </CCol>
+                        <CCol xs={12} sm={6} md={1} className="p-1">
+                          <CFormLabel>Diesel Used</CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9.]*"
+                            value={reading.diesel_used}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/[^0-9.]/g, '');
+                              handleMachineReadingChange(index, "diesel_used", val);
+                            }}
+                          />
+                        </CCol>
+                        <CCol xs={12} sm={6} md={2} className="p-1">
+                          <CFormLabel>Diesel Bal</CFormLabel>
+                          <CFormInput type="text" value={reading.diesel_balance} readOnly className="bg-light fw-bold" />
                         </CCol>
                         <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">
                           {formData.machineReading.length > 1 && (
@@ -636,7 +712,7 @@ const MachineUsageForm = () => {
                           ...prev,
                           compressorReading: [
                             ...prev.compressorReading,
-                            { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0 },
+                            { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: 0 },
                           ],
                         }))
                       }
@@ -646,7 +722,7 @@ const MachineUsageForm = () => {
                   </div>
                   {formData.compressorReading.map((rpmReading, index) => (
                     <CRow className="mb-2 gx-1" key={index}>
-                      <CCol xs={12} md={3} className="p-1">
+                      <CCol xs={12} md={2} className="p-1">
                         <CFormLabel>Oprator / Helper *</CFormLabel>
                         <Select
                           options={operators}
@@ -670,7 +746,7 @@ const MachineUsageForm = () => {
                           }
                         />
                       </CCol>
-                      <CCol xs={12} md={2} className="p-1">
+                      <CCol xs={12} sm={6} md={1} className="p-1">
                         <CFormLabel>RPM Start *</CFormLabel>
                         <CFormInput
                           type="text"
@@ -684,7 +760,7 @@ const MachineUsageForm = () => {
                           }}
                         />
                       </CCol>
-                      <CCol xs={12} md={2} className="p-1">
+                      <CCol xs={12} sm={6} md={1} className="p-1">
                         <CFormLabel>RPM End *</CFormLabel>
                         <CFormInput
                           type="text"
@@ -698,7 +774,7 @@ const MachineUsageForm = () => {
                           }}
                         />
                       </CCol>
-                      <CCol xs={12} md={2} className="p-1">
+                      <CCol xs={12} sm={6} md={2} className="p-1">
                         <CFormLabel>RPM Hours</CFormLabel>
                         <CInputGroup>
                           <CFormInput
@@ -708,6 +784,23 @@ const MachineUsageForm = () => {
                           />
                           <CInputGroupText>hrs</CInputGroupText>
                         </CInputGroup>
+                      </CCol>
+                      <CCol xs={12} sm={6} md={1} className="p-1">
+                        <CFormLabel>Diesel Used</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9.]*"
+                          value={rpmReading.diesel_used}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9.]/g, '');
+                            handleCompressorChange(index, "diesel_used", val);
+                          }}
+                        />
+                      </CCol>
+                      <CCol xs={12} sm={6} md={2} className="p-1">
+                        <CFormLabel>Diesel Bal</CFormLabel>
+                        <CFormInput type="text" value={rpmReading.diesel_balance} readOnly className="bg-light fw-bold" />
                       </CCol>
                       <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">
                         {formData.compressorReading.length > 1 && (
