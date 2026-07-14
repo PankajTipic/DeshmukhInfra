@@ -18,6 +18,9 @@ class SurveyDetail extends Model
         'survey_point',
         'rate',
         'total',
+        'diesel',
+        'uom',
+        'hrs',
     ];
 
     // Relationship

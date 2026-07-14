@@ -101,6 +101,11 @@ const IncomeTable = React.lazy(() => import('./views/pages/infraPages/IncomeTabl
 
 const workLog = React.lazy(() => import('./views/pages/invoice/worklog'))
 
+const WorkTypeManager = React.lazy(() => import('./views/pages/invoice/WorkTypeManager'));
+const SurveyTypeManager = React.lazy(() => import('./views/pages/invoice/SurveyTypeManager'));
+const UomManager = React.lazy(() => import('./views/pages/invoice/UomManager'));
+const WorkTypeReport = React.lazy(() => import('./views/pages/report/WorkTypeReport'));
+
 const oprator = React.lazy(() => import('./views/pages/Oprator/NewOprator'))
 const supervisor = React.lazy(() => import('./views/pages/register/Supervisor'))
 
@@ -284,6 +289,12 @@ export default function fetchRoutes() {
       { path: '/budget', name: 'Budget', element: budget },
 
       { path: '/invoiceTable', name: 'Invoice Table', element: invoiceTable },
+
+  { path: '/work-types', name: 'Work Type Manager', element: WorkTypeManager },
+  { path: '/survey-types', name: 'Survey Type Manager', element: SurveyTypeManager },
+  { path: '/uoms', name: 'UOM Manager', element: UomManager },
+
+  // { path: '/IncomeTable', name: 'IncomeTable', element: IncomeTable },
 
       //Proforma Invoice
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },

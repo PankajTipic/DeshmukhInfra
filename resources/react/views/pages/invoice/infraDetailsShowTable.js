@@ -1,5 +1,1014 @@
 
 
+// import React, { useEffect, useMemo, useState } from 'react'
+// import { deleteAPICall, getAPICall } from '../../../util/api'
+// import {
+//   CCard,
+//   CCardBody,
+//   CCardHeader,
+//   CTable,
+//   CTableBody,
+//   CTableDataCell,
+//   CTableHead,
+//   CTableHeaderCell,
+//   CTableRow,
+//   CFormInput,
+//   CButton,
+//   CRow,
+//   CCol,
+//   CFormSelect,
+//   CModal,
+//   CModalHeader,
+//   CModalTitle,
+//   CModalBody,
+//   CModalFooter,
+//   CTableFoot,
+//   CNav,
+//   CNavItem,
+//   CNavLink,
+//   CTabContent,
+//   CTabPane,
+// } from '@coreui/react'
+// import * as XLSX from 'xlsx'
+// import jsPDF from 'jspdf'
+// import 'jspdf-autotable'
+// import { getUserType, getUserData } from '../../../util/session'
+// import { useNavigate } from 'react-router-dom'
+// import { useToast } from '../../common/toast/ToastContext'
+// import CIcon from '@coreui/icons-react'
+// import { cilPencil, cilTrash } from '@coreui/icons'
+// import { host } from '../../../util/constants'
+
+// import { downloadWorkLogExcel, downloadWorkLogPDF } from './worklogExportUtils'
+
+// function InfraDetailsShowTable() {
+//   const [rows, setRows] = useState([])
+//   const [startDate, setStartDate] = useState('')
+//   const [endDate, setEndDate] = useState('')
+//   const [maxPoint, setMaxPoint] = useState('')
+//   const [loading, setLoading] = useState(false)
+//   const [projects, setProjects] = useState([])
+//   const [projectName, setProjectName] = useState('')
+//   const [visible, setVisible] = useState(false)
+//   const [selectedId, setSelectedId] = useState(null)
+
+//   const [activeKey, setActiveKey] = useState(1)
+//   const [multiSiteDate, setMultiSiteDate] = useState(new Date().toISOString().split('T')[0])
+//   const [multiSiteData, setMultiSiteData] = useState([])
+//   const [multiSiteLoading, setMultiSiteLoading] = useState(false)
+
+//   const navigate = useNavigate()
+//   const { showToast } = useToast()
+
+//   // Fetch project list
+//   const fetchProjects = async () => {
+//     try {
+//       const response = await getAPICall('/api/myProjects')
+//       setProjects(response || [])
+//     } catch (err) {
+//       console.error("Error fetching projects:", err)
+//     }
+//   }
+
+//   const fetchMultiSiteData = async () => {
+//     setMultiSiteLoading(true)
+//     try {
+//       const response = await getAPICall(`/api/worklog/multi-site?date=${multiSiteDate}`)
+//       setMultiSiteData(response?.data || [])
+//     } catch (err) {
+//       console.error("Error fetching multi-site data:", err)
+//       showToast('danger', 'Failed to fetch Multi-Site Breakdown')
+//     } finally {
+//       setMultiSiteLoading(false)
+//     }
+//   }
+
+//   useEffect(() => {
+//     if (activeKey === 2) {
+//       fetchMultiSiteData()
+//     }
+//   }, [multiSiteDate, activeKey])
+
+//   const fetchRecords = async (filters = {}) => {
+//     try {
+//       const userType = getUserType()
+//       let apiUrl = "/api/drilling"
+
+//       if (userType === 2) {
+//         apiUrl = "/api/getDataByUserId"
+//       }
+
+//       const params = new URLSearchParams()
+//       if (filters.start_date && filters.end_date) {
+//         params.append('start_date', filters.start_date)
+//         params.append('end_date', filters.end_date)
+//       }
+//       if (filters.project_name) {
+//         params.append('project_name', filters.project_name)
+//       }
+//       if (filters.max_point) {
+//         params.append('max_point', filters.max_point)
+//       }
+
+//       if ([...params].length > 0) {
+//         apiUrl = `${apiUrl}?${params.toString()}`
+//       }
+
+//       setLoading(true)
+//       const response = await getAPICall(apiUrl)
+//       const records = response.data
+
+//       const flattened = []
+//       records.forEach((rec, idx) => {
+//         const workLen = rec.work_point_detail?.length || 0
+//         const surveyLen = rec.survey_detail?.length || 0
+//         const machineLen = rec.machine_reading?.length || 0
+//         const compressorRpmLen = rec.compressor_rpm?.length || 0
+
+//         const totalRows = Math.max(workLen, surveyLen, machineLen, compressorRpmLen, 1)
+
+//         for (let i = 0; i < totalRows; i++) {
+//           const work = rec.work_point_detail?.[i] || {}
+//           const survey = rec.survey_detail?.[i] || {}
+//           const machine = rec.machine_reading?.[i] || {}
+//           const compressorRpm = rec.compressor_rpm?.[i] || {}
+
+//           flattened.push({
+//             srNo: idx + 1,
+//             date: rec.date,
+//             site: rec.project?.project_name || '',
+//             operator: machine.operator?.name || rec.operator?.name || '',
+
+//             machineStart: machine.machine_start || '',
+//             machineEnd: machine.machine_end || '',
+//             machineHr: machine.actual_machine_hr || '',
+//             machineDieselUsed: machine.diesel_used ?? '',
+//             machineDieselBalance: machine.diesel_balance ?? '',
+
+//             compressorStart: compressorRpm.comp_rpm_start || '',
+//             compressorEnd: compressorRpm.comp_rpm_end || '',
+//             compressorHr: compressorRpm.com_actul_hr || '',
+//             compressorDieselUsed: compressorRpm.diesel_used ?? '',
+//             compressorDieselBalance: compressorRpm.diesel_balance ?? '',
+
+//             workType: work.work_type || '',
+//             workPoint: work.work_point || '',
+//             workRate: work.rate || '',
+//             workTotal: Number(work.total) || 0,
+//             workHrs: work.hrs ?? '',
+//             workDiesel: work.diesel ?? '',
+
+//             surveyType: survey.survey_type || '',
+//             surveyPoint: survey.survey_point || '',
+//             surveyRate: survey.rate || '',
+//             surveyTotal: Number(survey.total) || 0,
+//             surveyHrs: survey.hrs ?? '',
+//             surveyDiesel: survey.diesel ?? '',
+
+//             rowTotal: (Number(work.total) || 0) + (Number(survey.total) || 0),
+
+//             isFirstRow: i === 0,
+//             rowSpan: totalRows,
+//             drillingRecordId: rec.id,
+//           })
+//         }
+//       })
+
+//       setRows(flattened)
+//     } catch (error) {
+//       console.error("Error fetching records:", error)
+//     } finally {
+//       setLoading(false)
+//     }
+//   }
+
+//   // Calculate totals for the table
+//   const tableTotals = useMemo(() => {
+//     return {
+//       workPoint: rows.reduce((sum, row) => sum + (parseFloat(row.workPoint) || 0), 0),
+//       workRate: rows.reduce((sum, row) => sum + (parseFloat(row.workRate) || 0), 0),
+//       workTotal: rows.reduce((sum, row) => sum + (Number(row.workTotal) || 0), 0),
+//       workHrs: rows.reduce((sum, row) => sum + (parseFloat(row.workHrs) || 0), 0),
+//       workDiesel: rows.reduce((sum, row) => sum + (parseFloat(row.workDiesel) || 0), 0),
+//       surveyPoint: rows.reduce((sum, row) => sum + (parseFloat(row.surveyPoint) || 0), 0),
+//       surveyRate: rows.reduce((sum, row) => sum + (parseFloat(row.surveyRate) || 0), 0),
+//       surveyTotal: rows.reduce((sum, row) => sum + (Number(row.surveyTotal) || 0), 0),
+//       surveyHrs: rows.reduce((sum, row) => sum + (parseFloat(row.surveyHrs) || 0), 0),
+//       surveyDiesel: rows.reduce((sum, row) => sum + (parseFloat(row.surveyDiesel) || 0), 0),
+//       grandTotal: rows.reduce((sum, row) => sum + (Number(row.rowTotal) || 0), 0),
+//       machineDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.machineDieselUsed) || 0), 0),
+//       compressorDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.compressorDieselUsed) || 0), 0),
+//     }
+//   }, [rows])
+
+//   const downloadExcel = () => {
+//     // Title and filter info
+//     const titleRow = ['Work Log Report']
+//     const emptyRow = []
+    
+//     // Filter information
+//     const filterRows = []
+//     if (startDate || endDate || projectName) {
+//       filterRows.push(['Applied Filters:'])
+//       if (startDate && endDate) {
+//         filterRows.push(['Date Range:', `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`])
+//       }
+//       if (projectName) {
+//         filterRows.push(['Project:', projectName])
+//       }
+//       filterRows.push(emptyRow)
+//     }
+
+//     const headers = [
+//       'Sr.No.',
+//       'Date',
+//       'Site',
+//       'Operator/Helper',
+//       'Machine Start',
+//       'Machine End',
+//       'Machine Hr',
+//       'Machine Diesel Used',
+//       'Machine Diesel Bal',
+//       'Compressor rpm Start',
+//       'Compressor rpm End',
+//       'Compressor rpm Hr',
+//       'Comp Diesel Used',
+//       'Comp Diesel Bal',
+//       'Work Type',
+//       'Point',
+//       'Rate',
+//       'Work Total',
+//       'Work Hrs',
+//       'Work Diesel',
+//       'Survey Type',
+//       'Survey Point',
+//       'Survey Rate',
+//       'Survey Total',
+//       'Survey Hrs',
+//       'Survey Diesel',
+//       'Grand Total',
+//     ]
+
+//     const data = rows.map(row => [
+//       row.srNo,
+//       new Date(row.date).toLocaleDateString(),
+//       row.site,
+//       row.operator,
+//       row.machineStart,
+//       row.machineEnd,
+//       row.machineHr,
+//       row.machineDieselUsed,
+//       row.machineDieselBalance,
+//       row.compressorStart,
+//       row.compressorEnd,
+//       row.compressorHr,
+//       row.compressorDieselUsed,
+//       row.compressorDieselBalance,
+//       row.workType,
+//       row.workPoint,
+//       row.workRate,
+//       row.workTotal,
+//       row.workHrs,
+//       row.workDiesel,
+//       row.surveyType,
+//       row.surveyPoint,
+//       row.surveyRate,
+//       row.surveyTotal,
+//       row.surveyHrs,
+//       row.surveyDiesel,
+//       row.rowTotal,
+//     ])
+
+//     // Calculate totals
+//     const totalsRow = [
+//       '', '', '', '',
+//       '', '', '',
+//       tableTotals.machineDieselUsed.toFixed(2), '',
+//       '', '', '',
+//       tableTotals.compressorDieselUsed.toFixed(2), '',
+//       'TOTAL',
+//       tableTotals.workPoint.toFixed(2),
+//       tableTotals.workRate.toFixed(2),
+//       tableTotals.workTotal.toFixed(2),
+//       tableTotals.workHrs.toFixed(2),
+//       tableTotals.workDiesel.toFixed(2),
+//       '',
+//       tableTotals.surveyPoint.toFixed(2),
+//       tableTotals.surveyRate.toFixed(2),
+//       tableTotals.surveyTotal.toFixed(2),
+//       tableTotals.surveyHrs.toFixed(2),
+//       tableTotals.surveyDiesel.toFixed(2),
+//       tableTotals.grandTotal.toFixed(2),
+//     ]
+
+//     // Combine all rows
+//     const allRows = [
+//       titleRow,
+//       emptyRow,
+//       ...filterRows,
+//       headers,
+//       ...data,
+//       emptyRow,
+//       totalsRow,
+//     ]
+
+//     const worksheet = XLSX.utils.aoa_to_sheet(allRows)
+//     const workbook = XLSX.utils.book_new()
+//     XLSX.utils.book_append_sheet(workbook, worksheet, 'WorkLogReport')
+
+//     // Style title (merge cells)
+//     worksheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 18 } }]
+
+//     // Auto column width
+//     const colWidths = headers.map((h, i) => ({
+//       wch: Math.max(h.length, ...data.map(r => (r[i] ? r[i].toString().length : 0))) + 2,
+//     }))
+//     worksheet['!cols'] = colWidths
+
+//     XLSX.writeFile(workbook, 'WorkLogReport.xlsx')
+//   }
+
+
+// const downloadPDF = () => {
+//   const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
+//   // Get user data once
+//   const user = getUserData();
+//   const companyInfo = user?.company_info || {};
+//   // ───────────────────────────────────────────────
+//   // COMPANY HEADER & STYLING
+//   // ───────────────────────────────────────────────
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+//   const margin = 12;
+
+//   // ───────────────────────────────────────────────
+//   // Draw header function
+//   // ───────────────────────────────────────────────
+//   const drawHeader = (isFirst) => {
+//     const headerTop = margin + 6; // logo & company name same distance from top border
+
+//     // Outer page border (light gray)
+//     doc.setDrawColor(80, 80, 80);
+//     doc.setLineWidth(0.4);
+//     doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+//     // ───────────────────────────────────────────────
+//     // Company logo – REAL IMAGE
+//     // ───────────────────────────────────────────────
+//     const logoSize = 26; // logo size 
+//     const logoX = pageWidth - margin - logoSize - 6; // right aligned
+//     const logoY = headerTop;
+
+//     // Construct full logo URL
+//     let logoUrl = null;
+//     if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
+//       logoUrl = `${host}/img/${companyInfo.logo}`;
+//     }
+//     if (logoUrl) {
+//       try {
+//         // Try to load the real logo
+//         doc.addImage(
+//           logoUrl,
+//           'PNG', // assuming PNG — change to 'JPEG' if needed
+//           logoX,
+//           logoY,
+//           logoSize,
+//           logoSize
+//         );
+//       } catch (err) {
+//         console.warn("Failed to load logo:", err);
+//         // Fallback to placeholder if image fails
+//         doc.setFillColor(220, 220, 240);
+//         doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//         doc.setFontSize(9);
+//         doc.setTextColor(100);
+//         doc.text("LOGO", logoX + 6, logoY + 13);
+//       }
+//     } else {
+//       // No logo → show placeholder
+//       doc.setFillColor(220, 220, 240);
+//       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+//       doc.setFontSize(9);
+//       doc.setTextColor(100);
+//       doc.text("LOGO", logoX + 6, logoY + 13);
+//     }
+
+//     // ───────────────────────────────────────────────
+//     // Company name & details - left aligned
+//     // ───────────────────────────────────────────────
+//     const headerX = margin + 8;
+
+//     doc.setFontSize(18);
+//     doc.setFont("helvetica", "bold");
+//     doc.setTextColor(40, 40, 60);
+//     doc.text(
+//       companyInfo.company_name || "Deshmukh Infra Soft",
+//       headerX,
+//       headerTop + 8
+//     );
+
+//     doc.setFontSize(10);
+//     doc.setFont("helvetica", "normal");
+//     doc.setTextColor(70);
+//     let detailY = headerTop + 14;
+
+//     const lineHeight = 5; // Reduced for space optimization
+//     const companyDetails = [
+//       companyInfo.land_mark || "Urali Kanchan, Pune",
+//       `Phone: ${companyInfo.phone_no || "9173635656"}`,
+//       `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
+//       `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
+//     ];
+//     companyDetails.forEach(line => {
+//       if (line && line.trim() !== "") {
+//         doc.text(line, headerX, detailY);
+//         detailY += lineHeight;
+//       }
+//     });
+
+//     // Horizontal separator line after header
+//     doc.setLineWidth(0.6);
+//     doc.setDrawColor(0, 0, 0);
+//     doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
+
+//     // Title
+//     doc.setFontSize(16);
+//     doc.setFont("helvetica", "bold");
+//     doc.setTextColor(0);
+//     let titleText = "Work Log Report";
+//     // if (!isFirst) titleText += " (continued)";
+//     doc.text(
+//       titleText,
+//       pageWidth / 2,
+//       detailY + 10,
+//       { align: "center" }
+//     );
+
+//     // Return the Y position after the title + space
+//     return detailY + 18;
+//   };
+
+//   // Draw header for the first page
+//   const headerBottomY = drawHeader(true);
+
+//   // ───────────────────────────────────────────────
+//   // FILTER INFORMATION (if any) - only on first page
+//   // ───────────────────────────────────────────────
+//   let startY = headerBottomY;
+//   if (startDate || endDate || projectName) {
+//     doc.setFontSize(10);
+//     doc.setFont("helvetica", "normal");
+//     doc.setTextColor(60);
+//     doc.text("Applied Filters:", margin + 8, startY);
+//     startY += 6;
+//     if (startDate && endDate) {
+//       const range = `${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`;
+//       doc.text(`Date Range: ${range}`, margin + 8, startY);
+//       startY += 5.5;
+//     }
+//     if (projectName) {
+//       doc.text(`Project: ${projectName}`, margin + 8, startY);
+//       startY += 5.5;
+//     }
+//     startY += 6; // extra spacing before table
+//   }
+
+//   // ───────────────────────────────────────────────
+//   // TABLE
+//   // ───────────────────────────────────────────────
+//   const tableColumn = [
+//     'Sr.No.', 'Date', 'Site', 'Operator',
+//     'Machine Start', 'Machine End', 'Machine Hr', 'M.Diesel Used', 'M.Diesel Bal',
+//     'Comp Start', 'Comp End', 'Comp Hr', 'C.Diesel Used', 'C.Diesel Bal',
+//     'Work Type', 'Point', 'Rate', 'Work Total', 'Work Hrs', 'Work Diesel',
+//     'Survey Type', 'Point', 'Rate', 'Survey Total', 'Survey Hrs', 'Survey Diesel', 'Grand Total'
+//   ];
+//   const tableRows = rows.map(row => [
+//     row.srNo,
+//     new Date(row.date).toLocaleDateString("en-GB"),
+//     row.site,
+//     row.operator,
+//     row.machineStart,
+//     row.machineEnd,
+//     row.machineHr,
+//     row.machineDieselUsed,
+//     row.machineDieselBalance,
+//     row.compressorStart,
+//     row.compressorEnd,
+//     row.compressorHr,
+//     row.compressorDieselUsed,
+//     row.compressorDieselBalance,
+//     row.workType,
+//     row.workPoint,
+//     row.workRate,
+//     row.workTotal,
+//     row.workHrs,
+//     row.workDiesel,
+//     row.surveyType,
+//     row.surveyPoint,
+//     row.surveyRate,
+//     row.surveyTotal,
+//     row.surveyHrs,
+//     row.surveyDiesel,
+//     row.rowTotal,
+//   ]);
+//   tableRows.push([
+//     '', '', '', '',
+//     '', '', '', tableTotals.machineDieselUsed.toFixed(2), '',
+//     '', '', '', tableTotals.compressorDieselUsed.toFixed(2), '',
+//     'TOTAL',
+//     tableTotals.workPoint.toFixed(2),
+//     tableTotals.workRate.toFixed(2),
+//     tableTotals.workTotal.toFixed(2),
+//     tableTotals.workHrs.toFixed(2),
+//     tableTotals.workDiesel.toFixed(2),
+//     '',
+//     tableTotals.surveyPoint.toFixed(2),
+//     tableTotals.surveyRate.toFixed(2),
+//     tableTotals.surveyTotal.toFixed(2),
+//     tableTotals.surveyHrs.toFixed(2),
+//     tableTotals.surveyDiesel.toFixed(2),
+//     tableTotals.grandTotal.toFixed(2),
+//   ]);
+//   doc.autoTable({
+//     head: [tableColumn],
+//     body: tableRows,
+//     startY: startY,
+//     theme: 'grid',
+//     margin: { top: headerBottomY, left: margin + 6, right: margin + 6, bottom: margin },
+//     styles: {
+//       fontSize: 8,
+//       cellPadding: 2.2,
+//       overflow: 'linebreak',
+//       halign: 'center',
+//       valign: 'middle',
+//       lineColor: [44, 62, 80],
+//       lineWidth: 0.3,
+//     },
+//     headStyles: {
+//       fillColor: [52, 73, 94],
+//       textColor: 255,
+//       fontSize: 8.5,
+//       fontStyle: 'bold',
+//     },
+//     alternateRowStyles: {
+//       fillColor: [245, 247, 250],
+//     },
+//     footStyles: {
+//       fillColor: [220, 220, 220],
+//       textColor: 0,
+//       fontStyle: 'bold',
+//       fontSize: 8.5,
+//     },
+//     didParseCell: (data) => {
+//       if (data.row.index === tableRows.length - 1) {
+//         data.cell.styles.fontStyle = 'bold';
+//         data.cell.styles.fillColor = [235, 235, 235];
+//       }
+//       if (["Work Total", "Survey Total", "Grand Total"].includes(data.column.dataKey)) {
+//         data.cell.styles.textColor = [0, 128, 0];
+//       }
+//     },
+//     addPageContent: (data) => {
+//       drawHeader(false);
+//     },
+//     didDrawPage: (data) => {
+//       // No footer in this report
+//     },
+//     showHead: 'everyPage',
+//     rowPageBreak: 'avoid',
+//   });
+//   doc.save('WorkLogReport.pdf');
+// };
+
+
+
+
+
+
+
+//   useEffect(() => {
+//     fetchProjects()
+//     fetchRecords()
+//   }, [])
+
+//   const handleFilter = () => {
+//     fetchRecords({
+//       start_date: startDate || undefined,
+//       end_date: endDate || undefined,
+//       project_name: projectName || undefined,
+//       max_point: maxPoint || undefined,
+//     })
+//   }
+
+//   const openDeleteModal = (id) => {
+//     setSelectedId(id)
+//     setVisible(true)
+//   }
+
+//   const handleDelete = async () => {
+//     if (!selectedId) return
+//     setLoading(true)
+//     try {
+//       const res = await deleteAPICall(`/api/drilling/${selectedId}`)
+//       if (res) {
+//         showToast("success", "Entry deleted successfully!")
+//         fetchRecords()
+//       } else {
+//         showToast("danger", "Failed to delete entry")
+//       }
+//     } catch (err) {
+//       console.error(err)
+//       showToast("danger", "Something went wrong while deleting.")
+//     } finally {
+//       setLoading(false)
+//       setVisible(false)
+//       setSelectedId(null)
+//     }
+//   }
+
+//   return (
+//     <div>
+//       <CNav variant="tabs" className="mb-4">
+//         <CNavItem>
+//           <CNavLink
+//             active={activeKey === 1}
+//             onClick={() => setActiveKey(1)}
+//             style={{ cursor: 'pointer' }}
+//           >
+//             Current Data
+//           </CNavLink>
+//         </CNavItem>
+//         <CNavItem>
+//           <CNavLink
+//             active={activeKey === 2}
+//             onClick={() => setActiveKey(2)}
+//             style={{ cursor: 'pointer' }}
+//           >
+//             Multi-Site Breakdown
+//           </CNavLink>
+//         </CNavItem>
+//       </CNav>
+
+//       <CTabContent>
+//         <CTabPane visible={activeKey === 1}>
+//       <CCard className="mb-4">
+//         <CCardHeader>
+//           <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+//             <div className="d-flex flex-wrap gap-2">
+//               <CButton color="success" className="me-2" onClick={downloadExcel}>
+//                 Download Excel
+//               </CButton>
+//               <CButton color="danger" className="pe-3" onClick={downloadPDF}>
+//                 Download PDF
+//               </CButton>
+//             </div>
+//             <h4 className="mb-0">Total Amount : {tableTotals.grandTotal.toFixed(2)}</h4>
+//           </div>
+
+//           <CRow className="align-items-end d-flex flex-wrap gap-2">
+//             <CCol md={3}>
+//               <CFormInput
+//                 type="date"
+//                 label="Start Date"
+//                 value={startDate}
+//                 onChange={(e) => setStartDate(e.target.value)}
+//               />
+//             </CCol>
+//             <CCol md={3}>
+//               <CFormInput
+//                 type="date"
+//                 label="End Date"
+//                 value={endDate}
+//                 onChange={(e) => setEndDate(e.target.value)}
+//               />
+//             </CCol>
+//             <CCol md={3}>
+//               <CFormSelect
+//                 label="Project Name"
+//                 value={projectName}
+//                 onChange={(e) => setProjectName(e.target.value)}
+//               >
+//                 <option value="">-- Select Project --</option>
+//                 {projects.map((proj) => (
+//                   <option key={proj.id} value={proj.project_name}>
+//                     {proj?.project_name} -  {proj?.customer_name}
+//                   </option>
+//                 ))}
+//               </CFormSelect>
+//             </CCol>
+//             <CCol md={3}>
+//               <CButton color="primary" onClick={handleFilter}>
+//                 Apply
+//               </CButton>
+//               <CButton
+//                 color="secondary"
+//                 className="ms-2"
+//                 onClick={() => {
+//                   setStartDate('')
+//                   setEndDate('')
+//                   setProjectName('')
+//                   setMaxPoint('')
+//                   fetchRecords()
+//                 }}
+//               >
+//                 Reset
+//               </CButton>
+//             </CCol>
+//           </CRow>
+//         </CCardHeader>
+//       </CCard>
+
+//       {rows.length > 0 && (
+//         <CCard className="mt-4">
+//           <CCardBody className="p-0">
+//             <div className="table-responsive">
+//               <CTable bordered hover>
+//                 <CTableHead color="dark">
+//                   <CTableRow>
+//                     <CTableHeaderCell>Sr.No.</CTableHeaderCell>
+//                     <CTableHeaderCell>Date</CTableHeaderCell>
+//                     <CTableHeaderCell>Site</CTableHeaderCell>
+//                     <CTableHeaderCell>Operator/Helper</CTableHeaderCell>
+//                     <CTableHeaderCell>Machine Start</CTableHeaderCell>
+//                     <CTableHeaderCell>Machine End</CTableHeaderCell>
+//                     <CTableHeaderCell>Machine Hr</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
+//                     <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
+//                     <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
+//                     <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-info">Diesel Used</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-info">Diesel Bal</CTableHeaderCell>
+//                     <CTableHeaderCell>Work Type</CTableHeaderCell>
+//                     <CTableHeaderCell>Point</CTableHeaderCell>
+//                     <CTableHeaderCell>Rate</CTableHeaderCell>
+//                     <CTableHeaderCell>Work Total</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-secondary">Work Hrs</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-secondary">Work Diesel</CTableHeaderCell>
+//                     <CTableHeaderCell>Survey Type</CTableHeaderCell>
+//                     <CTableHeaderCell>Survey Point</CTableHeaderCell>
+//                     <CTableHeaderCell>Survey Rate</CTableHeaderCell>
+//                     <CTableHeaderCell>Survey Total</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-secondary">Survey Hrs</CTableHeaderCell>
+//                     <CTableHeaderCell className="table-secondary">Survey Diesel</CTableHeaderCell>
+//                     <CTableHeaderCell>Grand Total</CTableHeaderCell>
+//                     <CTableHeaderCell>Action</CTableHeaderCell>
+//                   </CTableRow>
+//                 </CTableHead>
+                
+//                 <CTableBody>
+//                   {rows.map((row, rowIndex) => (
+//                     <CTableRow key={rowIndex}>
+//                       {row.isFirstRow && (
+//                         <>
+//                           <CTableDataCell rowSpan={row.rowSpan}>{row.srNo}</CTableDataCell>
+//                           <CTableDataCell rowSpan={row.rowSpan}>
+//                             {new Date(row.date).toLocaleDateString("en-GB")}
+//                           </CTableDataCell>
+//                           <CTableDataCell rowSpan={row.rowSpan}>{row.site}</CTableDataCell>
+//                         </>
+//                       )}
+
+//                       <CTableDataCell>{row.operator}</CTableDataCell>
+//                       <CTableDataCell>{row.machineStart}</CTableDataCell>
+//                       <CTableDataCell>{row.machineEnd}</CTableDataCell>
+//                       <CTableDataCell>{row.machineHr}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-warning">{row.machineDieselUsed}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-warning">{row.machineDieselBalance}</CTableDataCell>
+//                       <CTableDataCell>{row.compressorStart}</CTableDataCell>
+//                       <CTableDataCell>{row.compressorEnd}</CTableDataCell>
+//                       <CTableDataCell>{row.compressorHr}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-info">{row.compressorDieselUsed}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-info">{row.compressorDieselBalance}</CTableDataCell>
+//                       <CTableDataCell>{row.workType}</CTableDataCell>
+//                       <CTableDataCell>{row.workPoint}</CTableDataCell>
+//                       <CTableDataCell>{row.workRate}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-primary">{row.workTotal}</CTableDataCell>
+//                       <CTableDataCell className="text-secondary">{row.workHrs}</CTableDataCell>
+//                       <CTableDataCell className="text-secondary">{row.workDiesel}</CTableDataCell>
+//                       <CTableDataCell>{row.surveyType}</CTableDataCell>
+//                       <CTableDataCell>{row.surveyPoint}</CTableDataCell>
+//                       <CTableDataCell>{row.surveyRate}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-primary">{row.surveyTotal}</CTableDataCell>
+//                       <CTableDataCell className="text-secondary">{row.surveyHrs}</CTableDataCell>
+//                       <CTableDataCell className="text-secondary">{row.surveyDiesel}</CTableDataCell>
+//                       <CTableDataCell className="fw-bold text-success">{row.rowTotal}</CTableDataCell>
+
+//                       {row.isFirstRow && (
+//                         <CTableDataCell rowSpan={row.rowSpan} className="text-center">
+//                           <div className="d-flex justify-content-center gap-2">
+//                             <CButton
+//                               color="primary"
+//                               onClick={() =>
+//                                 navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
+//                                   state: { drillingRecordId: row.drillingRecordId },
+//                                 })
+//                               }
+//                             >
+//                               <CIcon icon={cilPencil} />
+//                             </CButton>
+//                             <CButton
+//                               color="danger"
+//                               onClick={() => openDeleteModal(row.drillingRecordId)}
+//                             >
+//                               <CIcon icon={cilTrash} />
+//                             </CButton>
+//                           </div>
+//                         </CTableDataCell>
+//                       )}
+//                     </CTableRow>
+//                   ))}
+//                 </CTableBody>
+
+//                 {/* Footer with totals */}
+//                 <CTableFoot>
+//                   <CTableRow style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+//                     <CTableDataCell colSpan={4} className="text-end">TOTAL</CTableDataCell>
+//                     {/* Machine cols */}
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell className="text-center text-warning">{tableTotals.machineDieselUsed.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     {/* Compressor cols */}
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell className="text-center text-info">{tableTotals.compressorDieselUsed.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                     {/* Work cols */}
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell className="text-center">{tableTotals.workPoint.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center">{tableTotals.workRate.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-primary">{tableTotals.workTotal.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-secondary">{tableTotals.workHrs.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-secondary">{tableTotals.workDiesel.toFixed(2)}</CTableDataCell>
+//                     {/* Survey cols */}
+//                     <CTableDataCell></CTableDataCell>
+//                     <CTableDataCell className="text-center">{tableTotals.surveyPoint.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center">{tableTotals.surveyRate.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-primary">{tableTotals.surveyTotal.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-secondary">{tableTotals.surveyHrs.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-secondary">{tableTotals.surveyDiesel.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell className="text-center text-success">{tableTotals.grandTotal.toFixed(2)}</CTableDataCell>
+//                     <CTableDataCell></CTableDataCell>
+//                   </CTableRow>
+//                 </CTableFoot>
+//               </CTable>
+//             </div>
+//           </CCardBody>
+//         </CCard>
+//       )}
+
+//       {/* Confirmation Modal */}
+//       <CModal visible={visible} onClose={() => setVisible(false)} backdrop="static">
+//         <CModalHeader onClose={() => setVisible(false)}>
+//           <CModalTitle>Delete drilling record?</CModalTitle>
+//         </CModalHeader>
+//         <CModalBody>
+//           Do you really want to{" "}
+//           <span className="text-danger fw-bold">Delete</span> this record?
+//         </CModalBody>
+//         <CModalFooter>
+//           <CButton
+//             color="secondary"
+//             variant="outline"
+//             onClick={() => setVisible(false)}
+//             disabled={loading}
+//           >
+//             Close
+//           </CButton>
+//           <CButton
+//             color="danger"
+//             disabled={loading}
+//             onClick={handleDelete}
+//           >
+//             {loading ? "Deleting…" : "Yes"}
+//           </CButton>
+//         </CModalFooter>
+//       </CModal>
+//       </CTabPane>
+
+//       {/* Tab 2: Multi-Site Breakdown */}
+//       <CTabPane visible={activeKey === 2}>
+//         <CCard className="mb-4">
+//           <CCardHeader className="bg-light">
+//             <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+//               <h5 className="mb-0 text-primary">
+//                 <CIcon icon={cilPencil} className="me-2" /> Select Logged Day to View Multi-Site Breakdown
+//               </h5>
+//               <div className="d-flex align-items-center">
+//                 <span className="me-2 fw-bold text-muted">Active Day:</span>
+//                 <CFormInput
+//                   type="date"
+//                   value={multiSiteDate}
+//                   onChange={(e) => setMultiSiteDate(e.target.value)}
+//                   style={{ width: 'auto' }}
+//                 />
+//               </div>
+//             </div>
+//           </CCardHeader>
+//           <CCardBody>
+//             {multiSiteLoading ? (
+//               <div className="text-center py-5">Loading Multi-Site Data...</div>
+//             ) : multiSiteData.length === 0 ? (
+//               <div className="text-center py-5 text-muted">No data available for the selected date.</div>
+//             ) : (
+//               <CRow>
+//                 {multiSiteData.map((site, index) => (
+//                   <CCol lg={6} md={12} className="mb-4" key={index}>
+//                     <CCard className="h-100 shadow-sm border-0">
+//                       <CCardHeader className="bg-dark text-white d-flex justify-content-between align-items-center py-3">
+//                         <div className="text-uppercase fw-bold" style={{ fontSize: '1rem', letterSpacing: '1px' }}>
+//                           PROJECT LOCATION {String.fromCharCode(65 + index)}
+//                           <div className="fs-5 mt-1 text-white">{site.project_name}</div>
+//                         </div>
+//                       </CCardHeader>
+//                       <CCardBody className="p-3">
+//                         <CRow className="mb-3 text-center g-2">
+//                           <CCol xs={6}>
+//                             <div className="border rounded p-2 bg-light h-100">
+//                               <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>TOTAL WORK DONE</small>
+//                               <div className="fs-5 fw-bold text-dark">{site.total_done}</div>
+//                               <small className="text-muted" style={{ fontSize: '0.65rem' }}>Aggregate units</small>
+//                             </div>
+//                           </CCol>
+//                           <CCol xs={6}>
+//                             <div className="border rounded p-2 bg-light h-100">
+//                               <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>TOTAL HOURS LOGGED</small>
+//                               <div className="fs-5 fw-bold text-dark">{site.total_hrs} Hrs</div>
+//                               <small className="text-muted" style={{ fontSize: '0.65rem' }}>Sum of operations</small>
+//                             </div>
+//                           </CCol>
+//                           <CCol xs={6}>
+//                             <div className="border rounded p-2 bg-light h-100">
+//                               <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>FUEL CONSUMED</small>
+//                               <div className="fs-5 fw-bold text-warning">{site.total_fuel} L</div>
+//                               <small className="text-muted" style={{ fontSize: '0.65rem' }}>Diesel Litres</small>
+//                             </div>
+//                           </CCol>
+//                           <CCol xs={6}>
+//                             <div className="border rounded p-2 bg-light h-100">
+//                               <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>AVG DRILLING YIELD</small>
+//                               <div className="fs-5 fw-bold text-success">{site.avg_yield} M/Hr</div>
+//                               <small className="text-muted" style={{ fontSize: '0.65rem' }}>Speed Indicator</small>
+//                             </div>
+//                           </CCol>
+//                         </CRow>
+
+//                         <div className="mt-4">
+//                           <CTable hover borderless className="mb-0 text-nowrap" style={{ fontSize: '0.85rem' }}>
+//                             <CTableHead style={{ backgroundColor: '#f4f6f9', color: '#6c757d', fontWeight: '600' }}>
+//                               <CTableRow>
+//                                 <CTableHeaderCell>WORK TYPE</CTableHeaderCell>
+//                                 <CTableHeaderCell className="text-end">DONE</CTableHeaderCell>
+//                                 <CTableHeaderCell className="text-end">HRS</CTableHeaderCell>
+//                                 <CTableHeaderCell className="text-end">FUEL (L)</CTableHeaderCell>
+//                                 <CTableHeaderCell className="text-end text-primary">WORK/HR</CTableHeaderCell>
+//                                 <CTableHeaderCell className="text-end text-warning">WORK/L</CTableHeaderCell>
+//                               </CTableRow>
+//                             </CTableHead>
+//                             <CTableBody>
+//                               {site.work_types.map((wt, idx) => (
+//                                 <CTableRow key={idx} className="border-bottom">
+//                                   <CTableDataCell>
+//                                     <div className="fw-bold text-dark">{wt.type_name}</div>
+//                                     <small className="text-muted">{wt.uom}</small>
+//                                   </CTableDataCell>
+//                                   <CTableDataCell className="text-end align-middle">{wt.done}</CTableDataCell>
+//                                   <CTableDataCell className="text-end align-middle">{wt.hrs}</CTableDataCell>
+//                                   <CTableDataCell className="text-end align-middle">{wt.fuel}</CTableDataCell>
+//                                   <CTableDataCell className="text-end align-middle fw-bold">{wt.work_per_hr}</CTableDataCell>
+//                                   <CTableDataCell className="text-end align-middle fw-bold">{wt.work_per_l}</CTableDataCell>
+//                                 </CTableRow>
+//                               ))}
+//                             </CTableBody>
+//                           </CTable>
+//                         </div>
+//                       </CCardBody>
+//                     </CCard>
+//                   </CCol>
+//                 ))}
+//               </CRow>
+//             )}
+//           </CCardBody>
+//         </CCard>
+//       </CTabPane>
+//       </CTabContent>
+//     </div>
+//   )
+// }
+
+// export default InfraDetailsShowTable
+
+
+
+
+
+
+
+
 import React, { useEffect, useMemo, useState } from 'react'
 import { deleteAPICall, getAPICall } from '../../../util/api'
 import {
@@ -23,16 +1032,25 @@ import {
   CModalBody,
   CModalFooter,
   CTableFoot,
+  CNav,
+  CNavItem,
+  CNavLink,
+  CTabContent,
+  CTabPane,
 } from '@coreui/react'
-import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
-import 'jspdf-autotable'
 import { getUserType, getUserData } from '../../../util/session'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../common/toast/ToastContext'
 import CIcon from '@coreui/icons-react'
 import { cilPencil, cilTrash } from '@coreui/icons'
 import { host } from '../../../util/constants'
+// Excel/PDF export logic now lives in its own file — see worklogExportUtils.js
+import {
+  downloadWorkLogExcel,
+  downloadWorkLogPDF,
+  downloadMultiSiteExcel,
+  downloadMultiSitePDF,
+} from './worklogExportUtils'
 
 function InfraDetailsShowTable() {
   const [rows, setRows] = useState([])
@@ -45,6 +1063,11 @@ function InfraDetailsShowTable() {
   const [visible, setVisible] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
 
+  const [activeKey, setActiveKey] = useState(1)
+  const [multiSiteDate, setMultiSiteDate] = useState(new Date().toISOString().split('T')[0])
+  const [multiSiteData, setMultiSiteData] = useState([])
+  const [multiSiteLoading, setMultiSiteLoading] = useState(false)
+
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -54,17 +1077,36 @@ function InfraDetailsShowTable() {
       const response = await getAPICall('/api/myProjects')
       setProjects(response || [])
     } catch (err) {
-      console.error("Error fetching projects:", err)
+      console.error('Error fetching projects:', err)
     }
   }
+
+  const fetchMultiSiteData = async () => {
+    setMultiSiteLoading(true)
+    try {
+      const response = await getAPICall(`/api/worklog/multi-site?date=${multiSiteDate}`)
+      setMultiSiteData(response?.data || [])
+    } catch (err) {
+      console.error('Error fetching multi-site data:', err)
+      showToast('danger', 'Failed to fetch Multi-Site Breakdown')
+    } finally {
+      setMultiSiteLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeKey === 2) {
+      fetchMultiSiteData()
+    }
+  }, [multiSiteDate, activeKey])
 
   const fetchRecords = async (filters = {}) => {
     try {
       const userType = getUserType()
-      let apiUrl = "/api/drilling"
+      let apiUrl = '/api/drilling'
 
       if (userType === 2) {
-        apiUrl = "/api/getDataByUserId"
+        apiUrl = '/api/getDataByUserId'
       }
 
       const params = new URLSearchParams()
@@ -124,11 +1166,15 @@ function InfraDetailsShowTable() {
             workPoint: work.work_point || '',
             workRate: work.rate || '',
             workTotal: Number(work.total) || 0,
+            workHrs: work.hrs ?? '',
+            workDiesel: work.diesel ?? '',
 
             surveyType: survey.survey_type || '',
             surveyPoint: survey.survey_point || '',
             surveyRate: survey.rate || '',
             surveyTotal: Number(survey.total) || 0,
+            surveyHrs: survey.hrs ?? '',
+            surveyDiesel: survey.diesel ?? '',
 
             rowTotal: (Number(work.total) || 0) + (Number(survey.total) || 0),
 
@@ -141,7 +1187,7 @@ function InfraDetailsShowTable() {
 
       setRows(flattened)
     } catch (error) {
-      console.error("Error fetching records:", error)
+      console.error('Error fetching records:', error)
     } finally {
       setLoading(false)
     }
@@ -153,628 +1199,39 @@ function InfraDetailsShowTable() {
       workPoint: rows.reduce((sum, row) => sum + (parseFloat(row.workPoint) || 0), 0),
       workRate: rows.reduce((sum, row) => sum + (parseFloat(row.workRate) || 0), 0),
       workTotal: rows.reduce((sum, row) => sum + (Number(row.workTotal) || 0), 0),
+      workHrs: rows.reduce((sum, row) => sum + (parseFloat(row.workHrs) || 0), 0),
+      workDiesel: rows.reduce((sum, row) => sum + (parseFloat(row.workDiesel) || 0), 0),
       surveyPoint: rows.reduce((sum, row) => sum + (parseFloat(row.surveyPoint) || 0), 0),
       surveyRate: rows.reduce((sum, row) => sum + (parseFloat(row.surveyRate) || 0), 0),
       surveyTotal: rows.reduce((sum, row) => sum + (Number(row.surveyTotal) || 0), 0),
+      surveyHrs: rows.reduce((sum, row) => sum + (parseFloat(row.surveyHrs) || 0), 0),
+      surveyDiesel: rows.reduce((sum, row) => sum + (parseFloat(row.surveyDiesel) || 0), 0),
       grandTotal: rows.reduce((sum, row) => sum + (Number(row.rowTotal) || 0), 0),
       machineDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.machineDieselUsed) || 0), 0),
       compressorDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.compressorDieselUsed) || 0), 0),
     }
   }, [rows])
 
-  const downloadExcel = () => {
-    // Title and filter info
-    const titleRow = ['Work Log Report']
-    const emptyRow = []
-    
-    // Filter information
-    const filterRows = []
-    if (startDate || endDate || projectName) {
-      filterRows.push(['Applied Filters:'])
-      if (startDate && endDate) {
-        filterRows.push(['Date Range:', `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`])
-      }
-      if (projectName) {
-        filterRows.push(['Project:', projectName])
-      }
-      filterRows.push(emptyRow)
-    }
-
-    const headers = [
-      'Sr.No.',
-      'Date',
-      'Site',
-      'Operator/Helper',
-      'Machine Start',
-      'Machine End',
-      'Machine Hr',
-      'Machine Diesel Used',
-      'Machine Diesel Bal',
-      'Compressor rpm Start',
-      'Compressor rpm End',
-      'Compressor rpm Hr',
-      'Comp Diesel Used',
-      'Comp Diesel Bal',
-      'Work Type',
-      'Point',
-      'Rate',
-      'Work Total',
-      'Survey Type',
-      'Survey Point',
-      'Survey Rate',
-      'Survey Total',
-      'Grand Total',
-    ]
-
-    const data = rows.map(row => [
-      row.srNo,
-      new Date(row.date).toLocaleDateString(),
-      row.site,
-      row.operator,
-      row.machineStart,
-      row.machineEnd,
-      row.machineHr,
-      row.machineDieselUsed,
-      row.machineDieselBalance,
-      row.compressorStart,
-      row.compressorEnd,
-      row.compressorHr,
-      row.compressorDieselUsed,
-      row.compressorDieselBalance,
-      row.workType,
-      row.workPoint,
-      row.workRate,
-      row.workTotal,
-      row.surveyType,
-      row.surveyPoint,
-      row.surveyRate,
-      row.surveyTotal,
-      row.rowTotal,
-    ])
-
-    // Calculate totals
-    const totalsRow = [
-      '', '', '', '',
-      '', '', '',
-      tableTotals.machineDieselUsed.toFixed(2), '',
-      '', '', '',
-      tableTotals.compressorDieselUsed.toFixed(2), '',
-      'TOTAL',
-      tableTotals.workPoint.toFixed(2),
-      tableTotals.workRate.toFixed(2),
-      tableTotals.workTotal.toFixed(2),
-      '',
-      tableTotals.surveyPoint.toFixed(2),
-      tableTotals.surveyRate.toFixed(2),
-      tableTotals.surveyTotal.toFixed(2),
-      tableTotals.grandTotal.toFixed(2),
-    ]
-
-    // Combine all rows
-    const allRows = [
-      titleRow,
-      emptyRow,
-      ...filterRows,
-      headers,
-      ...data,
-      emptyRow,
-      totalsRow,
-    ]
-
-    const worksheet = XLSX.utils.aoa_to_sheet(allRows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'WorkLogReport')
-
-    // Style title (merge cells)
-    worksheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 18 } }]
-
-    // Auto column width
-    const colWidths = headers.map((h, i) => ({
-      wch: Math.max(h.length, ...data.map(r => (r[i] ? r[i].toString().length : 0))) + 2,
-    }))
-    worksheet['!cols'] = colWidths
-
-    XLSX.writeFile(workbook, 'WorkLogReport.xlsx')
+  // Button handlers — the actual Excel/PDF generation lives in worklogExportUtils.js
+  const handleDownloadExcel = () => {
+    downloadWorkLogExcel({ rows, tableTotals, startDate, endDate, projectName })
   }
 
-
-
-
-
-
-
-
-
-
-
-
-// const downloadPDF = () => {
-//   const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
-//   // Get user data once
-//   const user = getUserData();
-//   const companyInfo = user?.company_info || {};
-//   // ───────────────────────────────────────────────
-//   // COMPANY HEADER & STYLING
-//   // ───────────────────────────────────────────────
-//   const pageWidth = doc.internal.pageSize.getWidth();
-//   const pageHeight = doc.internal.pageSize.getHeight();
-//   const margin = 12;
-
-//   const headerTop = margin + 6; // logo & company name same distance from top border
-
-//   // Outer page border (light gray)
-//   doc.setDrawColor(80, 80, 80);
-//   doc.setLineWidth(0.4);
-//   doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
-//   // ───────────────────────────────────────────────
-//   // Company logo – REAL IMAGE
-//   // ───────────────────────────────────────────────
-//   // const logoX = margin + 4;
-//   // const logoY = margin + 15;
-//   // const logoSize = 20; // Adjusted for better proportion
-
-// const logoSize = 26; // logo size 
-// const logoX = pageWidth - margin - logoSize - 6; // right aligned
-// // const logoY = margin + 6; // top 
-// const logoY = headerTop;
-
-
-
-//   // Construct full logo URL
-//   let logoUrl = null;
-//   if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-//     logoUrl = `${host}/img/${companyInfo.logo}`;
-//   }
-//   if (logoUrl) {
-//     try {
-//       // Try to load the real logo
-//       doc.addImage(
-//         logoUrl,
-//         'PNG', // assuming PNG — change to 'JPEG' if needed
-//         logoX,
-//         logoY,
-//         logoSize,
-//         logoSize
-//       );
-//     } catch (err) {
-//       console.warn("Failed to load logo:", err);
-//       // Fallback to placeholder if image fails
-//       doc.setFillColor(220, 220, 240);
-//       doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-//       doc.setFontSize(9);
-//       doc.setTextColor(100);
-//       doc.text("LOGO", logoX + 6, logoY + 13);
-//     }
-//   } else {
-//     // No logo → show placeholder
-//     doc.setFillColor(220, 220, 240);
-//     doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-//     doc.setFontSize(9);
-//     doc.setTextColor(100);
-//     doc.text("LOGO", logoX + 6, logoY + 13);
-//   }
-//   // ───────────────────────────────────────────────
-//   // Company name & details - right of logo
-//   // ───────────────────────────────────────────────
-//   doc.setFontSize(18);
-//   doc.setFont("helvetica", "bold");
-//   doc.setTextColor(40, 40, 60);
-
-// const headerX = margin + 8;
-
-// doc.setFontSize(18);
-// doc.setFont("helvetica", "bold");
-// doc.text(
-//   companyInfo.company_name || "Deshmukh Infra Soft",
-//   headerX,
-//   // logoY + 12
-//    headerTop + 8
-// );
-
-
-//   // doc.text(
-//   //   companyInfo.company_name || "Deshmukh Infra Soft",
-//   //   logoX + logoSize + 10,
-//   //   logoY + 12
-//   // );
-//   doc.setFontSize(10);
-//   doc.setFont("helvetica", "normal");
-//   doc.setTextColor(70);
-//   // let detailY = logoY + 18; // Optimized spacing after company name
-//   let detailY = headerTop + 14;
-
-//   const lineHeight = 5; // Reduced for space optimization
-//   const companyDetails = [
-//     companyInfo.land_mark || "Urali Kanchan, Pune",
-//     `Phone: ${companyInfo.phone_no || "9173635656"}`,
-//     `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-//     `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-//   ];
-//   // companyDetails.forEach(line => {
-//   //   if (line && line.trim() !== "") {
-//   //     doc.text(line, logoX + logoSize + 10, detailY);
-//   //     detailY += lineHeight;
-//   //   }
-//   // });
-//   companyDetails.forEach(line => {
-//   if (line && line.trim() !== "") {
-//     doc.text(line, headerX, detailY); // LEFT aligned
-//     detailY += lineHeight;
-//   }
-// });
-
-//   // Horizontal separator line after header
-//   doc.setLineWidth(0.6);
-//   doc.setDrawColor(0, 0, 0);
-//   // doc.line(margin + 6, detailY + 2, pageWidth - margin - 6, detailY + 2);
-//   doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
-
-//   // Title
-//   doc.setFontSize(16);
-//   doc.setFont("helvetica", "bold");
-//   doc.setTextColor(0);
-//   doc.text(
-//     "Work Log Report",
-//     pageWidth / 2,
-//     detailY + 10,
-//     { align: "center" }
-//   );
-//   // ───────────────────────────────────────────────
-//   // FILTER INFORMATION (if any)
-//   // ───────────────────────────────────────────────
-//   let startY = detailY + 18;
-//   if (startDate || endDate || projectName) {
-//     doc.setFontSize(10);
-//     doc.setFont("helvetica", "normal");
-//     doc.setTextColor(60);
-//     doc.text("Applied Filters:", margin + 8, startY);
-//     startY += 6;
-//     if (startDate && endDate) {
-//       const range = `${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`;
-//       doc.text(`Date Range: ${range}`, margin + 8, startY);
-//       startY += 5.5;
-//     }
-//     if (projectName) {
-//       doc.text(`Project: ${projectName}`, margin + 8, startY);
-//       startY += 5.5;
-//     }
-//     startY += 6; // extra spacing before table
-//   }
-//   // ───────────────────────────────────────────────
-//   // TABLE (unchanged from your version)
-//   // ───────────────────────────────────────────────
-//   const tableColumn = [
-//     'Sr.No.', 'Date', 'Site', 'Operator', 'Machine Start', 'Machine End',
-//     'Machine Hr', 'Comp Start', 'Comp End', 'Comp Hr', 'Work Type',
-//     'Point', 'Rate', 'Work Total', 'Survey Type', 'Point', 'Rate',
-//     'Survey Total', 'Grand Total'
-//   ];
-//   const tableRows = rows.map(row => [
-//     row.srNo,
-//     new Date(row.date).toLocaleDateString("en-GB"),
-//     row.site,
-//     row.operator,
-//     row.machineStart,
-//     row.machineEnd,
-//     row.machineHr,
-//     row.compressorStart,
-//     row.compressorEnd,
-//     row.compressorHr,
-//     row.workType,
-//     row.workPoint,
-//     row.workRate,
-//     row.workTotal,
-//     row.surveyType,
-//     row.surveyPoint,
-//     row.surveyRate,
-//     row.surveyTotal,
-//     row.rowTotal,
-//   ]);
-//   tableRows.push([
-//     '', '', '', '', '', '', '', '', '', '',
-//     'TOTAL',
-//     tableTotals.workPoint.toFixed(2),
-//     tableTotals.workRate.toFixed(2),
-//     tableTotals.workTotal.toFixed(2),
-//     '',
-//     tableTotals.surveyPoint.toFixed(2),
-//     tableTotals.surveyRate.toFixed(2),
-//     tableTotals.surveyTotal.toFixed(2),
-//     tableTotals.grandTotal.toFixed(2),
-//   ]);
-//   doc.autoTable({
-//     head: [tableColumn],
-//     body: tableRows,
-//     startY: startY,
-//     theme: 'grid',
-//     margin: { left: margin + 6, right: margin + 6 },
-//     styles: {
-//       fontSize: 8,
-//       cellPadding: 2.2,
-//       overflow: 'linebreak',
-//       halign: 'center',
-//       valign: 'middle',
-//       lineColor: [44, 62, 80],
-//       lineWidth: 0.3,
-//     },
-//     headStyles: {
-//       fillColor: [52, 73, 94],
-//       textColor: 255,
-//       fontSize: 8.5,
-//       fontStyle: 'bold',
-//     },
-//     alternateRowStyles: {
-//       fillColor: [245, 247, 250],
-//     },
-//     footStyles: {
-//       fillColor: [220, 220, 220],
-//       textColor: 0,
-//       fontStyle: 'bold',
-//       fontSize: 8.5,
-//     },
-//     didParseCell: (data) => {
-//       if (data.row.index === tableRows.length - 1) {
-//         data.cell.styles.fontStyle = 'bold';
-//         data.cell.styles.fillColor = [235, 235, 235];
-//       }
-//       if (["Work Total", "Survey Total", "Grand Total"].includes(data.column.dataKey)) {
-//         data.cell.styles.textColor = [0, 128, 0];
-//       }
-//     },
-//   });
-//   doc.save('WorkLogReport.pdf');
-// };
-
-
-const downloadPDF = () => {
-  const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
-  // Get user data once
-  const user = getUserData();
-  const companyInfo = user?.company_info || {};
-  // ───────────────────────────────────────────────
-  // COMPANY HEADER & STYLING
-  // ───────────────────────────────────────────────
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 12;
-
-  // ───────────────────────────────────────────────
-  // Draw header function
-  // ───────────────────────────────────────────────
-  const drawHeader = (isFirst) => {
-    const headerTop = margin + 6; // logo & company name same distance from top border
-
-    // Outer page border (light gray)
-    doc.setDrawColor(80, 80, 80);
-    doc.setLineWidth(0.4);
-    doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
-
-    // ───────────────────────────────────────────────
-    // Company logo – REAL IMAGE
-    // ───────────────────────────────────────────────
-    const logoSize = 26; // logo size 
-    const logoX = pageWidth - margin - logoSize - 6; // right aligned
-    const logoY = headerTop;
-
-    // Construct full logo URL
-    let logoUrl = null;
-    if (companyInfo.logo && companyInfo.logo !== "invoice/empty.png") {
-      logoUrl = `${host}/img/${companyInfo.logo}`;
-    }
-    if (logoUrl) {
-      try {
-        // Try to load the real logo
-        doc.addImage(
-          logoUrl,
-          'PNG', // assuming PNG — change to 'JPEG' if needed
-          logoX,
-          logoY,
-          logoSize,
-          logoSize
-        );
-      } catch (err) {
-        console.warn("Failed to load logo:", err);
-        // Fallback to placeholder if image fails
-        doc.setFillColor(220, 220, 240);
-        doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.text("LOGO", logoX + 6, logoY + 13);
-      }
-    } else {
-      // No logo → show placeholder
-      doc.setFillColor(220, 220, 240);
-      doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text("LOGO", logoX + 6, logoY + 13);
-    }
-
-    // ───────────────────────────────────────────────
-    // Company name & details - left aligned
-    // ───────────────────────────────────────────────
-    const headerX = margin + 8;
-
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(40, 40, 60);
-    doc.text(
-      companyInfo.company_name || "Deshmukh Infra Soft",
-      headerX,
-      headerTop + 8
-    );
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(70);
-    let detailY = headerTop + 14;
-
-    const lineHeight = 5; // Reduced for space optimization
-    const companyDetails = [
-      companyInfo.land_mark || "Urali Kanchan, Pune",
-      `Phone: ${companyInfo.phone_no || "9173635656"}`,
-      `Email: ${companyInfo.email_id || "shreyas.gijare.21@gmail.com"}`,
-      `GSTIN: ${companyInfo.gst_number || "Not Available"}`,
-    ];
-    companyDetails.forEach(line => {
-      if (line && line.trim() !== "") {
-        doc.text(line, headerX, detailY);
-        detailY += lineHeight;
-      }
-    });
-
-    // Horizontal separator line after header
-    doc.setLineWidth(0.6);
-    doc.setDrawColor(0, 0, 0);
-    doc.line(margin + 6, detailY + 1, pageWidth - margin - 6, detailY + 1);
-
-    // Title
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    let titleText = "Work Log Report";
-    // if (!isFirst) titleText += " (continued)";
-    doc.text(
-      titleText,
-      pageWidth / 2,
-      detailY + 10,
-      { align: "center" }
-    );
-
-    // Return the Y position after the title + space
-    return detailY + 18;
-  };
-
-  // Draw header for the first page
-  const headerBottomY = drawHeader(true);
-
-  // ───────────────────────────────────────────────
-  // FILTER INFORMATION (if any) - only on first page
-  // ───────────────────────────────────────────────
-  let startY = headerBottomY;
-  if (startDate || endDate || projectName) {
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(60);
-    doc.text("Applied Filters:", margin + 8, startY);
-    startY += 6;
-    if (startDate && endDate) {
-      const range = `${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`;
-      doc.text(`Date Range: ${range}`, margin + 8, startY);
-      startY += 5.5;
-    }
-    if (projectName) {
-      doc.text(`Project: ${projectName}`, margin + 8, startY);
-      startY += 5.5;
-    }
-    startY += 6; // extra spacing before table
+  const handleDownloadPDF = () => {
+    const user = getUserData()
+    const companyInfo = user?.company_info || {}
+    downloadWorkLogPDF({ rows, tableTotals, startDate, endDate, projectName, companyInfo, host })
   }
 
-  // ───────────────────────────────────────────────
-  // TABLE
-  // ───────────────────────────────────────────────
-  const tableColumn = [
-    'Sr.No.', 'Date', 'Site', 'Operator',
-    'Machine Start', 'Machine End', 'Machine Hr', 'M.Diesel Used', 'M.Diesel Bal',
-    'Comp Start', 'Comp End', 'Comp Hr', 'C.Diesel Used', 'C.Diesel Bal',
-    'Work Type', 'Point', 'Rate', 'Work Total',
-    'Survey Type', 'Point', 'Rate', 'Survey Total', 'Grand Total'
-  ];
-  const tableRows = rows.map(row => [
-    row.srNo,
-    new Date(row.date).toLocaleDateString("en-GB"),
-    row.site,
-    row.operator,
-    row.machineStart,
-    row.machineEnd,
-    row.machineHr,
-    row.machineDieselUsed,
-    row.machineDieselBalance,
-    row.compressorStart,
-    row.compressorEnd,
-    row.compressorHr,
-    row.compressorDieselUsed,
-    row.compressorDieselBalance,
-    row.workType,
-    row.workPoint,
-    row.workRate,
-    row.workTotal,
-    row.surveyType,
-    row.surveyPoint,
-    row.surveyRate,
-    row.surveyTotal,
-    row.rowTotal,
-  ]);
-  tableRows.push([
-    '', '', '', '',
-    '', '', '', tableTotals.machineDieselUsed.toFixed(2), '',
-    '', '', '', tableTotals.compressorDieselUsed.toFixed(2), '',
-    'TOTAL',
-    tableTotals.workPoint.toFixed(2),
-    tableTotals.workRate.toFixed(2),
-    tableTotals.workTotal.toFixed(2),
-    '',
-    tableTotals.surveyPoint.toFixed(2),
-    tableTotals.surveyRate.toFixed(2),
-    tableTotals.surveyTotal.toFixed(2),
-    tableTotals.grandTotal.toFixed(2),
-  ]);
-  doc.autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: startY,
-    theme: 'grid',
-    margin: { top: headerBottomY, left: margin + 6, right: margin + 6, bottom: margin },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2.2,
-      overflow: 'linebreak',
-      halign: 'center',
-      valign: 'middle',
-      lineColor: [44, 62, 80],
-      lineWidth: 0.3,
-    },
-    headStyles: {
-      fillColor: [52, 73, 94],
-      textColor: 255,
-      fontSize: 8.5,
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [245, 247, 250],
-    },
-    footStyles: {
-      fillColor: [220, 220, 220],
-      textColor: 0,
-      fontStyle: 'bold',
-      fontSize: 8.5,
-    },
-    didParseCell: (data) => {
-      if (data.row.index === tableRows.length - 1) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [235, 235, 235];
-      }
-      if (["Work Total", "Survey Total", "Grand Total"].includes(data.column.dataKey)) {
-        data.cell.styles.textColor = [0, 128, 0];
-      }
-    },
-    addPageContent: (data) => {
-      drawHeader(false);
-    },
-    didDrawPage: (data) => {
-      // No footer in this report
-    },
-    showHead: 'everyPage',
-    rowPageBreak: 'avoid',
-  });
-  doc.save('WorkLogReport.pdf');
-};
+  const handleDownloadMultiSiteExcel = () => {
+    downloadMultiSiteExcel({ multiSiteData, date: multiSiteDate })
+  }
 
-
-
-
-
-
+  const handleDownloadMultiSitePDF = () => {
+    const user = getUserData()
+    const companyInfo = user?.company_info || {}
+    downloadMultiSitePDF({ multiSiteData, date: multiSiteDate, companyInfo, host })
+  }
 
   useEffect(() => {
     fetchProjects()
@@ -801,14 +1258,14 @@ const downloadPDF = () => {
     try {
       const res = await deleteAPICall(`/api/drilling/${selectedId}`)
       if (res) {
-        showToast("success", "Entry deleted successfully!")
+        showToast('success', 'Entry deleted successfully!')
         fetchRecords()
       } else {
-        showToast("danger", "Failed to delete entry")
+        showToast('danger', 'Failed to delete entry')
       }
     } catch (err) {
       console.error(err)
-      showToast("danger", "Something went wrong while deleting.")
+      showToast('danger', 'Something went wrong while deleting.')
     } finally {
       setLoading(false)
       setVisible(false)
@@ -818,233 +1275,417 @@ const downloadPDF = () => {
 
   return (
     <div>
-      <CCard className="mb-4">
-        <CCardHeader>
-          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <div className="d-flex flex-wrap gap-2">
-              <CButton color="success" className="me-2" onClick={downloadExcel}>
-                Download Excel
-              </CButton>
-              <CButton color="danger" className="pe-3" onClick={downloadPDF}>
-                Download PDF
-              </CButton>
-            </div>
-            <h4 className="mb-0">Total Amount : {tableTotals.grandTotal.toFixed(2)}</h4>
-          </div>
+      <CNav variant="tabs" className="mb-4">
+        <CNavItem>
+          <CNavLink active={activeKey === 1} onClick={() => setActiveKey(1)} style={{ cursor: 'pointer' }}>
+            Current Data
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeKey === 2} onClick={() => setActiveKey(2)} style={{ cursor: 'pointer' }}>
+            Multi-Site Breakdown
+          </CNavLink>
+        </CNavItem>
+      </CNav>
 
-          <CRow className="align-items-end d-flex flex-wrap gap-2">
-            <CCol md={3}>
-              <CFormInput
-                type="date"
-                label="Start Date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </CCol>
-            <CCol md={3}>
-              <CFormInput
-                type="date"
-                label="End Date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </CCol>
-            <CCol md={3}>
-              <CFormSelect
-                label="Project Name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-              >
-                <option value="">-- Select Project --</option>
-                {projects.map((proj) => (
-                  <option key={proj.id} value={proj.project_name}>
-                    {proj?.project_name} -  {proj?.customer_name}
-                  </option>
-                ))}
-              </CFormSelect>
-            </CCol>
-            <CCol md={3}>
-              <CButton color="primary" onClick={handleFilter}>
-                Apply
-              </CButton>
-              <CButton
-                color="secondary"
-                className="ms-2"
-                onClick={() => {
-                  setStartDate('')
-                  setEndDate('')
-                  setProjectName('')
-                  setMaxPoint('')
-                  fetchRecords()
-                }}
-              >
-                Reset
-              </CButton>
-            </CCol>
-          </CRow>
-        </CCardHeader>
-      </CCard>
+      <CTabContent>
+        <CTabPane visible={activeKey === 1}>
+          <CCard className="mb-4">
+            <CCardHeader>
+              <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div className="d-flex flex-wrap gap-2">
+                  <CButton color="success" className="me-2" onClick={handleDownloadExcel}>
+                    Download Excel
+                  </CButton>
+                  <CButton color="danger" className="pe-3" onClick={handleDownloadPDF}>
+                    Download PDF
+                  </CButton>
+                </div>
+                <h4 className="mb-0">Total Amount : {tableTotals.grandTotal.toFixed(2)}</h4>
+              </div>
 
-      {rows.length > 0 && (
-        <CCard className="mt-4">
-          <CCardBody className="p-0">
-            <div className="table-responsive">
-              <CTable bordered hover>
-                <CTableHead color="dark">
-                  <CTableRow>
-                    <CTableHeaderCell>Sr.No.</CTableHeaderCell>
-                    <CTableHeaderCell>Date</CTableHeaderCell>
-                    <CTableHeaderCell>Site</CTableHeaderCell>
-                    <CTableHeaderCell>Operator/Helper</CTableHeaderCell>
-                    <CTableHeaderCell>Machine Start</CTableHeaderCell>
-                    <CTableHeaderCell>Machine End</CTableHeaderCell>
-                    <CTableHeaderCell>Machine Hr</CTableHeaderCell>
-                    <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
-                    <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
-                    <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
-                    <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
-                    <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
-                    <CTableHeaderCell className="table-info">Diesel Used</CTableHeaderCell>
-                    <CTableHeaderCell className="table-info">Diesel Bal</CTableHeaderCell>
-                    <CTableHeaderCell>Work Type</CTableHeaderCell>
-                    <CTableHeaderCell>Point</CTableHeaderCell>
-                    <CTableHeaderCell>Rate</CTableHeaderCell>
-                    <CTableHeaderCell>Work Total</CTableHeaderCell>
-                    <CTableHeaderCell>Survey Type</CTableHeaderCell>
-                    <CTableHeaderCell>Survey Point</CTableHeaderCell>
-                    <CTableHeaderCell>Survey Rate</CTableHeaderCell>
-                    <CTableHeaderCell>Survey Total</CTableHeaderCell>
-                    <CTableHeaderCell>Grand Total</CTableHeaderCell>
-                    <CTableHeaderCell>Action</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                
-                <CTableBody>
-                  {rows.map((row, rowIndex) => (
-                    <CTableRow key={rowIndex}>
-                      {row.isFirstRow && (
-                        <>
-                          <CTableDataCell rowSpan={row.rowSpan}>{row.srNo}</CTableDataCell>
-                          <CTableDataCell rowSpan={row.rowSpan}>
-                            {new Date(row.date).toLocaleDateString("en-GB")}
+              <CRow className="align-items-end d-flex flex-wrap gap-2">
+                <CCol md={3}>
+                  <CFormInput
+                    type="date"
+                    label="Start Date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </CCol>
+                <CCol md={3}>
+                  <CFormInput
+                    type="date"
+                    label="End Date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </CCol>
+                <CCol md={3}>
+                  <CFormSelect
+                    label="Project Name"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                  >
+                    <option value="">-- Select Project --</option>
+                    {projects.map((proj) => (
+                      <option key={proj.id} value={proj.project_name}>
+                        {proj?.project_name} - {proj?.customer_name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+                <CCol md={3}>
+                  <CButton color="primary" onClick={handleFilter}>
+                    Apply
+                  </CButton>
+                  <CButton
+                    color="secondary"
+                    className="ms-2"
+                    onClick={() => {
+                      setStartDate('')
+                      setEndDate('')
+                      setProjectName('')
+                      setMaxPoint('')
+                      fetchRecords()
+                    }}
+                  >
+                    Reset
+                  </CButton>
+                </CCol>
+              </CRow>
+            </CCardHeader>
+          </CCard>
+
+          {rows.length > 0 && (
+            <CCard className="mt-4">
+              <CCardBody className="p-0">
+                <div className="table-responsive">
+                  <CTable bordered hover>
+                    <CTableHead color="dark">
+                      <CTableRow>
+                        <CTableHeaderCell>Sr.No.</CTableHeaderCell>
+                        <CTableHeaderCell>Date</CTableHeaderCell>
+                        <CTableHeaderCell>Site</CTableHeaderCell>
+                        <CTableHeaderCell>Operator/Helper</CTableHeaderCell>
+                        <CTableHeaderCell>Machine Start</CTableHeaderCell>
+                        <CTableHeaderCell>Machine End</CTableHeaderCell>
+                        <CTableHeaderCell>Machine Hr</CTableHeaderCell>
+                        <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
+                        <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
+                        <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
+                        <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
+                        <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
+                        <CTableHeaderCell className="table-info">Diesel Used</CTableHeaderCell>
+                        <CTableHeaderCell className="table-info">Diesel Bal</CTableHeaderCell>
+                        <CTableHeaderCell>Work Type</CTableHeaderCell>
+                        <CTableHeaderCell>Point</CTableHeaderCell>
+                        <CTableHeaderCell>Rate</CTableHeaderCell>
+                        <CTableHeaderCell>Work Total</CTableHeaderCell>
+                        <CTableHeaderCell className="table-secondary">Work Hrs</CTableHeaderCell>
+                        <CTableHeaderCell className="table-secondary">Work Diesel</CTableHeaderCell>
+                        <CTableHeaderCell>Survey Type</CTableHeaderCell>
+                        <CTableHeaderCell>Survey Point</CTableHeaderCell>
+                        <CTableHeaderCell>Survey Rate</CTableHeaderCell>
+                        <CTableHeaderCell>Survey Total</CTableHeaderCell>
+                        <CTableHeaderCell className="table-secondary">Survey Hrs</CTableHeaderCell>
+                        <CTableHeaderCell className="table-secondary">Survey Diesel</CTableHeaderCell>
+                        <CTableHeaderCell>Grand Total</CTableHeaderCell>
+                        <CTableHeaderCell>Action</CTableHeaderCell>
+                      </CTableRow>
+                    </CTableHead>
+
+                    <CTableBody>
+                      {rows.map((row, rowIndex) => (
+                        <CTableRow key={rowIndex}>
+                          {row.isFirstRow && (
+                            <>
+                              <CTableDataCell rowSpan={row.rowSpan}>{row.srNo}</CTableDataCell>
+                              <CTableDataCell rowSpan={row.rowSpan}>
+                                {new Date(row.date).toLocaleDateString('en-GB')}
+                              </CTableDataCell>
+                              <CTableDataCell rowSpan={row.rowSpan}>{row.site}</CTableDataCell>
+                            </>
+                          )}
+
+                          <CTableDataCell>{row.operator}</CTableDataCell>
+                          <CTableDataCell>{row.machineStart}</CTableDataCell>
+                          <CTableDataCell>{row.machineEnd}</CTableDataCell>
+                          <CTableDataCell>{row.machineHr}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-warning">{row.machineDieselUsed}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-warning">
+                            {row.machineDieselBalance}
                           </CTableDataCell>
-                          <CTableDataCell rowSpan={row.rowSpan}>{row.site}</CTableDataCell>
-                        </>
-                      )}
+                          <CTableDataCell>{row.compressorStart}</CTableDataCell>
+                          <CTableDataCell>{row.compressorEnd}</CTableDataCell>
+                          <CTableDataCell>{row.compressorHr}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-info">{row.compressorDieselUsed}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-info">
+                            {row.compressorDieselBalance}
+                          </CTableDataCell>
+                          <CTableDataCell>{row.workType}</CTableDataCell>
+                          <CTableDataCell>{row.workPoint}</CTableDataCell>
+                          <CTableDataCell>{row.workRate}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-primary">{row.workTotal}</CTableDataCell>
+                          <CTableDataCell className="text-secondary">{row.workHrs}</CTableDataCell>
+                          <CTableDataCell className="text-secondary">{row.workDiesel}</CTableDataCell>
+                          <CTableDataCell>{row.surveyType}</CTableDataCell>
+                          <CTableDataCell>{row.surveyPoint}</CTableDataCell>
+                          <CTableDataCell>{row.surveyRate}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-primary">{row.surveyTotal}</CTableDataCell>
+                          <CTableDataCell className="text-secondary">{row.surveyHrs}</CTableDataCell>
+                          <CTableDataCell className="text-secondary">{row.surveyDiesel}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-success">{row.rowTotal}</CTableDataCell>
 
-                      <CTableDataCell>{row.operator}</CTableDataCell>
-                      <CTableDataCell>{row.machineStart}</CTableDataCell>
-                      <CTableDataCell>{row.machineEnd}</CTableDataCell>
-                      <CTableDataCell>{row.machineHr}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-warning">{row.machineDieselUsed}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-warning">{row.machineDieselBalance}</CTableDataCell>
-                      <CTableDataCell>{row.compressorStart}</CTableDataCell>
-                      <CTableDataCell>{row.compressorEnd}</CTableDataCell>
-                      <CTableDataCell>{row.compressorHr}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-info">{row.compressorDieselUsed}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-info">{row.compressorDieselBalance}</CTableDataCell>
-                      <CTableDataCell>{row.workType}</CTableDataCell>
-                      <CTableDataCell>{row.workPoint}</CTableDataCell>
-                      <CTableDataCell>{row.workRate}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-primary">{row.workTotal}</CTableDataCell>
-                      <CTableDataCell>{row.surveyType}</CTableDataCell>
-                      <CTableDataCell>{row.surveyPoint}</CTableDataCell>
-                      <CTableDataCell>{row.surveyRate}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-primary">{row.surveyTotal}</CTableDataCell>
-                      <CTableDataCell className="fw-bold text-success">{row.rowTotal}</CTableDataCell>
+                          {row.isFirstRow && (
+                            <CTableDataCell rowSpan={row.rowSpan} className="text-center">
+                              <div className="d-flex justify-content-center gap-2">
+                                <CButton
+                                  color="primary"
+                                  onClick={() =>
+                                    navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
+                                      state: { drillingRecordId: row.drillingRecordId },
+                                    })
+                                  }
+                                >
+                                  <CIcon icon={cilPencil} />
+                                </CButton>
+                                <CButton color="danger" onClick={() => openDeleteModal(row.drillingRecordId)}>
+                                  <CIcon icon={cilTrash} />
+                                </CButton>
+                              </div>
+                            </CTableDataCell>
+                          )}
+                        </CTableRow>
+                      ))}
+                    </CTableBody>
 
-                      {row.isFirstRow && (
-                        <CTableDataCell rowSpan={row.rowSpan} className="text-center">
-                          <div className="d-flex justify-content-center gap-2">
-                            <CButton
-                              color="primary"
-                              onClick={() =>
-                                navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
-                                  state: { drillingRecordId: row.drillingRecordId },
-                                })
-                              }
-                            >
-                              <CIcon icon={cilPencil} />
-                            </CButton>
-                            <CButton
-                              color="danger"
-                              onClick={() => openDeleteModal(row.drillingRecordId)}
-                            >
-                              <CIcon icon={cilTrash} />
-                            </CButton>
-                          </div>
+                    {/* Footer with totals */}
+                    <CTableFoot>
+                      <CTableRow style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                        <CTableDataCell colSpan={4} className="text-end">
+                          TOTAL
                         </CTableDataCell>
-                      )}
-                    </CTableRow>
+                        {/* Machine cols */}
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell className="text-center text-warning">
+                          {tableTotals.machineDieselUsed.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        {/* Compressor cols */}
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell className="text-center text-info">
+                          {tableTotals.compressorDieselUsed.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                        {/* Work cols */}
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell className="text-center">{tableTotals.workPoint.toFixed(2)}</CTableDataCell>
+                        <CTableDataCell className="text-center">{tableTotals.workRate.toFixed(2)}</CTableDataCell>
+                        <CTableDataCell className="text-center text-primary">
+                          {tableTotals.workTotal.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-secondary">
+                          {tableTotals.workHrs.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-secondary">
+                          {tableTotals.workDiesel.toFixed(2)}
+                        </CTableDataCell>
+                        {/* Survey cols */}
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell className="text-center">{tableTotals.surveyPoint.toFixed(2)}</CTableDataCell>
+                        <CTableDataCell className="text-center">{tableTotals.surveyRate.toFixed(2)}</CTableDataCell>
+                        <CTableDataCell className="text-center text-primary">
+                          {tableTotals.surveyTotal.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-secondary">
+                          {tableTotals.surveyHrs.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-secondary">
+                          {tableTotals.surveyDiesel.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-success">
+                          {tableTotals.grandTotal.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
+                      </CTableRow>
+                    </CTableFoot>
+                  </CTable>
+                </div>
+              </CCardBody>
+            </CCard>
+          )}
+
+          {/* Confirmation Modal */}
+          <CModal visible={visible} onClose={() => setVisible(false)} backdrop="static">
+            <CModalHeader onClose={() => setVisible(false)}>
+              <CModalTitle>Delete drilling record?</CModalTitle>
+            </CModalHeader>
+            <CModalBody>
+              Do you really want to <span className="text-danger fw-bold">Delete</span> this record?
+            </CModalBody>
+            <CModalFooter>
+              <CButton color="secondary" variant="outline" onClick={() => setVisible(false)} disabled={loading}>
+                Close
+              </CButton>
+              <CButton color="danger" disabled={loading} onClick={handleDelete}>
+                {loading ? 'Deleting…' : 'Yes'}
+              </CButton>
+            </CModalFooter>
+          </CModal>
+        </CTabPane>
+
+        {/* Tab 2: Multi-Site Breakdown */}
+        <CTabPane visible={activeKey === 2}>
+          <CCard className="mb-4">
+            <CCardHeader className="bg-light">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <div className="d-flex flex-wrap gap-2">
+                  <CButton
+                    color="success"
+                    className="me-2"
+                    onClick={handleDownloadMultiSiteExcel}
+                    disabled={multiSiteData.length === 0}
+                  >
+                    Download Excel
+                  </CButton>
+                  <CButton
+                    color="danger"
+                    onClick={handleDownloadMultiSitePDF}
+                    disabled={multiSiteData.length === 0}
+                  >
+                    Download PDF
+                  </CButton>
+                </div>
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 className="mb-0 text-primary">
+                  <CIcon icon={cilPencil} className="me-2" /> Select Logged Day to View Multi-Site Breakdown
+                </h5>
+                <div className="d-flex align-items-center">
+                  <span className="me-2 fw-bold text-muted">Active Day:</span>
+                  <CFormInput
+                    type="date"
+                    value={multiSiteDate}
+                    onChange={(e) => setMultiSiteDate(e.target.value)}
+                    style={{ width: 'auto' }}
+                  />
+                </div>
+              </div>
+            </CCardHeader>
+            <CCardBody>
+              {multiSiteLoading ? (
+                <div className="text-center py-5">Loading Multi-Site Data...</div>
+              ) : multiSiteData.length === 0 ? (
+                <div className="text-center py-5 text-muted">No data available for the selected date.</div>
+              ) : (
+                <CRow>
+                  {multiSiteData.map((site, index) => (
+                    <CCol lg={6} md={12} className="mb-4" key={index}>
+                      <CCard className="h-100 shadow-sm border-0">
+                        <CCardHeader className="bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                          <div className="text-uppercase fw-bold" style={{ fontSize: '1rem', letterSpacing: '1px' }}>
+                            PROJECT LOCATION {String.fromCharCode(65 + index)}
+                            <div className="fs-5 mt-1 text-white">{site.project_name}</div>
+                          </div>
+                        </CCardHeader>
+                        <CCardBody className="p-3">
+                          <CRow className="mb-3 text-center g-2">
+                            {/* <CCol xs={6}>
+                              <div className="border rounded p-2 bg-light h-100">
+                                <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>
+                                  TOTAL WORK DONE
+                                </small>
+                                <div className="fs-5 fw-bold text-dark">{site.total_done}</div>
+                                <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+                                  Aggregate units
+                                </small>
+                              </div>
+                            </CCol> */}
+                            <CCol xs={4}>
+                              <div className="border rounded p-2 bg-light h-100">
+                                <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>
+                                  TOTAL HOURS LOGGED
+                                </small>
+                                <div className="fs-5 fw-bold text-dark">{site.total_hrs} Hrs</div>
+                                <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+                                  Sum of operations
+                                </small>
+                              </div>
+                            </CCol>
+                            <CCol xs={4}>
+                              <div className="border rounded p-2 bg-light h-100">
+                                <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>
+                                  FUEL CONSUMED
+                                </small>
+                                <div className="fs-5 fw-bold text-warning">{site.total_fuel} L</div>
+                                <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+                                  Diesel Litres
+                                </small>
+                              </div>
+                            </CCol>
+                            <CCol xs={4}>
+                              <div className="border rounded p-2 bg-light h-100">
+                                <small className="text-muted d-block fw-bold" style={{ fontSize: '0.7rem' }}>
+                                  AVG DRILLING YIELD
+                                </small>
+                                <div className="fs-5 fw-bold text-success">{site.avg_yield} M/Hr</div>
+                                <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+                                  Speed Indicator
+                                </small>
+                              </div>
+                            </CCol>
+                          </CRow>
+
+                          <div className="mt-4">
+                            <CTable hover borderless className="mb-0 text-nowrap" style={{ fontSize: '0.85rem' }}>
+                              <CTableHead style={{ backgroundColor: '#f4f6f9', color: '#6c757d', fontWeight: '600' }}>
+                                <CTableRow>
+                                  <CTableHeaderCell>WORK TYPE</CTableHeaderCell>
+                                  <CTableHeaderCell className="text-end">DONE</CTableHeaderCell>
+                                  <CTableHeaderCell className="text-end">HRS</CTableHeaderCell>
+                                  <CTableHeaderCell className="text-end">FUEL (L)</CTableHeaderCell>
+                                  <CTableHeaderCell className="text-end text-primary">WORK/HR</CTableHeaderCell>
+                                  <CTableHeaderCell className="text-end text-warning">WORK/L</CTableHeaderCell>
+                                </CTableRow>
+                              </CTableHead>
+                              <CTableBody>
+                                {site.work_types.map((wt, idx) => (
+                                  <CTableRow key={idx} className="border-bottom">
+                                    <CTableDataCell>
+                                      <div className="fw-bold text-dark">{wt.type_name}</div>
+                                      <small className="text-muted">{wt.uom}</small>
+                                    </CTableDataCell>
+                                    <CTableDataCell className="text-end align-middle">{wt.done}</CTableDataCell>
+                                    <CTableDataCell className="text-end align-middle">{wt.hrs}</CTableDataCell>
+                                    <CTableDataCell className="text-end align-middle">{wt.fuel}</CTableDataCell>
+                                    <CTableDataCell className="text-end align-middle fw-bold">
+                                      {wt.work_per_hr}
+                                    </CTableDataCell>
+                                    <CTableDataCell className="text-end align-middle fw-bold">
+                                      {wt.work_per_l}
+                                    </CTableDataCell>
+                                  </CTableRow>
+                                ))}
+                              </CTableBody>
+                            </CTable>
+                          </div>
+                        </CCardBody>
+                      </CCard>
+                    </CCol>
                   ))}
-                </CTableBody>
-
-                {/* Footer with totals */}
-                <CTableFoot>
-                  <CTableRow style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
-                    <CTableDataCell colSpan={4} className="text-end">TOTAL</CTableDataCell>
-                    {/* Machine cols */}
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell className="text-center text-warning">{tableTotals.machineDieselUsed.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    {/* Compressor cols */}
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell className="text-center text-info">{tableTotals.compressorDieselUsed.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                    {/* Work cols */}
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell className="text-center">{tableTotals.workPoint.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell className="text-center">{tableTotals.workRate.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell className="text-center text-primary">{tableTotals.workTotal.toFixed(2)}</CTableDataCell>
-                    {/* Survey cols */}
-                    <CTableDataCell></CTableDataCell>
-                    <CTableDataCell className="text-center">{tableTotals.surveyPoint.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell className="text-center">{tableTotals.surveyRate.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell className="text-center text-primary">{tableTotals.surveyTotal.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell className="text-center text-success">{tableTotals.grandTotal.toFixed(2)}</CTableDataCell>
-                    <CTableDataCell></CTableDataCell>
-                  </CTableRow>
-                </CTableFoot>
-              </CTable>
-            </div>
-          </CCardBody>
-        </CCard>
-      )}
-
-      {/* Confirmation Modal */}
-      <CModal visible={visible} onClose={() => setVisible(false)} backdrop="static">
-        <CModalHeader onClose={() => setVisible(false)}>
-          <CModalTitle>Delete drilling record?</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          Do you really want to{" "}
-          <span className="text-danger fw-bold">Delete</span> this record?
-        </CModalBody>
-        <CModalFooter>
-          <CButton
-            color="secondary"
-            variant="outline"
-            onClick={() => setVisible(false)}
-            disabled={loading}
-          >
-            Close
-          </CButton>
-          <CButton
-            color="danger"
-            disabled={loading}
-            onClick={handleDelete}
-          >
-            {loading ? "Deleting…" : "Yes"}
-          </CButton>
-        </CModalFooter>
-      </CModal>
+                </CRow>
+              )}
+            </CCardBody>
+          </CCard>
+        </CTabPane>
+      </CTabContent>
     </div>
   )
 }
 
 export default InfraDetailsShowTable
-

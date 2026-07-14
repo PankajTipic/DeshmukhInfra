@@ -765,7 +765,6 @@ import { getAPICall, put } from '../../../util/api';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import { useToast } from '../../common/toast/ToastContext';
-import { SurveyTypeDropdown, workTypeDropdown } from '../../../util/Feilds';
 
 const UpdateDrillingForm = () => {
   const { id } = useParams();
@@ -780,8 +779,8 @@ const UpdateDrillingForm = () => {
     date: '',
     machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: '' }],
     compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: '' }],
-    workDetails: [{ operator_id: '', work_type: '', work_point: 0, rate: 0, total: 0 }],
-    surveys: [{ operator_id: '', survey_type: '', survey_point: 0, rate: 0, total: 0 }],
+    workDetails: [{ operator_id: '', work_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
+    surveys: [{ operator_id: '', survey_type: '', uom: '', survey_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
     isGST: false,
     totalBill: 0,
   });
@@ -792,9 +791,9 @@ const UpdateDrillingForm = () => {
   const [operators, setOperators] = useState([]);
   const [machineries, setMachineries] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  const workTypes = ['Drilling', 'Pilling', 'DTH', 'Fencing', 'Casting', 'Casting+Drilling', 'Earthing', 'Compound'];
-  const surveyTypes = ['Drone', 'Topography', 'Boundary', 'Site Survey', 'Progress Survey'];
+  const [workTypes, setWorkTypes] = useState([]);
+  const [surveyTypes, setSurveyTypes] = useState([]);
+  const [uoms, setUoms] = useState([]);
 
   // Helper: safely extract payload data independent of API shape
   const unwrapApi = (res) => {
@@ -856,9 +855,12 @@ const UpdateDrillingForm = () => {
           return {
             operator_id: w.operator_id != null ? Number(w.operator_id) : '',
             work_type: w.work_type || '',
+            uom: w.uom || '',
             work_point: wp,
             rate,
-            total
+            total,
+            hrs: w.hrs ?? '',
+            diesel: w.diesel ?? '',
           };
         });
 
@@ -870,9 +872,12 @@ const UpdateDrillingForm = () => {
           return {
             operator_id: s.operator_id != null ? Number(s.operator_id) : '',
             survey_type: s.survey_type || '',
+            uom: s.uom || '',
             survey_point: sp,
             rate,
-            total
+            total,
+            hrs: s.hrs ?? '',
+            diesel: s.diesel ?? '',
           };
         });
 
@@ -925,6 +930,25 @@ const UpdateDrillingForm = () => {
         })));
       })
       .catch((err) => console.error('Error fetching machineries:', err));
+  }, []);
+
+  // Fetch Work Types, Survey Types, UOMs
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const [wt, st, um] = await Promise.all([
+          getAPICall('/api/work-types'),
+          getAPICall('/api/survey-types'),
+          getAPICall('/api/uoms'),
+        ]);
+        setWorkTypes(wt || []);
+        setSurveyTypes(st || []);
+        setUoms(um || []);
+      } catch (err) {
+        console.error('Error fetching types/uoms:', err);
+      }
+    };
+    fetchTypes();
   }, []);
 
   // Fetch projects (search)
@@ -1073,7 +1097,7 @@ const UpdateDrillingForm = () => {
   const addWorkDetail = () => {
     setFormData((prev) => ({
       ...prev,
-      workDetails: [...prev.workDetails, { operator_id: '', work_type: '', work_point: 0, rate: 0, total: 0 }]
+      workDetails: [...prev.workDetails, { operator_id: '', work_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }]
     }));
   };
 
@@ -1097,7 +1121,7 @@ const UpdateDrillingForm = () => {
   const addSurvey = () => {
     setFormData((prev) => ({
       ...prev,
-      surveys: [...prev.surveys, { operator_id: '', survey_type: '', survey_point: 0, rate: 0, total: 0 }]
+      surveys: [...prev.surveys, { operator_id: '', survey_type: '', uom: '', survey_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }]
     }));
   };
 
@@ -1203,16 +1227,22 @@ const UpdateDrillingForm = () => {
       work_points: formData.workDetails.map((w) => ({
         operator_id: w.operator_id || null,
         work_type: w.work_type || '',
+        uom: w.uom || null,
         work_point: w.work_point || 0,
         rate: w.rate || 0,
-        total: computeWorkRowTotal(w)
+        total: computeWorkRowTotal(w),
+        hrs: w.hrs !== '' ? parseFloat(w.hrs) : null,
+        diesel: w.diesel !== '' ? parseFloat(w.diesel) : null,
       })),
       surveys: formData.surveys.map((s) => ({
         operator_id: s.operator_id || null,
         survey_type: s.survey_type || '',
+        uom: s.uom || null,
         survey_point: s.survey_point || 0,
         rate: s.rate || 0,
-        total: computeSurveyRowTotal(s)
+        total: computeSurveyRowTotal(s),
+        hrs: s.hrs !== '' ? parseFloat(s.hrs) : null,
+        diesel: s.diesel !== '' ? parseFloat(s.diesel) : null,
       })),
       isGST: formData.isGST,
       totalBill: totalBillDisplay
@@ -1579,12 +1609,19 @@ const UpdateDrillingForm = () => {
                       <CFormLabel>Work Type</CFormLabel>
                       <CFormSelect value={work.work_type} onChange={(e) => handleWorkDetailChange(index, 'work_type', e.target.value)}>
                         <option value="">Select Work Type</option>
-                        {/* {workTypes.map((type) => (<option key={type} value={type}>{type}</option>))} */}
-                                  {workTypeDropdown.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
+                        {workTypes.map((type) => (
+                          <option key={type.id} value={type.name}>{type.name}</option>
+                        ))}
+                      </CFormSelect>
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>UOM</CFormLabel>
+                      <CFormSelect value={work.uom} onChange={(e) => handleWorkDetailChange(index, 'uom', e.target.value)}>
+                        <option value="">Select UOM</option>
+                        {uoms.map((u) => (
+                          <option key={u.id} value={u.name}>{u.name}</option>
+                        ))}
                       </CFormSelect>
                     </CCol>
 
@@ -1629,6 +1666,36 @@ const UpdateDrillingForm = () => {
                       </CInputGroup>
                     </CCol>
 
+                    <CCol lg={2}>
+                      <CFormLabel>Hrs</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={work.hrs}
+                        placeholder="0"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          handleWorkDetailChange(index, 'hrs', val);
+                        }}
+                      />
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>Diesel (L)</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={work.diesel}
+                        placeholder="0"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          handleWorkDetailChange(index, 'diesel', val);
+                        }}
+                      />
+                    </CCol>
+
                     <CCol lg={1}>
                       {formData.workDetails.length > 1 && (
                         <CButton color="danger" variant="ghost" size="sm" onClick={() => removeWorkDetail(index)}>
@@ -1669,12 +1736,19 @@ const UpdateDrillingForm = () => {
                       <CFormLabel>Survey Type</CFormLabel>
                       <CFormSelect value={survey.survey_type} onChange={(e) => handleSurveyChange(index, 'survey_type', e.target.value)}>
                         <option value="">Select Survey Type</option>
-                        {/* {surveyTypes.map((type) => (<option key={type} value={type}>{type}</option>))} */}
-                        {SurveyTypeDropdown.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
+                        {surveyTypes.map((type) => (
+                          <option key={type.id} value={type.name}>{type.name}</option>
+                        ))}
+                      </CFormSelect>
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>UOM</CFormLabel>
+                      <CFormSelect value={survey.uom} onChange={(e) => handleSurveyChange(index, 'uom', e.target.value)}>
+                        <option value="">Select UOM</option>
+                        {uoms.map((u) => (
+                          <option key={u.id} value={u.name}>{u.name}</option>
+                        ))}
                       </CFormSelect>
                     </CCol>
 
@@ -1717,6 +1791,36 @@ const UpdateDrillingForm = () => {
                         <CInputGroupText>₹</CInputGroupText>
                         <CFormInput value={(computeSurveyRowTotal(survey)).toFixed(2)} readOnly className="bg-light fw-bold" />
                       </CInputGroup>
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>Hrs</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={survey.hrs}
+                        placeholder="0"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          handleSurveyChange(index, 'hrs', val);
+                        }}
+                      />
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>Diesel (L)</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={survey.diesel}
+                        placeholder="0"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          handleSurveyChange(index, 'diesel', val);
+                        }}
+                      />
                     </CCol>
 
                     <CCol lg={1}>

@@ -18,6 +18,9 @@ class WorkPointDetail extends Model
         'work_point',
         'rate',
         'total',
+        'diesel',
+        'uom',
+        'hrs',
     ];
 
     // Relationship

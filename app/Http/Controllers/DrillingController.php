@@ -202,8 +202,11 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
                 'drilling_record_id' => $drillingRecord->id,
                 'work_type'          => $workPoint['work_type'] ?? null,
                 'work_point'         => $workPoint['work_point'] ?? null,
+                'uom'                => $workPoint['uom'] ?? null,
                 'rate'               => $workPoint['rate'] ?? null,
                 'total'              => $workPoint['total'] ?? null,
+                'diesel'             => $workPoint['diesel'] ?? null,
+                'hrs'                => $workPoint['hrs'] ?? null,
                 'operator_id'        => $workPoint  ['operator_id'] ?? null,
             ]);
         }
@@ -220,8 +223,11 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
                 'drilling_record_id' => $drillingRecord->id,
                 'survey_type'        => $survey['survey_type'] ?? null,
                 'survey_point'       => $survey['survey_point'] ?? null,
+                'uom'                => $survey['uom'] ?? null,
                 'rate'               => $survey['rate'] ?? null,
                 'total'              => $survey['total'] ?? null,
+                'diesel'             => $survey['diesel'] ?? null,
+                'hrs'                => $survey['hrs'] ?? null,
                 'operator_id'        => $survey['operator_id'] ?? null,
             ]);
         }
@@ -818,8 +824,11 @@ public function update(Request $request, $id)
                 'drilling_record_id' => $drillingRecord->id,
                 'work_type'          => $workPoint['work_type'] ?? null,
                 'work_point'         => $workPoint['work_point'] ?? null,
+                'uom'                => $workPoint['uom'] ?? null,
                 'rate'               => $workPoint['rate'] ?? null,
                 'total'              => $workPoint['total'] ?? null,
+                'diesel'             => $workPoint['diesel'] ?? null,
+                'hrs'                => $workPoint['hrs'] ?? null,
                 'operator_id'        => $workPoint['operator_id'] ?? null,
             ]);
         }
@@ -836,8 +845,11 @@ public function update(Request $request, $id)
                 'drilling_record_id' => $drillingRecord->id,
                 'survey_type'        => $survey['survey_type'] ?? null,
                 'survey_point'       => $survey['survey_point'] ?? null,
+                'uom'                => $survey['uom'] ?? null,
                 'rate'               => $survey['rate'] ?? null,
                 'total'              => $survey['total'] ?? null,
+                'diesel'             => $survey['diesel'] ?? null,
+                'hrs'                => $survey['hrs'] ?? null,
                 'operator_id'        => $survey['operator_id'] ?? null,
             ]);
         }
@@ -1307,11 +1319,227 @@ public function getProjectSummary(Request $request)
 
 
 
+    /**
+     * Work Type Report — aggregates Work Details + Survey Details by type
+     */
+    public function workTypeReport(Request $request)
+    {
+        $user = auth()->user();
 
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
 
+        $companyId = $user->company_id;
+        $fromDate  = $request->query('from_date', now()->startOfMonth()->toDateString());
+        $toDate    = $request->query('to_date', now()->endOfMonth()->toDateString());
 
+        // Query Work Point Details joined with drilling_records for date filter
+        $workData = DB::table('work_point_details')
+            ->join('drilling_records', 'work_point_details.drilling_record_id', '=', 'drilling_records.id')
+            ->where('work_point_details.company_id', $companyId)
+            ->whereBetween('drilling_records.date', [$fromDate, $toDate])
+            ->select(
+                'work_point_details.work_type as type_name',
+                'work_point_details.uom',
+                DB::raw('SUM(CAST(work_point_details.work_point AS DECIMAL(10,2))) as done'),
+                DB::raw('SUM(CAST(work_point_details.hrs AS DECIMAL(10,2))) as hrs'),
+                DB::raw('SUM(CAST(work_point_details.diesel AS DECIMAL(10,2))) as fuel')
+            )
+            ->groupBy('work_point_details.work_type', 'work_point_details.uom')
+            ->get();
 
+        // Query Survey Details joined with drilling_records for date filter
+        $surveyData = DB::table('survey_details')
+            ->join('drilling_records', 'survey_details.drilling_record_id', '=', 'drilling_records.id')
+            ->where('survey_details.company_id', $companyId)
+            ->whereBetween('drilling_records.date', [$fromDate, $toDate])
+            ->select(
+                'survey_details.survey_type as type_name',
+                'survey_details.uom',
+                DB::raw('SUM(CAST(survey_details.survey_point AS DECIMAL(10,2))) as done'),
+                DB::raw('SUM(CAST(survey_details.hrs AS DECIMAL(10,2))) as hrs'),
+                DB::raw('SUM(CAST(survey_details.diesel AS DECIMAL(10,2))) as fuel')
+            )
+            ->groupBy('survey_details.survey_type', 'survey_details.uom')
+            ->get();
 
+        // Merge both datasets by type_name
+        $merged = [];
 
+        foreach ($workData as $row) {
+            $key = $row->type_name;
+            if (!isset($merged[$key])) {
+                $merged[$key] = ['type_name' => $row->type_name, 'uom' => $row->uom, 'done' => 0, 'hrs' => 0, 'fuel' => 0];
+            }
+            $merged[$key]['done'] += floatval($row->done);
+            $merged[$key]['hrs']  += floatval($row->hrs);
+            $merged[$key]['fuel'] += floatval($row->fuel);
+        }
 
+        foreach ($surveyData as $row) {
+            $key = $row->type_name;
+            if (!isset($merged[$key])) {
+                $merged[$key] = ['type_name' => $row->type_name, 'uom' => $row->uom, 'done' => 0, 'hrs' => 0, 'fuel' => 0];
+            }
+            $merged[$key]['done'] += floatval($row->done);
+            $merged[$key]['hrs']  += floatval($row->hrs);
+            $merged[$key]['fuel'] += floatval($row->fuel);
+        }
+
+        // Calculate derived values
+        $result = [];
+        foreach ($merged as $item) {
+            $workPerHr = ($item['hrs'] > 0) ? round($item['done'] / $item['hrs'], 2) : 0;
+            $workPerL  = ($item['fuel'] > 0) ? round($item['done'] / $item['fuel'], 2) : 0;
+
+            $result[] = [
+                'type_name'  => $item['type_name'],
+                'uom'        => $item['uom'],
+                'done'       => round($item['done'], 2),
+                'hrs'        => round($item['hrs'], 2),
+                'fuel'       => round($item['fuel'], 2),
+                'work_per_hr' => $workPerHr,
+                'work_per_l'  => $workPerL,
+            ];
+        }
+
+        return response()->json([
+            'data'      => $result,
+            'from_date' => $fromDate,
+            'to_date'   => $toDate,
+        ]);
+    }
+
+    /**
+     * Multi-Site Breakdown Report — groups by project location, then by work type
+     */
+    public function multiSiteReport(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $companyId = $user->company_id;
+        $date = $request->query('date', now()->toDateString());
+
+        // Work Data
+        $workData = DB::table('work_point_details')
+            ->join('drilling_records', 'work_point_details.drilling_record_id', '=', 'drilling_records.id')
+            ->leftJoin('projects', 'work_point_details.project_id', '=', 'projects.id')
+            ->where('work_point_details.company_id', $companyId)
+            ->whereDate('drilling_records.date', $date)
+            ->select(
+                'projects.id as project_id',
+                'projects.project_name',
+                'projects.customer_name',
+                'work_point_details.work_type as type_name',
+                'work_point_details.uom',
+                DB::raw('SUM(CAST(work_point_details.work_point AS DECIMAL(10,2))) as done'),
+                DB::raw('SUM(CAST(work_point_details.hrs AS DECIMAL(10,2))) as hrs'),
+                DB::raw('SUM(CAST(work_point_details.diesel AS DECIMAL(10,2))) as fuel')
+            )
+            ->groupBy('projects.id', 'projects.project_name', 'projects.customer_name', 'work_point_details.work_type', 'work_point_details.uom')
+            ->get();
+
+        // Survey Data
+        $surveyData = DB::table('survey_details')
+            ->join('drilling_records', 'survey_details.drilling_record_id', '=', 'drilling_records.id')
+            ->leftJoin('projects', 'survey_details.project_id', '=', 'projects.id')
+            ->where('survey_details.company_id', $companyId)
+            ->whereDate('drilling_records.date', $date)
+            ->select(
+                'projects.id as project_id',
+                'projects.project_name',
+                'projects.customer_name',
+                'survey_details.survey_type as type_name',
+                'survey_details.uom',
+                DB::raw('SUM(CAST(survey_details.survey_point AS DECIMAL(10,2))) as done'),
+                DB::raw('SUM(CAST(survey_details.hrs AS DECIMAL(10,2))) as hrs'),
+                DB::raw('SUM(CAST(survey_details.diesel AS DECIMAL(10,2))) as fuel')
+            )
+            ->groupBy('projects.id', 'projects.project_name', 'projects.customer_name', 'survey_details.survey_type', 'survey_details.uom')
+            ->get();
+
+        // Grouping by Project Location
+        $sites = [];
+
+        $processData = function($data) use (&$sites) {
+            foreach ($data as $row) {
+                $siteKey = $row->project_id ? $row->project_id : 'unassigned';
+                $siteName = $row->project_name ? $row->project_name . ($row->customer_name ? ' - ' . $row->customer_name : '') : 'Unassigned Project';
+                
+                if (!isset($sites[$siteKey])) {
+                    $sites[$siteKey] = [
+                        'project_id'   => $row->project_id,
+                        'project_name' => $siteName,
+                        'total_done'   => 0,
+                        'total_hrs'    => 0,
+                        'total_fuel'   => 0,
+                        'avg_yield'    => 0,
+                        'work_types'   => []
+                    ];
+                }
+
+                $typeKey = $row->type_name;
+                if (!isset($sites[$siteKey]['work_types'][$typeKey])) {
+                    $sites[$siteKey]['work_types'][$typeKey] = [
+                        'type_name' => $row->type_name,
+                        'uom'       => $row->uom,
+                        'done'      => 0,
+                        'hrs'       => 0,
+                        'fuel'      => 0,
+                    ];
+                }
+
+                $sites[$siteKey]['work_types'][$typeKey]['done'] += floatval($row->done);
+                $sites[$siteKey]['work_types'][$typeKey]['hrs']  += floatval($row->hrs);
+                $sites[$siteKey]['work_types'][$typeKey]['fuel'] += floatval($row->fuel);
+                
+                $sites[$siteKey]['total_done'] += floatval($row->done);
+                $sites[$siteKey]['total_hrs']  += floatval($row->hrs);
+                $sites[$siteKey]['total_fuel'] += floatval($row->fuel);
+            }
+        };
+
+        $processData($workData);
+        $processData($surveyData);
+
+        // Calculate derived fields
+        $result = [];
+        foreach ($sites as $site) {
+            $site['avg_yield'] = ($site['total_hrs'] > 0) ? round($site['total_done'] / $site['total_hrs'], 2) : 0;
+            
+            $processedTypes = [];
+            foreach ($site['work_types'] as $type) {
+                $workPerHr = ($type['hrs'] > 0) ? round($type['done'] / $type['hrs'], 2) : 0;
+                $workPerL  = ($type['fuel'] > 0) ? round($type['done'] / $type['fuel'], 2) : 0;
+
+                $processedTypes[] = [
+                    'type_name'   => $type['type_name'],
+                    'uom'         => $type['uom'],
+                    'done'        => round($type['done'], 2),
+                    'hrs'         => round($type['hrs'], 2),
+                    'fuel'        => round($type['fuel'], 2),
+                    'work_per_hr' => $workPerHr,
+                    'work_per_l'  => $workPerL,
+                ];
+            }
+            $site['work_types'] = $processedTypes;
+
+            // Round site totals
+            $site['total_done'] = round($site['total_done'], 2);
+            $site['total_hrs']  = round($site['total_hrs'], 2);
+            $site['total_fuel'] = round($site['total_fuel'], 2);
+
+            $result[] = $site;
+        }
+
+        return response()->json([
+            'data' => $result,
+            'date' => $date,
+        ]);
+    }
 }

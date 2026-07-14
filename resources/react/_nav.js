@@ -354,6 +354,24 @@ export default function fetchNavItems(t1) {
           },
           {
             component: CNavItem,
+            name: "Work Types Config",
+            to: '/work-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Survey Types Config",
+            to: '/survey-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "UOM Config",
+            to: '/uoms',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
             name: t("LABELS.all_customers"),
             to: '/project',
             className: 'ms-2',
@@ -637,7 +655,24 @@ export default function fetchNavItems(t1) {
             to: '/project-types',
             className: 'ms-2',
           },
-
+          {
+            component: CNavItem,
+            name: "Work Types Config",
+            to: '/work-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Survey Types Config",
+            to: '/survey-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "UOM Config",
+            to: '/uoms',
+            className: 'ms-2',
+          },
           {
             component: CNavItem,
             name: t("LABELS.all_customers"),
@@ -782,6 +817,24 @@ export default function fetchNavItems(t1) {
             component: CNavItem,
             name: "Project Types Config",
             to: '/project-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Work Types Config",
+            to: '/work-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Survey Types Config",
+            to: '/survey-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "UOM Config",
+            to: '/uoms',
             className: 'ms-2',
           },
           {

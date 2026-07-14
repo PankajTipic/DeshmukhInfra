@@ -57,9 +57,13 @@ use App\Http\Controllers\PurchesVendorController;
 use App\Http\Controllers\MachineryStockUpdateController;  
 
 use App\Http\Controllers\DashboardController;
- use App\Http\Controllers\SubcontractVendorController; 
+use App\Http\Controllers\SubcontractVendorController; 
 
 use App\Http\Controllers\LadgerController;
+
+use App\Http\Controllers\WorkTypeController;
+use App\Http\Controllers\SurveyTypeController;
+use App\Http\Controllers\UomController;
 
 
 // New debugging and sync routes
@@ -166,6 +170,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
      Route::put('/projectsUpdate/{id}', [ProjectController::class, 'UpdateData']);
       Route::delete('/projectsDelete/{id}', [ProjectController::class, 'destroy']);
 
+     // Config Routes
+     Route::apiResource('work-types', WorkTypeController::class);
+     Route::apiResource('survey-types', SurveyTypeController::class);
+     Route::apiResource('uoms', UomController::class);
+
 
 // ____________________________________________________________________________________________________ 
 // infra soft
@@ -181,6 +190,8 @@ Route::delete('/drilling/{id}', [DrillingController::class, 'destroy']);
 Route::get('/getAllData',[OrderController::class,'index']);
 
 Route::get('/todaysData', [DrillingController::class, 'getProjectSummary']);
+Route::get('/worklog/report', [DrillingController::class, 'workTypeReport']);
+Route::get('/worklog/multi-site', [DrillingController::class, 'multiSiteReport']);
 
 //RulesController
 Route::get('/rules', [RulesController::class, 'index']);

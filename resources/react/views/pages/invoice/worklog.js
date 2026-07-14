@@ -11,7 +11,6 @@ import { getAPICall, post } from '../../../util/api';
 import { useNavigate } from 'react-router-dom';
 import Select from "react-select";
 import { useToast } from '../../common/toast/ToastContext';
-import { SurveyTypeDropdown, workTypeDropdown } from '../../../util/Feilds';
 import ProjectSelectionModal from '../../common/ProjectSelectionModal';
 
 const MachineUsageForm = () => {
@@ -19,8 +18,8 @@ const MachineUsageForm = () => {
     project_id: '',
     project_name: '',
     date: '',
-    workDetails: [{ operator_id: '', workType: '', workPoints: '', rate: '', total: 0 }],
-    surveys: [{ operator_id: '', survey_type: '', survey_point: '', rate: '', total: 0 }],
+    workDetails: [{ operator_id: '', workType: '', uom: '', workPoints: '', rate: '', total: 0, diesel: '', hrs: '' }],
+    surveys: [{ operator_id: '', survey_type: '', uom: '', survey_point: '', rate: '', total: 0, diesel: '', hrs: '' }],
     machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: 0 }],
     compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: 0 }],
     rawMaterials: [{ material_type: '', qty_used: '' }],
@@ -36,6 +35,9 @@ const MachineUsageForm = () => {
   const [materialTypes, setMaterialTypes] = useState([]);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [materials, setMaterials] = useState([]);
+  const [workTypes, setWorkTypes] = useState([]);
+  const [surveyTypes, setSurveyTypes] = useState([]);
+  const [uoms, setUoms] = useState([]);
 
   
 
@@ -65,6 +67,23 @@ const MachineUsageForm = () => {
       .catch((error) => {
         console.error("Error fetching operators:", error);
       });
+
+    // Fetch config data
+    const fetchConfigData = async () => {
+      try {
+        const [wt, st, um] = await Promise.all([
+          getAPICall("/api/work-types"),
+          getAPICall("/api/survey-types"),
+          getAPICall("/api/uoms")
+        ]);
+        setWorkTypes(wt || []);
+        setSurveyTypes(st || []);
+        setUoms(um || []);
+      } catch (err) {
+        console.error("Error fetching config data:", err);
+      }
+    };
+    fetchConfigData();
   }, []);
 
   // Fetch machineries
@@ -239,7 +258,7 @@ const MachineUsageForm = () => {
   const addWorkDetail = () => {
     setFormData(prev => ({
       ...prev,
-      workDetails: [...prev.workDetails, { operator_id: '', workType: '', workPoints: '', rate: '', total: 0 }]
+      workDetails: [...prev.workDetails, { operator_id: '', workType: '', uom: '', workPoints: '', rate: '', total: 0, diesel: '', hrs: '' }]
     }));
   };
 
@@ -265,7 +284,7 @@ const MachineUsageForm = () => {
   const addSurvey = () => {
     setFormData(prev => ({
       ...prev,
-      surveys: [...prev.surveys, { operator_id: '', survey_type: '', survey_point: '', rate: '', total: 0 }]
+      surveys: [...prev.surveys, { operator_id: '', survey_type: '', uom: '', survey_point: '', rate: '', total: 0, diesel: '', hrs: '' }]
     }));
   };
 
@@ -300,8 +319,8 @@ const MachineUsageForm = () => {
     project_id: '',
     project_name: '',
     date: '',
-    workDetails: [{ operator_id: '', workType: '', workPoints: '', rate: '', total: 0 }],
-    surveys: [{ operator_id: '', survey_type: '', survey_point: '', rate: '', total: 0 }],
+    workDetails: [{ operator_id: '', workType: '', uom: '', workPoints: '', rate: '', total: 0, diesel: '', hrs: '' }],
+    surveys: [{ operator_id: '', survey_type: '', uom: '', survey_point: '', rate: '', total: 0, diesel: '', hrs: '' }],
     machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: 0 }],
     compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: 0 }],
     rawMaterials: [{ material_type: '', qty_used: '' }],
@@ -409,15 +428,21 @@ const MachineUsageForm = () => {
         operator_id: work.operator_id,
         work_type: work.workType,
         work_point: work.workPoints,
+        uom: work.uom,
         rate: work.rate,
-        total: work.total
+        total: work.total,
+        diesel: work.diesel,
+        hrs: work.hrs
       })),
       surveys: formData.surveys.map(survey => ({
         operator_id: survey.operator_id,
         survey_type: survey.survey_type,
         survey_point: survey.survey_point,
+        uom: survey.uom,
         rate: survey.rate,
-        total: survey.total
+        total: survey.total,
+        diesel: survey.diesel,
+        hrs: survey.hrs
       })),
       machineReading: formData.machineReading.map(machineRead => ({
         oprator_id: machineRead.oprator_id,
@@ -837,7 +862,7 @@ const MachineUsageForm = () => {
                   </div>
                   {formData.workDetails.map((work, index) => (
                     <CRow key={index} className="align-items-center mb-2">
-                      <CCol md={3}>
+                      <CCol md={2}>
                         <CFormLabel>Oprator</CFormLabel>
                         <Select
                           options={operators}
@@ -858,14 +883,30 @@ const MachineUsageForm = () => {
                           }
                         >
                           <option value="">Select Work Type</option>
-                          {workTypeDropdown.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
+                          {workTypes.map((type) => (
+                            <option key={type.id} value={type.name}>
+                              {type.name}
                             </option>
                           ))}
                         </CFormSelect>
                       </CCol>
                       <CCol lg={2}>
+                        <CFormLabel>UOM</CFormLabel>
+                        <CFormSelect
+                          value={work.uom}
+                          onChange={(e) =>
+                            handleWorkDetailChange(index, "uom", e.target.value)
+                          }
+                        >
+                          <option value="">Select UOM</option>
+                          {uoms.map((type) => (
+                            <option key={type.id} value={type.name}>
+                              {type.name}
+                            </option>
+                          ))}
+                        </CFormSelect>
+                      </CCol>
+                      <CCol lg={1}>
                         <CFormLabel>Points</CFormLabel>
                         <CFormInput
                           type="text"
@@ -904,16 +945,43 @@ const MachineUsageForm = () => {
                           />
                         </CInputGroup>
                       </CCol>
-                      <CCol lg={2}>
+                      <CCol lg={1}>
                         <CFormLabel>Total</CFormLabel>
-                        <CInputGroup>
-                          <CInputGroupText>₹</CInputGroupText>
-                          <CFormInput
-                            value={work.total.toFixed(2)}
-                            readOnly
-                            className="bg-light fw-bold"
-                          />
-                        </CInputGroup>
+                        <CFormInput
+                          value={work.total.toFixed(2)}
+                          readOnly
+                          className="bg-light fw-bold px-1"
+                        />
+                      </CCol>
+                      <CCol lg={1}>
+                        <CFormLabel>Diesel</CFormLabel>
+                        <CFormInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={work.diesel}
+                          placeholder="0"
+                          onChange={(e) => {
+                            if (e.target.value >= 0) {
+                              handleWorkDetailChange(index, "diesel", e.target.value);
+                            }
+                          }}
+                        />
+                      </CCol>
+                      <CCol lg={1}>
+                        <CFormLabel>Hrs</CFormLabel>
+                        <CFormInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={work.hrs}
+                          placeholder="0"
+                          onChange={(e) => {
+                            if (e.target.value >= 0) {
+                              handleWorkDetailChange(index, "hrs", e.target.value);
+                            }
+                          }}
+                        />
                       </CCol>
                       <CCol lg={1}>
                         {formData.workDetails.length > 1 && (
@@ -921,6 +989,7 @@ const MachineUsageForm = () => {
                             color="danger"
                             variant="ghost"
                             size="sm"
+                            className="mt-4"
                             onClick={() => removeWorkDetail(index)}
                           >
                             <CIcon icon={cilX} />
@@ -945,7 +1014,7 @@ const MachineUsageForm = () => {
                   </div>
                   {formData.surveys.map((survey, index) => (
                     <CRow key={index} className="align-items-center mb-2">
-                      <CCol md={3}>
+                      <CCol md={2}>
                         <CFormLabel>Oprator</CFormLabel>
                         <Select
                           options={operators}
@@ -966,14 +1035,30 @@ const MachineUsageForm = () => {
                           }
                         >
                           <option value="">Select Survey Type</option>
-                          {SurveyTypeDropdown.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
+                          {surveyTypes.map((type) => (
+                            <option key={type.id} value={type.name}>
+                              {type.name}
                             </option>
                           ))}
                         </CFormSelect>
                       </CCol>
                       <CCol lg={2}>
+                        <CFormLabel>UOM</CFormLabel>
+                        <CFormSelect
+                          value={survey.uom}
+                          onChange={(e) =>
+                            handleSurveyChange(index, "uom", e.target.value)
+                          }
+                        >
+                          <option value="">Select UOM</option>
+                          {uoms.map((type) => (
+                            <option key={type.id} value={type.name}>
+                              {type.name}
+                            </option>
+                          ))}
+                        </CFormSelect>
+                      </CCol>
+                      <CCol lg={1}>
                         <CFormLabel>Points</CFormLabel>
                         <CFormInput
                           type="text"
@@ -1012,16 +1097,43 @@ const MachineUsageForm = () => {
                           />
                         </CInputGroup>
                       </CCol>
-                      <CCol lg={2}>
+                      <CCol lg={1}>
                         <CFormLabel>Total</CFormLabel>
-                        <CInputGroup>
-                          <CInputGroupText>₹</CInputGroupText>
-                          <CFormInput
-                            value={survey.total.toFixed(2)}
-                            readOnly
-                            className="bg-light fw-bold"
-                          />
-                        </CInputGroup>
+                        <CFormInput
+                          value={survey.total.toFixed(2)}
+                          readOnly
+                          className="bg-light fw-bold px-1"
+                        />
+                      </CCol>
+                      <CCol lg={1}>
+                        <CFormLabel>Diesel</CFormLabel>
+                        <CFormInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={survey.diesel}
+                          placeholder="0"
+                          onChange={(e) => {
+                            if (e.target.value >= 0) {
+                              handleSurveyChange(index, "diesel", e.target.value);
+                            }
+                          }}
+                        />
+                      </CCol>
+                      <CCol lg={1}>
+                        <CFormLabel>Hrs</CFormLabel>
+                        <CFormInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={survey.hrs}
+                          placeholder="0"
+                          onChange={(e) => {
+                            if (e.target.value >= 0) {
+                              handleSurveyChange(index, "hrs", e.target.value);
+                            }
+                          }}
+                        />
                       </CCol>
                       <CCol lg={1}>
                         {formData.surveys.length > 1 && (
@@ -1029,6 +1141,7 @@ const MachineUsageForm = () => {
                             color="danger"
                             variant="ghost"
                             size="sm"
+                            className="mt-4"
                             onClick={() => removeSurvey(index)}
                           >
                             <CIcon icon={cilX} />
