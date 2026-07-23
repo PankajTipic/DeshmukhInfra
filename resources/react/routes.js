@@ -1,5 +1,5 @@
 import React from 'react'
-import { getUserType } from './util/session'
+import { getUserType, getUserData } from './util/session'
 import worklog from './views/pages/invoice/worklog'
 
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -155,7 +155,14 @@ const VendorLadger = React.lazy(() => import('./views/pages/report/VendorLadger.
 
 
 export default function fetchRoutes() {
-  const user = getUserType();
+  let user = getUserType();
+  const userData = getUserData();
+  const permissions = userData?.permissions;
+
+  if (permissions && Array.isArray(permissions) && permissions.length > 0 && user !== 0) {
+      user = 1;
+  }
+
   let routes = [];
 
 

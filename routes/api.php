@@ -60,6 +60,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SubcontractVendorController; 
 
 use App\Http\Controllers\LadgerController;
+use App\Http\Controllers\RoleController;
 
 use App\Http\Controllers\WorkTypeController;
 use App\Http\Controllers\SurveyTypeController;
@@ -98,6 +99,10 @@ Route::get('/subcontract-vendor/{id}/payments', [SubcontractVendorController::cl
 Route::post('/subcontract-vendor/{id}/record-payment', [SubcontractVendorController::class, 'recordPayment']);
 Route::post('/subcontract-vendor/payment/{id}', [SubcontractVendorController::class, 'updatePayment']);
 Route::get('/subcontract-ledger-report', [SubcontractVendorController::class, 'subcontractLedgerReport']);
+
+    // Roles Routes
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::post('/roles', [RoleController::class, 'store']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -450,7 +455,8 @@ Route::post('/raw-materials/used-quantity', [RawMaterialController::class, 'used
     Route::post('/logoutEverywhere',[AuthController::class, 'logoutEverywhere']);
     Route::post('/registerUser',[AuthController::class, 'registerUser']);
     Route::put('/appUsers',[AuthController::class, 'update']); 
-Route::put('/userUpdated/{id}',[AuthController::class, 'userUpdated']); 
+    Route::put('/userUpdated/{id}',[AuthController::class, 'userUpdated']); 
+    Route::put('/userPermissions/{id}', [AuthController::class, 'updatePermissions']); 
     Route::get('/appUsers',[AuthController::class, 'allUsers']);
     Route::resource('product',ProductController::class);
     Route::resource('expenseType',ExpenseTypeController::class);

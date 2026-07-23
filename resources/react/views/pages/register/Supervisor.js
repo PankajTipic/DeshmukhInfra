@@ -26,17 +26,135 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser, cilMobile, cilPeople, cibAmazonPay } from '@coreui/icons'
-import { getAPICall, register, put } from '../../../util/api'
-import { getUserData } from '../../../util/session'
+import { getAPICall, register, put, post } from '../../../util/api'
+import { getUserData, updateUserData } from '../../../util/session'
 import { useToast } from '../../common/toast/ToastContext'
+
+const ROLE_DEFAULTS = {
+  1: [ // Admin
+    '/dashboard', '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable',
+    '/invoice', '/invoiceTable', '/budget', '/ProjectSummeryReport', '/operatorReport', '/vendorReport',
+    '/incomeTable', '/internal-money-transfer', 'Reports/Reports', '/expense/expenseReport', '/seprateAllData',
+    '/subcontractLadger', '/RegularProjectsLadger', '/PurchaseVendorLadger', '/VendorLedger',
+    '/displayPurchesVendors', '/vendorPurches', '/vendorPurchesPayment', '/PurchaseVendorReport',
+    '/project-types', '/work-types', '/survey-types', '/uoms', '/project', '/expense/all-type',
+    '/OpratorList', '/supervisor', '/showRawMaterials', '/MachineriesTable', '/machineryStockTable'
+  ],
+  2: [ // User
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/project', '/expense/all-type', '/OpratorList', '/MachineriesTable', '/machineryStockTable'
+  ],
+  3: [ // User++
+    '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/invoice', '/invoiceTable', '/budget', '/displayPurchesVendors', '/vendorPurches', '/vendorPurchesPayment',
+    '/PurchaseVendorReport', '/project-types', '/work-types', '/survey-types', '/uoms', '/project',
+    '/expense/all-type', '/OpratorList', '/MachineriesTable', '/machineryStockTable'
+  ],
+  4: [ // Purchase Vendor
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/displayPurchesVendors', '/vendorPurches', '/vendorPurchesPayment', '/PurchaseVendorReport',
+    '/project-types', '/work-types', '/survey-types', '/uoms', '/project', '/expense/all-type',
+    '/OpratorList', '/MachineriesTable', '/machineryStockTable'
+  ],
+  5: [ // Work Log User
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport', '/project',
+    '/project-types', '/work-types', '/survey-types', '/uoms', '/expense/all-type',
+    '/MachineriesTable', '/machineryStockTable'
+  ]
+};
+
+const ALL_PAGES = [
+  {
+    category: 'Dashboards',
+    pages: [
+      { label: 'Admin Dashboard', path: '/dashboard' },
+      { label: 'Daily Activity Dashboard', path: '/dailyActivityDashboard' },
+    ]
+  },
+  {
+    category: 'Work Logs & Expenses',
+    pages: [
+      { label: 'Work Log Form', path: '/worklog' },
+      { label: 'New Expense Entry', path: '/expense/new' },
+      { label: 'Work Log Report Table', path: '/infraDetailsShowTable' },
+      { label: 'Expense Report Page', path: '/expense/expenseReport' },
+      { label: 'Separate All Data Tool', path: '/seprateAllData' },
+      { label: 'General Reports options', path: 'Reports/Reports' }
+    ]
+  },
+  {
+    category: 'Bills & Invoicing',
+    pages: [
+      { label: 'Create Invoice', path: '/invoice' },
+      { label: 'All Invoices Table', path: '/invoiceTable' },
+      { label: 'Vendor Budget Summary', path: '/budget' },
+      { label: 'Project Summary Report', path: '/ProjectSummeryReport' }
+    ]
+  },
+  {
+    category: 'Payments & Money Flow',
+    pages: [
+      { label: 'Operator Payment Log', path: '/operatorReport' },
+      { label: 'Vendor Payment Log', path: '/vendorReport' },
+      { label: 'Income Report Table', path: '/incomeTable' },
+      { label: 'Internal Money Transfer', path: '/internal-money-transfer' }
+    ]
+  },
+  {
+    category: 'Ledgers',
+    pages: [
+      { label: 'Sub Contract Ledger', path: '/subcontractLadger' },
+      { label: 'Regular Project Ledger', path: '/RegularProjectsLadger' },
+      { label: 'Purchase Vendor Ledger', path: '/PurchaseVendorLadger' },
+      { label: 'Vendor Ledger Summary', path: '/VendorLedger' }
+    ]
+  },
+  {
+    category: 'Purchase Vendor Mgmt',
+    pages: [
+      { label: 'Add Purchase Vendor', path: '/displayPurchesVendors' },
+      { label: 'New Purchase Entry', path: '/vendorPurches' },
+      { label: 'Make Vendor Payment', path: '/vendorPurchesPayment' },
+      { label: 'Purchase Vendor Report', path: '/PurchaseVendorReport' }
+    ]
+  },
+  {
+    category: 'Software Configuration & Masters',
+    pages: [
+      { label: 'Project Types Config', path: '/project-types' },
+      { label: 'Work Types Config', path: '/work-types' },
+      { label: 'Survey Types Config', path: '/survey-types' },
+      { label: 'UOM Config', path: '/uoms' },
+      { label: 'All Customers List', path: '/project' },
+      { label: 'All Expense Types List', path: '/expense/all-type' },
+      { label: 'All Resources / Operators', path: '/OpratorList' },
+      { label: 'All Accountants / Supervisors', path: '/supervisor' },
+      { label: 'All Raw Materials Inventory', path: '/showRawMaterials' },
+      { label: 'All Machinery Masters', path: '/MachineriesTable' },
+      { label: 'Machinery Stock Log Table', path: '/machineryStockTable' }
+    ]
+  }
+];
 
 const SupervisorsList = () => {
   const [supervisors, setSupervisors] = useState([])
+  const [rolesList, setRolesList] = useState([])
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [newRoleName, setNewRoleName] = useState('')
+  const [newRoleBaseType, setNewRoleBaseType] = useState('2')
+  const [newRolePerms, setNewRolePerms] = useState([])
+
   const [showModal, setShowModal] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [editSupervisor, setEditSupervisor] = useState(null)
   const [validated, setValidated] = useState(false)
   const [companyList, setCompanyList] = useState([])
+  
+  // Permissions management states
+  const [permissionsModal, setPermissionsModal] = useState(false)
+  const [permUser, setPermUser] = useState(null)
+  const [selectedPerms, setSelectedPerms] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
   
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false)
@@ -66,63 +184,17 @@ const SupervisorsList = () => {
   const { showToast } = useToast()
   const user = getUserData()
 
-  // let userTypes = []
-  // if (user.type === 0) {
-  //   userTypes = [
-  //     { label: 'Select User Type ', value: '' },
-  //     { label: 'Super Admin', value: '0' },
-  //     { label: 'Admin', value: '1' },
-  //     { label: 'User', value: '2', disabled: false },
-      
-  //   ]
-  // } else if (user.type === 1) {
-  //   userTypes = [
-  //     { label: 'Select User Type ', value: '' },
-  //     { label: 'Admin', value: '1' },
-  //     { label: 'User', value: '2', disabled: false },
-   
-  //   ]
-  // } else {
-  //   userTypes = [
-  //     { label: 'Select User Type ', value: '' },
-  //     { label: 'User', value: '2', disabled: false }
-  //   ]
-  // }
-
-
-  let userTypes = []
-  if (user.type === 0) {
-    userTypes = [
-      { label: 'Select User Type ', value: '' },
-      { label: 'Super Admin', value: '0' },
-      { label: 'Admin', value: '1' },
-      { label: 'User', value: '2', disabled: false },
-      { label: 'User++', value: '3', disabled: false },
-      { label: 'Purchase Vendor', value: '4', disabled: false },
-      { label: 'Work Log User', value: '5', disabled: false },
-
-    ]
-  } else if (user.type === 1) {
-    userTypes = [
-      { label: 'Select User Type ', value: '' },
-      { label: 'Admin', value: '1' },
-      { label: 'User', value: '2', disabled: false },
-      { label: 'User++', value: '3', disabled: false },
-      { label: 'Purchase Vendor', value: '4', disabled: false },
-      { label: 'Work Log User', value: '5', disabled: false },
-
-
-    ]
-  } else {
-    userTypes = [
-      { label: 'Select User Type ', value: '' },
-      { label: 'User', value: '2', disabled: false },
-      { label: 'User++', value: '3', disabled: false },
-      { label: 'Purchase Vendor', value: '4', disabled: false },
-      { label: 'Work Log User', value: '5', disabled: false },
-
-    ]
-  }
+  let userTypes = [{ label: 'Select User Type ', value: '' }]
+  rolesList.forEach(role => {
+    // If user is Admin (1), they shouldn't see Super Admin (0)
+    if (user.type !== 0 && role.base_type === 0) return;
+    
+    if (role.is_default) {
+       userTypes.push({ label: role.name, value: role.base_type.toString() })
+    } else {
+       userTypes.push({ label: `Custom: ${role.name}`, value: `custom_${role.id}` })
+    }
+  })
 
 
 
@@ -211,11 +283,19 @@ const SupervisorsList = () => {
   }
 
   const handleSelect = (_, isCompany = false) => {
-    const value = parseInt(isCompany ? companyRef.current.value : typeRef.current.value, 10)
+    const rawValue = isCompany ? companyRef.current?.value : typeRef.current?.value
     if (isCompany) {
+      const value = parseInt(rawValue, 10)
       setCompanyIsInvalid(!(value > 0))
     } else {
-      setTypeIsInvalid(![0, 1, 2 , 3, 4].includes(value))
+      if (!rawValue) {
+        setTypeIsInvalid(true)
+      } else if (typeof rawValue === 'string' && rawValue.startsWith('custom_')) {
+        setTypeIsInvalid(false)
+      } else {
+        const value = parseInt(rawValue, 10)
+        setTypeIsInvalid(![0, 1, 2, 3, 4, 5].includes(value))
+      }
     }
   }
 
@@ -233,6 +313,13 @@ const SupervisorsList = () => {
         }
       })
       .catch(err => showToast('danger', 'Error: ' + err))
+      
+    // Fetch roles
+    getAPICall('/api/roles')
+      .then(resp => {
+        if (resp) setRolesList(resp)
+      })
+      .catch(err => console.error(err))
   }, [])
 
   // Fetch supervisors
@@ -366,14 +453,30 @@ const SupervisorsList = () => {
   }
 
   // collect data
+  const selectedTypeValue = typeRef.current?.value;
+  let finalType = selectedTypeValue;
+  let finalPermissions = null;
+
+  if (selectedTypeValue && selectedTypeValue.startsWith('custom_')) {
+      const customRoleId = parseInt(selectedTypeValue.replace('custom_', ''));
+      const customRole = rolesList.find(r => r.id === customRoleId);
+      if (customRole) {
+          finalType = customRole.base_type;
+          finalPermissions = customRole.permissions;
+      }
+  } else {
+      finalType = parseInt(selectedTypeValue, 10);
+  }
+
   const supervisorData = {
     name: nameRef.current?.value.trim(),
     email: emailRef.current?.value.trim(),
     mobile: mobileRef.current?.value.trim(),
     password: pwdRef.current?.value,
     password_confirmation: cPwdRef.current?.value,
-    type: typeRef.current?.value,
+    type: finalType,
     company_id: companyRef.current?.value,
+    permissions: finalPermissions
   }
 
   try {
@@ -393,7 +496,19 @@ const SupervisorsList = () => {
 
   // Open edit modal
   const openEditModal = (supervisor) => {
-    setEditSupervisor(supervisor)
+    let typeStr = supervisor.type !== undefined ? supervisor.type.toString() : '';
+    if (supervisor.permissions && supervisor.permissions.length > 0) {
+      const matchedRole = rolesList.find(r => 
+        !r.is_default && 
+        r.permissions && 
+        r.permissions.length === supervisor.permissions.length &&
+        r.permissions.every(p => supervisor.permissions.includes(p))
+      );
+      if (matchedRole) {
+        typeStr = `custom_${matchedRole.id}`;
+      }
+    }
+    setEditSupervisor({ ...supervisor, type_string: typeStr })
     setEditModal(true)
   }
 
@@ -401,13 +516,31 @@ const SupervisorsList = () => {
   const handleUpdate = async () => {
     if (!editSupervisor) return
 
+    let finalType = editSupervisor.type;
+    let finalPermissions = null;
+
+    const selectedTypeStr = editSupervisor.type_string || editSupervisor.type?.toString();
+    
+    if (selectedTypeStr && selectedTypeStr.startsWith('custom_')) {
+        const customRoleId = parseInt(selectedTypeStr.replace('custom_', ''));
+        const customRole = rolesList.find(r => r.id === customRoleId);
+        if (customRole) {
+            finalType = customRole.base_type;
+            finalPermissions = customRole.permissions;
+        }
+    } else if (selectedTypeStr) {
+        finalType = parseInt(selectedTypeStr, 10);
+        finalPermissions = null; // Revert to static default permissions
+    }
+
     try {
       const payload = {
         id: editSupervisor.id,
         name: editSupervisor.name,
         email: editSupervisor.email,
         mobile: editSupervisor.mobile,
-        type: editSupervisor.type,
+        type: finalType,
+        permissions: finalPermissions,
         company_id: editSupervisor.company_id || user.company_id,
         blocked: editSupervisor.blocked ?? 0,
       }
@@ -425,6 +558,98 @@ const SupervisorsList = () => {
     }
   }
 
+  // Permissions management helper functions
+  const openPermissionsModal = (supervisor) => {
+    setPermUser(supervisor)
+    setSelectedPerms(supervisor.permissions || [])
+    setSearchQuery('')
+    setPermissionsModal(true)
+  }
+
+  const handleTogglePage = (path) => {
+    setSelectedPerms(prev => {
+      if (prev.includes(path)) {
+        return prev.filter(p => p !== path)
+      } else {
+        return [...prev, path]
+      }
+    })
+  }
+
+  const handleSelectAll = () => {
+    const allPaths = ALL_PAGES.flatMap(cat => cat.pages.map(p => p.path))
+    setSelectedPerms(allPaths)
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedPerms([])
+  }
+
+  const handleResetToDefault = () => {
+    if (!permUser) return
+    const defaults = ROLE_DEFAULTS[permUser.type] || []
+    setSelectedPerms(defaults)
+  }
+
+  const handleSavePermissions = async () => {
+    if (!permUser) return
+
+    try {
+      const resp = await put(`/api/userPermissions/${permUser.id}`, {
+        permissions: selectedPerms
+      })
+      if (resp?.success) {
+        showToast('success', 'Page access permissions updated successfully')
+        setPermissionsModal(false)
+        fetchSupervisors()
+        
+        // If the admin updated their own permissions, sync their session data immediately
+        if (permUser.id === user.id) {
+          updateUserData({ user: { ...user, permissions: selectedPerms } })
+          setTimeout(() => {
+            window.location.reload()
+          }, 1500)
+        }
+      } else {
+        showToast('danger', resp?.message || 'Failed to save permissions')
+      }
+    } catch (error) {
+      showToast('danger', 'Error saving permissions: ' + error)
+    }
+  }
+
+  const getUserRoleName = (u) => {
+    // 1. Direct match by base_type (unique dynamic role integer type)
+    const directRole = rolesList.find(r => r.base_type === u.type);
+    if (directRole) {
+      return directRole.name;
+    }
+
+    // 2. Permission match fallback
+    if (u.permissions && u.permissions.length > 0) {
+      const matchedRole = rolesList.find(r => 
+        !r.is_default && 
+        r.permissions && 
+        r.permissions.length === u.permissions.length &&
+        r.permissions.every(p => u.permissions.includes(p))
+      );
+      if (matchedRole) {
+        return matchedRole.name;
+      }
+      return "Custom Access";
+    }
+
+    switch (u.type) {
+      case 0: return "Super Admin";
+      case 1: return "Admin";
+      case 2: return "User";
+      case 3: return "User++";
+      case 4: return "Purchase Vendor";
+      case 5: return "Work Log User";
+      default: return `Type ${u.type}`;
+    }
+  }
+
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-column">
       <CContainer>
@@ -434,9 +659,12 @@ const SupervisorsList = () => {
 
 {/* ==================== ROLE PERMISSIONS SECTION ==================== */}
            <CCard className="mb-4">
-  <CCardHeader><strong>Role Permissions Overview</strong></CCardHeader>
+  <CCardHeader className="d-flex justify-content-between align-items-center">
+    <strong>Role Permissions Overview</strong>
+    <span className="badge bg-primary">{rolesList.filter(r => !r.is_default).length} Custom Roles Created</span>
+  </CCardHeader>
   <CCardBody>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '10px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
 
       {[
         { label: 'Admin', sub: 'Full access', color: '#A32D2D', bg: '#FCEBEB', icon: 'ti-shield-lock',
@@ -449,6 +677,17 @@ const SupervisorsList = () => {
           perms: ['Work log', 'Expenses', 'Purchase vendor'] },
         { label: 'Work log user', sub: 'Log access', color: '#185FA5', bg: '#E6F1FB', icon: 'ti-clipboard-list',
           perms: ['Work log', 'Expenses', 'All projects access'] },
+        ...rolesList.filter(r => !r.is_default).map(r => ({
+          label: r.name,
+          sub: `Custom Role (Base: Type ${r.base_type})`,
+          color: '#6200ea',
+          bg: '#f3e8ff',
+          icon: 'ti-user-check',
+          perms: [
+            `${r.permissions?.length || 0} pages assigned`,
+            'Custom configured access'
+          ]
+        }))
       ].map(({ label, sub, color, bg, icon, perms }) => (
         <div key={label} style={{ background: 'var(--cui-card-bg, #fff)', border: '0.5px solid var(--cui-border-color)', borderRadius: '12px', padding: '1rem', borderTop: `3px solid ${color}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -485,13 +724,22 @@ const SupervisorsList = () => {
             <CCard>
               <CCardHeader className="d-flex justify-content-between align-items-center">
                 <strong>Supervisors List</strong>
-                <CButton 
-                  color="danger" 
-                  onClick={() => setShowModal(true)}
-                  className="text-white"
-                >
-                  Add New Supervisor
-                </CButton>
+                <div className="d-flex gap-2">
+                  <CButton 
+                    color="primary" 
+                    onClick={() => setShowRoleModal(true)}
+                    className="text-white"
+                  >
+                    Create Custom Role
+                  </CButton>
+                  <CButton 
+                    color="danger" 
+                    onClick={() => setShowModal(true)}
+                    className="text-white"
+                  >
+                    Add New Supervisor
+                  </CButton>
+                </div>
               </CCardHeader>
               <CCardBody>
                 <CTable striped hover responsive>
@@ -502,6 +750,7 @@ const SupervisorsList = () => {
                       <CTableHeaderCell>Email</CTableHeaderCell>
                       <CTableHeaderCell>Mobile</CTableHeaderCell>
                       <CTableHeaderCell>Type</CTableHeaderCell>
+                      <CTableHeaderCell>Page Access</CTableHeaderCell>
                       <CTableHeaderCell>Company</CTableHeaderCell>
                       <CTableHeaderCell>Action</CTableHeaderCell>
                     </CTableRow>
@@ -513,32 +762,50 @@ const SupervisorsList = () => {
                         <CTableDataCell>{u.name}</CTableDataCell>
                         <CTableDataCell>{u.email}</CTableDataCell>
                         <CTableDataCell>{u.mobile}</CTableDataCell>
-                       <CTableDataCell>
-  {u.type === 0
-    ? "Super Admin"
-    : u.type === 1
-    ? "Admin"
-    : u.type === 2
-    ? "User"
-    : u.type === 3
-    ? "User++"
-    : u.type === 4
-    ? "Purchase Vendor"
-     : u.type === 5
-    ? "Work Log User"
-    : "Unknown"}
-</CTableDataCell>
+                        <CTableDataCell>
+                          <strong>{getUserRoleName(u)}</strong>
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          {u.permissions && u.permissions.length > 0 ? (
+                            <span 
+                              className="badge bg-success" 
+                              style={{ cursor: 'pointer', padding: '6px 10px', borderRadius: '8px' }}
+                              onClick={() => openPermissionsModal(u)}
+                            >
+                              Custom ({u.permissions.length} pages)
+                            </span>
+                          ) : (
+                            <span 
+                              className="badge bg-secondary" 
+                              style={{ cursor: 'pointer', padding: '6px 10px', borderRadius: '8px' }}
+                              onClick={() => openPermissionsModal(u)}
+                            >
+                              Role Defaults
+                            </span>
+                          )}
+                        </CTableDataCell>
 
                         <CTableDataCell>{companyList.find(c => c.value === u.company_id)?.label || 'N/A'}</CTableDataCell>
                         <CTableDataCell>
-                          <CButton 
-                            size="sm" 
-                            color="info" 
-                            className="text-white"
-                            onClick={() => openEditModal(u)}
-                          >
-                            Edit
-                          </CButton>
+                          <div className="d-flex gap-2">
+                            <CButton 
+                              size="sm" 
+                              color="info" 
+                              className="text-white"
+                              onClick={() => openEditModal(u)}
+                            >
+                              Edit
+                            </CButton>
+                            <CButton 
+                              size="sm" 
+                              color="primary" 
+                              style={{ backgroundColor: '#6200ea', borderColor: '#6200ea' }}
+                              className="text-white"
+                              onClick={() => openPermissionsModal(u)}
+                            >
+                              Page Access
+                            </CButton>
+                          </div>
                         </CTableDataCell>
                       </CTableRow>
                     ))}
@@ -776,8 +1043,8 @@ const SupervisorsList = () => {
               <CFormSelect
                 className="mb-2"
                 label="Type"
-                value={editSupervisor.type}
-                onChange={(e) => setEditSupervisor({ ...editSupervisor, type: parseInt(e.target.value) })}
+                value={editSupervisor.type_string || editSupervisor.type}
+                onChange={(e) => setEditSupervisor({ ...editSupervisor, type_string: e.target.value })}
                 options={userTypes}
               />
             </>
@@ -786,6 +1053,286 @@ const SupervisorsList = () => {
         <CModalFooter>
           <CButton color="secondary" onClick={() => setEditModal(false)}>Close</CButton>
           <CButton color="success" onClick={handleUpdate}>Save Changes</CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* --- MANAGE PERMISSIONS MODAL --- */}
+      <CModal 
+        visible={permissionsModal} 
+        onClose={() => setPermissionsModal(false)}
+        size="lg"
+        scrollable
+        backdrop="static"
+      >
+        <CModalHeader closeButton>
+          <CModalTitle style={{ fontWeight: '700' }}>
+            🔑 Manage Page Access - {permUser?.name}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody className="p-4" style={{ background: '#f8f9fa' }}>
+          {permUser && (
+            <div>
+              {/* User info banner */}
+              <div 
+                className="mb-4 p-3 d-flex align-items-center justify-content-between"
+                style={{ 
+                  backgroundColor: '#ffffff', 
+                  borderRadius: '12px', 
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                }}
+              >
+                <div>
+                  <h6 style={{ margin: 0, fontWeight: '700' }}>{permUser.name}</h6>
+                  <small style={{ color: '#718096' }}>{permUser.email} • Mobile: {permUser.mobile}</small>
+                </div>
+                <div>
+                  <span className="badge bg-secondary px-3 py-2 text-capitalize" style={{ fontSize: '12px' }}>
+                    Role: {
+                      permUser.type === 0 ? "Super Admin" :
+                      permUser.type === 1 ? "Admin" :
+                      permUser.type === 2 ? "User" :
+                      permUser.type === 3 ? "User++" :
+                      permUser.type === 4 ? "Purchase Vendor" :
+                      permUser.type === 5 ? "Work Log User" : "Unknown"
+                    }
+                  </span>
+                </div>
+              </div>
+
+              {/* Toolbar */}
+              <div className="mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div style={{ flex: '1 1 300px' }}>
+                  <CFormInput
+                    placeholder="🔍 Search pages by name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      borderRadius: '10px',
+                      padding: '10px 15px',
+                      border: '1.5px solid #cbd5e0',
+                      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                  />
+                </div>
+                <div className="d-flex gap-2 flex-wrap">
+                  <CButton 
+                    size="sm" 
+                    color="secondary" 
+                    variant="outline"
+                    onClick={handleSelectAll}
+                    style={{ borderRadius: '8px', fontWeight: '600' }}
+                  >
+                    Select All
+                  </CButton>
+                  <CButton 
+                    size="sm" 
+                    color="secondary" 
+                    variant="outline"
+                    onClick={handleDeselectAll}
+                    style={{ borderRadius: '8px', fontWeight: '600' }}
+                  >
+                    Clear All
+                  </CButton>
+                  <CButton 
+                    size="sm" 
+                    color="warning" 
+                    className="text-white"
+                    onClick={handleResetToDefault}
+                    style={{ borderRadius: '8px', fontWeight: '600' }}
+                  >
+                    Reset to Role Defaults
+                  </CButton>
+                </div>
+              </div>
+
+              {/* Scrollable checklists */}
+              <div 
+                style={{ 
+                  maxHeight: '400px', 
+                  overflowY: 'auto', 
+                  paddingRight: '6px'
+                }}
+              >
+                {ALL_PAGES.map(categoryObj => {
+                  const filteredPages = categoryObj.pages.filter(p => 
+                    p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.path.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+
+                  if (filteredPages.length === 0) return null;
+
+                  return (
+                    <div 
+                      key={categoryObj.category}
+                      className="mb-4 p-3"
+                      style={{ 
+                        background: '#ffffff', 
+                        borderRadius: '16px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      <h6 
+                        style={{ 
+                          fontWeight: '800', 
+                          color: '#2d3748', 
+                          borderBottom: '2px solid #edf2f7', 
+                          paddingBottom: '8px',
+                          marginBottom: '15px'
+                        }}
+                      >
+                        {categoryObj.category}
+                      </h6>
+                      <div className="row">
+                        {filteredPages.map(page => {
+                          const isChecked = selectedPerms.includes(page.path);
+                          return (
+                            <div key={page.path} className="col-12 col-md-6 mb-3">
+                              <div 
+                                onClick={() => handleTogglePage(page.path)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '12px 16px',
+                                  borderRadius: '12px',
+                                  border: isChecked ? '1.5px solid #6200ea' : '1.5px solid #edf2f7',
+                                  background: isChecked ? '#f3e8ff' : '#fcfcfc',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(-2px)';
+                                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                                  if (!isChecked) e.currentTarget.style.borderColor = '#cbd5e0';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                  if (!isChecked) e.currentTarget.style.borderColor = '#edf2f7';
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {}} // handled by parent div click
+                                  style={{ 
+                                    width: '18px', 
+                                    height: '18px', 
+                                    accentColor: '#6200ea',
+                                    cursor: 'pointer'
+                                  }}
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontWeight: '700', fontSize: '13.5px', color: '#1a202c' }}>
+                                    {page.label}
+                                  </span>
+                                  <span style={{ fontSize: '11px', color: '#718096', fontFamily: 'monospace' }}>
+                                    {page.path}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter style={{ background: '#ffffff', borderTop: '1px solid #edf2f7' }}>
+          <CButton color="secondary" style={{ borderRadius: '10px', fontWeight: '600' }} onClick={() => setPermissionsModal(false)}>
+            Close
+          </CButton>
+          <CButton color="primary" style={{ backgroundColor: '#6200ea', borderColor: '#6200ea', borderRadius: '10px', fontWeight: '700', padding: '8px 24px' }} onClick={handleSavePermissions}>
+            Save Page Access
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* --- CREATE CUSTOM ROLE MODAL --- */}
+      <CModal visible={showRoleModal} onClose={() => setShowRoleModal(false)} size="lg" backdrop="static">
+        <CModalHeader closeButton>
+          <CModalTitle>Create Custom Role</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <label className="form-label">Role Name</label>
+              <CFormInput 
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                placeholder="e.g. Field Manager" 
+              />
+            </div>
+            
+            <div className="mb-3">
+              <label className="form-label"><strong>Select Permissions</strong></label>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                <CButton size="sm" color="secondary" variant="outline" onClick={() => setNewRolePerms(ALL_PAGES.flatMap(cat => cat.pages.map(p => p.path)))}>Select All</CButton>
+                <CButton size="sm" color="secondary" variant="outline" onClick={() => setNewRolePerms([])}>Clear All</CButton>
+              </div>
+              <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '8px' }}>
+                {ALL_PAGES.map((categoryObj, idx) => (
+                  <div key={idx} className="mb-3">
+                    <h6 style={{ fontWeight: 'bold' }}>{categoryObj.category}</h6>
+                    <div className="row">
+                      {categoryObj.pages.map(page => {
+                        const isChecked = newRolePerms.includes(page.path);
+                        return (
+                          <div key={page.path} className="col-12 col-md-6 mb-2">
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={isChecked}
+                                onChange={() => {
+                                  setNewRolePerms(prev => {
+                                    if (prev.includes(page.path)) return prev.filter(p => p !== page.path)
+                                    return [...prev, page.path]
+                                  })
+                                }}
+                              />
+                              <span style={{ fontSize: '14px' }}>{page.label}</span>
+                            </label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setShowRoleModal(false)}>Cancel</CButton>
+          <CButton color="primary" onClick={async () => {
+            if (!newRoleName.trim()) {
+              showToast('danger', 'Please provide a role name');
+              return;
+            }
+            try {
+              const payload = {
+                name: newRoleName,
+                permissions: newRolePerms
+              }
+              const resp = await post('/api/roles', payload)
+              if (resp) {
+                showToast('success', 'Custom role created successfully');
+                setShowRoleModal(false);
+                setNewRoleName('');
+                setNewRolePerms([]);
+                // Refresh roles
+                getAPICall('/api/roles').then(r => { if (r) setRolesList(r) });
+              }
+            } catch (error) {
+              showToast('danger', 'Error creating role: ' + error);
+            }
+          }}>Create Role</CButton>
         </CModalFooter>
       </CModal>
     </div>

@@ -6,8 +6,15 @@ import { getUserData } from './util/session';
 
 export default function fetchNavItems(t1) {
   const userData = getUserData();
-  const user = userData?.type;
+  let user = userData?.type;
+  const permissions = userData?.permissions;
   const t = t1;
+
+  // Base the navigation on the complete admin role if custom permissions are assigned,
+  // so that the custom permissions filter at the bottom can select from the full pool of pages.
+  if (permissions && Array.isArray(permissions) && permissions.length > 0 && user !== 0) {
+    user = 1;
+  }
 
   let _nav = [];
 
@@ -937,6 +944,34 @@ export default function fetchNavItems(t1) {
             to: '/project',
             className: 'ms-2',
           },
+
+
+           {
+            component: CNavItem,
+            name: "Project Types Config",
+            to: '/project-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Work Types Config",
+            to: '/work-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Survey Types Config",
+            to: '/survey-types',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "UOM Config",
+            to: '/uoms',
+            className: 'ms-2',
+          },
+
+
           {
             component: CNavItem,
             name: t("LABELS.all_expense_types"),
@@ -957,6 +992,8 @@ export default function fetchNavItems(t1) {
             className: 'ms-2',
           },
 
+
+
           {
             component: CNavItem,
             name: "Machinary Stock Table",
@@ -964,13 +1001,35 @@ export default function fetchNavItems(t1) {
             className: 'ms-2',
           },
 
+
+
         ],
       },
     ];
   }
 
+  // Filter _nav based on custom user permissions if they exist
+  if (permissions && Array.isArray(permissions) && permissions.length > 0) {
+    const filterNav = (items) => {
+      return items.map(item => {
+        if (item.items) {
+          const filteredSubItems = filterNav(item.items);
+          if (filteredSubItems.length > 0) {
+            return { ...item, items: filteredSubItems };
+          }
+          return null;
+        }
+        
+        if (item.to) {
+          return permissions.includes(item.to) ? item : null;
+        }
+        
+        return item;
+      }).filter(Boolean);
+    };
 
-
+    _nav = filterNav(_nav);
+  }
 
   return _nav;
 }

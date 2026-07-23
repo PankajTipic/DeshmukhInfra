@@ -24,6 +24,7 @@ class AuthController extends Controller
             'name' => 'required|string',
             'mobile' => 'required|string|unique:users',
             'type' => 'required',
+            'permissions' => 'nullable|array',
             'email' => 'nullable|string|unique:users,email',
             'password' => 'required|string|confirmed',
             'company_id' => 'required'
@@ -34,6 +35,7 @@ class AuthController extends Controller
             'email'=> $fields['email'],
             'mobile'=> $fields['mobile'],
             'type'=> $fields['type'],
+            'permissions' => $fields['permissions'] ?? null,
             'company_id'=> $fields['company_id'],
             'password'=> bcrypt($fields['password'])
         ]);
@@ -631,6 +633,7 @@ public function userUpdated(Request $request)
         'name' => 'required|string',
         'mobile' => 'required',
         'type' => 'required',
+        'permissions' => 'nullable|array',
         'email' => 'required|email',
         'company_id' => 'required',
         'blocked'=> 'required',
@@ -642,6 +645,7 @@ public function userUpdated(Request $request)
         'name'       => $request->name,
         'mobile'     => $request->mobile,
         'type'       => $request->type,
+        'permissions'=> $request->permissions,
          'email'      => $request->email,
         'company_id' => $request->company_id, 
         'blocked'    => $request->blocked,
@@ -655,8 +659,31 @@ public function userUpdated(Request $request)
     ]);
 }
 
+public function updatePermissions(Request $request, $id)
+{
+    $request->validate([
+        'permissions' => 'nullable|array',
+    ]);
 
+    $user = User::findOrFail($id);
+    
+    // Ensure only Admin (1) or Super Admin (0) can edit permissions
+    $currentUser = auth()->user();
+    if ($currentUser->type !== 0 && $currentUser->type !== 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized action.'
+        ], 403);
+    }
 
+    $user->permissions = $request->permissions;
+    $user->save();
 
+    return response()->json([
+        'success' => true,
+        'message' => 'Permissions updated successfully.',
+        'user' => $user
+    ]);
+}
 
 }
