@@ -204,7 +204,7 @@ const [editingSubDescValue, setEditingSubDescValue] = useState('');
       setAllProjects(validProjects);
 
       if (validProjects.length === 0 && !query) {
-        showToast('warning', 'No valid projects found - check API data');
+        showToast('warning', 'No valid projects found');
       }
     } catch (error) {
       console.error('Error fetching projects:', error);

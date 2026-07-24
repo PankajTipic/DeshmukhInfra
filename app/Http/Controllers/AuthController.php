@@ -68,6 +68,9 @@ class AuthController extends Controller
             // 'updated_by' => $user->id, 
         ]);
         $user->save();
+        
+        // Revoke active sessions / force logout
+        $user->tokens()->delete();
         return response()->json([
             'success' => true,
             'message' => 'Updated successfully.',
@@ -641,6 +644,8 @@ public function userUpdated(Request $request)
 
     $user = User::findOrFail($fields['id']);
 
+    $roleOrPermsChanged = ($user->type != $request->type) || ($user->permissions != $request->permissions) || ($user->blocked != $request->blocked);
+
     $user->update([
         'name'       => $request->name,
         'mobile'     => $request->mobile,
@@ -651,6 +656,11 @@ public function userUpdated(Request $request)
         'blocked'    => $request->blocked,
         'updated_by' => auth()->id(), // 👈 logged-in user who updated
     ]);
+
+    // Force logout target user if role, permissions or block status changed
+    if ($roleOrPermsChanged) {
+        $user->tokens()->delete();
+    }
 
     return response()->json([
         'success' => true,
@@ -678,6 +688,9 @@ public function updatePermissions(Request $request, $id)
 
     $user->permissions = $request->permissions;
     $user->save();
+
+    // Force logout target user so they re-login with updated page access
+    $user->tokens()->delete();
 
     return response()->json([
         'success' => true,
