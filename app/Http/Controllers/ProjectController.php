@@ -18,13 +18,15 @@ class ProjectController extends Controller
 {
     $user = Auth::user();
 
-    if ($user->type == 1 || $user->type == 3 || $user->type == 5 || $user->type == 4) {
-        // Admin (type 1) → show all projects within their company
+    $hasCustomAccess = (!empty($user->permissions) && is_array($user->permissions) && count($user->permissions) > 0) || $user->type >= 6;
+
+    if ($user->type != 2 || $hasCustomAccess) {
+        // Admin or Custom Role → show all projects within their company
         $projects = Project::with(['supervisor:id,name', 'user:id,name', 'projectType'])
             ->where('company_id', $user->company_id)
             ->get();
-    } elseif ($user->type == 2) {
-        // Supervisor/User (type 2) → show only their projects within their company
+    } else {
+        // Pure Supervisor/User (type 2 without custom permissions) → show only their projects
         $projects = Project::with(['supervisor:id,name', 'user:id,name', 'projectType'])
             ->where('company_id', $user->company_id)
             ->where(function ($query) use ($user) {
@@ -32,9 +34,6 @@ class ProjectController extends Controller
                       ->orWhere('user_id', $user->id);
             })
             ->get();
-    } else {
-        // Other types → return empty
-        $projects = collect([]);
     }
 
     return response()->json($projects);
@@ -49,6 +48,7 @@ class ProjectController extends Controller
 public function index(Request $request)
 {
     $user = Auth::user();
+    $hasCustomAccess = (!empty($user->permissions) && is_array($user->permissions) && count($user->permissions) > 0) || $user->type >= 6;
 
     // Base query with customer fields
     $query = Project::select(
@@ -77,8 +77,8 @@ public function index(Request $request)
         // ->where('is_confirm', 1);  // ✅ only confirmed projects
       
 
-    // Restrict for supervisor/user type
-    if ($user->type == 2) {
+    // Restrict only for standard user (type 2 without custom permissions)
+    if ($user->type == 2 && !$hasCustomAccess) {
         $query->where(function ($q) use ($user) {
             $q->where('supervisor_id', $user->id)
               ->orWhere('user_id', $user->id);

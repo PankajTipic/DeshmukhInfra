@@ -460,7 +460,7 @@ public function getOperatorsByProduct(Request $request)
                 'payment'          => $op->payment,
                 'commission'       => null,
                 'total_work_point' => 0,
-                'total_commission' => $op->payment,
+                'total_commission' => 0,
                 'is_paid'          => $isPaid,
                 'pending_months'   => $pendingMonths
             ];

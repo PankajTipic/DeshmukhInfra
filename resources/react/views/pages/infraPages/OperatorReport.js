@@ -250,7 +250,9 @@ const OperatorReport = () => {
                 </td>
               )}
               <td>
-                {(parseFloat(row.payment || 0) + parseFloat(row.total_commission || 0)).toFixed(2)}
+                {isSupervisor
+                  ? parseFloat(row.payment || 0).toFixed(2)
+                  : (parseFloat(row.payment || 0) + parseFloat(row.total_commission || 0)).toFixed(2)}
               </td>
               <td>
                 <CButton

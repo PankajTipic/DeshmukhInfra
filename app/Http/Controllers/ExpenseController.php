@@ -1481,7 +1481,8 @@ class ExpenseController extends Controller
         $cursor      = $request->query('cursor');
 
         try {
-            if (!in_array($userType, [0, 1, 2, 3])) {
+            $hasCustomAccess = (!empty($user->permissions) && is_array($user->permissions) && count($user->permissions) > 0) || $userType >= 6;
+            if (!in_array($userType, [0, 1, 2, 3]) && !$hasCustomAccess) {
                 return response()->json(['error' => 'Not Allowed'], 403);
             }
 
@@ -1693,7 +1694,8 @@ class ExpenseController extends Controller
         $userType  = $user->type;
 
         try {
-            if (!in_array($userType, [0, 1, 2, 3])) {
+            $hasCustomAccess = (!empty($user->permissions) && is_array($user->permissions) && count($user->permissions) > 0) || $userType >= 6;
+            if (!in_array($userType, [0, 1, 2, 3]) && !$hasCustomAccess) {
                 return response()->json(['error' => 'Not Allowed'], 403);
             }
 
@@ -1910,7 +1912,8 @@ class ExpenseController extends Controller
         $cursor        = $request->query('cursor');
 
         try {
-            if (!in_array($userType, [0, 1, 2, 3])) {
+            $hasCustomAccess = (!empty($user->permissions) && is_array($user->permissions) && count($user->permissions) > 0) || $userType >= 6;
+            if (!in_array($userType, [0, 1, 2, 3]) && !$hasCustomAccess) {
                 return response()->json(['error' => 'Not Allowed'], 403);
             }
             if (!$startDate || !$endDate) {
