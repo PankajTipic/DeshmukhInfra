@@ -24,6 +24,8 @@ export const downloadWorkLogExcel = ({
   startDate,
   endDate,
   projectName,
+  workType,
+  surveyType,
   fileName = 'WorkLogReport.xlsx',
 }) => {
   // Title and filter info
@@ -32,7 +34,7 @@ export const downloadWorkLogExcel = ({
 
   // Filter information
   const filterRows = []
-  if (startDate || endDate || projectName) {
+  if (startDate || endDate || projectName || workType || surveyType) {
     filterRows.push(['Applied Filters:'])
     if (startDate && endDate) {
       filterRows.push([
@@ -42,6 +44,12 @@ export const downloadWorkLogExcel = ({
     }
     if (projectName) {
       filterRows.push(['Project:', projectName])
+    }
+    if (workType) {
+      filterRows.push(['Work Type:', workType])
+    }
+    if (surveyType) {
+      filterRows.push(['Survey Type:', surveyType])
     }
     filterRows.push(emptyRow)
   }
@@ -168,6 +176,8 @@ export const downloadWorkLogPDF = ({
   startDate,
   endDate,
   projectName,
+  workType,
+  surveyType,
   companyInfo = {},
   host,
   fileName = 'WorkLogReport.pdf',
@@ -271,7 +281,7 @@ export const downloadWorkLogPDF = ({
   // FILTER INFORMATION (if any) - only on first page
   // ───────────────────────────────────────────────
   let startY = headerBottomY
-  if (startDate || endDate || projectName) {
+  if (startDate || endDate || projectName || workType || surveyType) {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(60)
@@ -286,6 +296,14 @@ export const downloadWorkLogPDF = ({
     }
     if (projectName) {
       doc.text(`Project: ${projectName}`, margin + 8, startY)
+      startY += 5.5
+    }
+    if (workType) {
+      doc.text(`Work Type: ${workType}`, margin + 8, startY)
+      startY += 5.5
+    }
+    if (surveyType) {
+      doc.text(`Survey Type: ${surveyType}`, margin + 8, startY)
       startY += 5.5
     }
     startY += 6 // extra spacing before table

@@ -1057,6 +1057,10 @@ function InfraDetailsShowTable() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [maxPoint, setMaxPoint] = useState('')
+  const [workType, setWorkType] = useState('')
+  const [surveyType, setSurveyType] = useState('')
+  const [workTypeOptions, setWorkTypeOptions] = useState([])
+  const [surveyTypeOptions, setSurveyTypeOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [projects, setProjects] = useState([])
   const [projectName, setProjectName] = useState('')
@@ -1078,6 +1082,23 @@ function InfraDetailsShowTable() {
       setProjects(response || [])
     } catch (err) {
       console.error('Error fetching projects:', err)
+    }
+  }
+
+  // Fetch work types and survey types for dropdown options
+  const fetchFilterTypes = async () => {
+    try {
+      const [wtRes, stRes] = await Promise.all([
+        getAPICall('/api/work-types'),
+        getAPICall('/api/survey-types'),
+      ])
+      const wtList = (Array.isArray(wtRes) ? wtRes : (wtRes?.data || [])).map((item) => item.name || item).filter(Boolean)
+      const stList = (Array.isArray(stRes) ? stRes : (stRes?.data || [])).map((item) => item.name || item).filter(Boolean)
+
+      setWorkTypeOptions((prev) => Array.from(new Set([...prev, ...wtList])))
+      setSurveyTypeOptions((prev) => Array.from(new Set([...prev, ...stList])))
+    } catch (err) {
+      console.error('Error fetching work/survey types:', err)
     }
   }
 
@@ -1120,6 +1141,12 @@ function InfraDetailsShowTable() {
       if (filters.max_point) {
         params.append('max_point', filters.max_point)
       }
+      if (filters.work_type) {
+        params.append('work_type', filters.work_type)
+      }
+      if (filters.survey_type) {
+        params.append('survey_type', filters.survey_type)
+      }
 
       if ([...params].length > 0) {
         apiUrl = `${apiUrl}?${params.toString()}`
@@ -1127,20 +1154,48 @@ function InfraDetailsShowTable() {
 
       setLoading(true)
       const response = await getAPICall(apiUrl)
-      const records = response.data
+      const records = response.data || []
+
+      // Populate unique types from records as well
+      const recordWorkTypes = []
+      const recordSurveyTypes = []
+      records.forEach((rec) => {
+        (rec.work_point_detail || []).forEach((w) => {
+          if (w.work_type) recordWorkTypes.push(w.work_type)
+        });
+        (rec.survey_detail || []).forEach((s) => {
+          if (s.survey_type) recordSurveyTypes.push(s.survey_type)
+        });
+      })
+      if (recordWorkTypes.length > 0) {
+        setWorkTypeOptions((prev) => Array.from(new Set([...prev, ...recordWorkTypes])))
+      }
+      if (recordSurveyTypes.length > 0) {
+        setSurveyTypeOptions((prev) => Array.from(new Set([...prev, ...recordSurveyTypes])))
+      }
 
       const flattened = []
       records.forEach((rec, idx) => {
-        const workLen = rec.work_point_detail?.length || 0
-        const surveyLen = rec.survey_detail?.length || 0
+        let workDetails = rec.work_point_detail || []
+        let surveyDetails = rec.survey_detail || []
+
+        if (filters.work_type) {
+          workDetails = workDetails.filter((w) => (w.work_type || '').toLowerCase() === filters.work_type.toLowerCase())
+        }
+        if (filters.survey_type) {
+          surveyDetails = surveyDetails.filter((s) => (s.survey_type || '').toLowerCase() === filters.survey_type.toLowerCase())
+        }
+
+        const workLen = workDetails.length
+        const surveyLen = surveyDetails.length
         const machineLen = rec.machine_reading?.length || 0
         const compressorRpmLen = rec.compressor_rpm?.length || 0
 
         const totalRows = Math.max(workLen, surveyLen, machineLen, compressorRpmLen, 1)
 
         for (let i = 0; i < totalRows; i++) {
-          const work = rec.work_point_detail?.[i] || {}
-          const survey = rec.survey_detail?.[i] || {}
+          const work = workDetails[i] || {}
+          const survey = surveyDetails[i] || {}
           const machine = rec.machine_reading?.[i] || {}
           const compressorRpm = rec.compressor_rpm?.[i] || {}
 
@@ -1214,13 +1269,13 @@ function InfraDetailsShowTable() {
 
   // Button handlers — the actual Excel/PDF generation lives in worklogExportUtils.js
   const handleDownloadExcel = () => {
-    downloadWorkLogExcel({ rows, tableTotals, startDate, endDate, projectName })
+    downloadWorkLogExcel({ rows, tableTotals, startDate, endDate, projectName, workType, surveyType })
   }
 
   const handleDownloadPDF = () => {
     const user = getUserData()
     const companyInfo = user?.company_info || {}
-    downloadWorkLogPDF({ rows, tableTotals, startDate, endDate, projectName, companyInfo, host })
+    downloadWorkLogPDF({ rows, tableTotals, startDate, endDate, projectName, workType, surveyType, companyInfo, host })
   }
 
   const handleDownloadMultiSiteExcel = () => {
@@ -1236,6 +1291,7 @@ function InfraDetailsShowTable() {
   useEffect(() => {
     fetchProjects()
     fetchRecords()
+    fetchFilterTypes()
   }, [])
 
   const handleFilter = () => {
@@ -1244,6 +1300,8 @@ function InfraDetailsShowTable() {
       end_date: endDate || undefined,
       project_name: projectName || undefined,
       max_point: maxPoint || undefined,
+      work_type: workType || undefined,
+      survey_type: surveyType || undefined,
     })
   }
 
@@ -1304,7 +1362,7 @@ function InfraDetailsShowTable() {
                 <h4 className="mb-0">Total Amount : {tableTotals.grandTotal.toFixed(2)}</h4>
               </div>
 
-              <CRow className="align-items-end d-flex flex-wrap gap-2">
+              <CRow className="align-items-end g-3">
                 <CCol md={3}>
                   <CFormInput
                     type="date"
@@ -1336,22 +1394,53 @@ function InfraDetailsShowTable() {
                   </CFormSelect>
                 </CCol>
                 <CCol md={3}>
-                  <CButton color="primary" onClick={handleFilter}>
-                    Apply
-                  </CButton>
-                  <CButton
-                    color="secondary"
-                    className="ms-2"
-                    onClick={() => {
-                      setStartDate('')
-                      setEndDate('')
-                      setProjectName('')
-                      setMaxPoint('')
-                      fetchRecords()
-                    }}
+                  <CFormSelect
+                    label="Work Type"
+                    value={workType}
+                    onChange={(e) => setWorkType(e.target.value)}
                   >
-                    Reset
-                  </CButton>
+                    <option value="">-- Select Work Type --</option>
+                    {workTypeOptions.map((wt, idx) => (
+                      <option key={idx} value={wt}>
+                        {wt}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+                <CCol md={3}>
+                  <CFormSelect
+                    label="Survey Type"
+                    value={surveyType}
+                    onChange={(e) => setSurveyType(e.target.value)}
+                  >
+                    <option value="">-- Select Survey Type --</option>
+                    {surveyTypeOptions.map((st, idx) => (
+                      <option key={idx} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+                <CCol md={3}>
+                  <div className="d-flex gap-2">
+                    <CButton color="primary" onClick={handleFilter} className="px-4">
+                      Apply
+                    </CButton>
+                    <CButton
+                      color="secondary"
+                      onClick={() => {
+                        setStartDate('')
+                        setEndDate('')
+                        setProjectName('')
+                        setMaxPoint('')
+                        setWorkType('')
+                        setSurveyType('')
+                        fetchRecords()
+                      }}
+                    >
+                      Reset
+                    </CButton>
+                  </div>
                 </CCol>
               </CRow>
             </CCardHeader>

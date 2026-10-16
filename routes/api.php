@@ -65,6 +65,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\WorkTypeController;
 use App\Http\Controllers\SurveyTypeController;
 use App\Http\Controllers\UomController;
+use App\Http\Controllers\PurchaseOrderController;
 
 
 // New debugging and sync routes
@@ -128,6 +129,19 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Purchase Order routes
+    Route::prefix('purchase-orders')->group(function () {
+        Route::get('/',                 [PurchaseOrderController::class, 'index']);
+        Route::get('/next-po-number',   [PurchaseOrderController::class, 'getNextPoNumber']);
+        Route::get('/{id}',             [PurchaseOrderController::class, 'show']);
+        Route::post('/',                [PurchaseOrderController::class, 'store']);
+        Route::put('/{id}',             [PurchaseOrderController::class, 'update']);
+        Route::put('/{id}/status',      [PurchaseOrderController::class, 'updateStatus']);
+        Route::delete('/{id}',          [PurchaseOrderController::class, 'destroy']);
+    });
+});
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -338,7 +352,7 @@ Route::prefix('partners')->group(function () {
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/index', [RawMaterialController::class, 'index']);
     Route::get('/visible', [RawMaterialController::class, 'visible']);
-    Route::get('/company/{companyId}', [RawMaterialController::class, 'byCompany']);
+    // Route::get('/company/{companyId}', [RawMaterialController::class, 'byCompany']); // REMOVED: method doesn't exist & conflicts with CompanyInfoController resource route
     Route::get('/showAll', [RawMaterialController::class, 'showAll']);
      Route::post('/store', [RawMaterialController::class, 'store']);
     Route::put('/rawMaterial/{id}', [RawMaterialController::class, 'update']);

@@ -877,7 +877,7 @@ export const generateProformaInvoicePDF = async (
         head: [['FROM', 'TO', 'DETAILS']],
         body: [
           [
-            `${companyName}\n${companyAddress}\nPhone: ${user.mobile || '—'}\nGSTIN: ${companyGST}\nEmail: ${companyEmail}`,
+            `${companyName}\n${companyAddress}\nPhone: ${companyPhone || '—'}\nGSTIN: ${companyGST}\nEmail: ${companyEmail}`,
             `Customer: ${customer.name || '—'}\nSite: ${proformaInvoice.project?.project_name || '—'}\n${customer.address || '—'}\nPhone: ${customer.mobile || '—'}\nGSTIN: ${customer.gstin || '—'}`,
             `Proforma Invoice No: ${proformaInvoice.proforma_invoice_number || '—'}\n${
               proformaInvoice.tally_invoice_number ? `Tally Invoice No: ${proformaInvoice.tally_invoice_number}\n` : ''
@@ -1283,9 +1283,55 @@ if (advances.length > 0) {
 
     const bottomSafeY = pageHeight - 80;
 
-    const printBlock = (title, value) => {
+    const formatNumberedList = (text) => {
+      if (!text?.trim()) return [];
+      const rawLines = text.split('\n');
+      const items = [];
+      let mainIdx = 0;
+      let subIdx = 0;
+
+      rawLines.forEach((raw) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+
+        const isIndented = /^[\s\t]{2,}/.test(raw);
+        const isBullet = /^[-*•–]\s*/.test(trimmed);
+        const isSubNumber = /^\d+\.\d+[\.\)]?\s*/.test(trimmed) || /^[a-zA-Z][\.\)]\s*/.test(trimmed);
+
+        if (isIndented || isBullet || isSubNumber) {
+          subIdx++;
+          const cleanText = trimmed
+            .replace(/^[-*•–]\s*/, '')
+            .replace(/^\d+\.\d+[\.\)]?\s*/, '')
+            .replace(/^[a-zA-Z][\.\)]\s*/, '')
+            .trim();
+          const parentNum = mainIdx > 0 ? mainIdx : 1;
+          items.push({
+            isSub: true,
+            prefix: `${parentNum}.${subIdx}`,
+            text: cleanText,
+          });
+        } else {
+          mainIdx++;
+          subIdx = 0;
+          const cleanText = trimmed
+            .replace(/^\d+[\.\)\-:]\s*/, '')
+            .trim();
+          items.push({
+            isSub: false,
+            prefix: `${mainIdx}.`,
+            text: cleanText,
+          });
+        }
+      });
+      return items;
+    };
+
+    const printBlock = (title, value, isNumbered = false) => {
       if (!value?.trim()) return;
 
+      // --- Title ---
+      // Check if title + at least one line of content fits; if not, new page
       if (y + 10 + 16 + 13 > bottomSafeY) {
         doc.addPage();
         y = drawCompanyHeader(false) + 3;
@@ -1301,27 +1347,69 @@ if (advances.length > 0) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
 
-      const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
-      lines.forEach((line) => {
-        const wrapped = doc.splitTextToSize(line, contentWidth);
-        wrapped.forEach((wline) => {
-          if (y + 13 > bottomSafeY) {
+      if (isNumbered) {
+        const listItems = formatNumberedList(value);
+        listItems.forEach((item) => {
+          const indent = item.isSub ? 16 : 0;
+          const prefixWidth = item.isSub ? 24 : 18;
+          const textX = margin + indent + prefixWidth;
+          const availableWidth = contentWidth - indent - prefixWidth;
+
+          const wrapped = doc.splitTextToSize(item.text, availableWidth);
+          const neededHeight = wrapped.length * 13 + 3;
+
+          if (y + neededHeight > bottomSafeY) {
             doc.addPage();
             y = drawCompanyHeader(false) + 3;
             drawFooter();
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
           }
-          doc.text(wline, margin, y);
-          y += 13;
+
+          // Draw number / bullet prefix
+          doc.setFont('helvetica', item.isSub ? 'normal' : 'bold');
+          doc.setFontSize(9.5);
+          doc.text(item.prefix, margin + indent, y);
+
+          // Draw wrapped content lines
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9.5);
+          wrapped.forEach((wline, widx) => {
+            if (widx > 0 && y + 13 > bottomSafeY) {
+              doc.addPage();
+              y = drawCompanyHeader(false) + 3;
+              drawFooter();
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(9.5);
+            }
+            doc.text(wline, textX, y);
+            y += 13;
+          });
+          y += 3; // small gap between points
         });
-      });
+      } else {
+        const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
+        lines.forEach((line) => {
+          const wrapped = doc.splitTextToSize(line, contentWidth);
+          wrapped.forEach((wline) => {
+            // If this line would go past the safe boundary, start a new page
+            if (y + 13 > bottomSafeY) {
+              doc.addPage();
+              y = drawCompanyHeader(false) + 3;
+              drawFooter();
+              // Re-apply font after page break
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(10);
+            }
+            doc.text(wline, margin, y);
+            y += 13;
+          });
+        });
+      }
       y += 12;
     };
 
-    printBlock('Notes', proformaInvoice.notes);
-    printBlock('Payment Terms', proformaInvoice.payment_terms);
-    printBlock('Terms & Conditions', proformaInvoice.terms_conditions);
+    printBlock('Notes', proformaInvoice.notes, false);
+    printBlock('Payment Terms', proformaInvoice.payment_terms, true);
+    printBlock('Terms & Conditions', proformaInvoice.terms_conditions, true);
 
     drawFooter();
 

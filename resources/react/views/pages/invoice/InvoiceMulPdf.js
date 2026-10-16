@@ -774,6 +774,15 @@ export const generateMultiLanguagePDF = async (
     }
   };
 
+  const getDocNumberLabel = () => {
+    const type = Number(formData.invoiceType);
+    switch (type) {
+      case 1: return 'Quotation No';
+      case 2: return 'Work Order No';
+      default: return 'Bill No';
+    }
+  };
+
   const documentTitle = getDocumentTitle();
   console.log(documentTitle);
 
@@ -860,9 +869,9 @@ export const generateMultiLanguagePDF = async (
         head: [['FROM', 'TO', 'DETAILS']],
         body: [
           [
-            `${companyName}\n${companyAddress}\nPhone: ${user.mobile || '—'}\nGSTIN: ${companyGST}\nDist: ${companyDist}\nTal: ${companyTal}\nEmail: ${companyEmail}`,
+            `${companyName}\n${companyAddress}\nPhone: ${companyPhone || '—'}\nGSTIN: ${companyGST}\nDist: ${companyDist}\nTal: ${companyTal}\nEmail: ${companyEmail}`,
             `Customer: ${customer.name || '—'}\nSite: ${formData.project_name || '—'}\n${customer.address || '—'}\nPhone: ${customer.mobile || '—'}\nGSTIN: ${formData.gst_number || '—'}\nPAN: ${formData.pan_number || '—'}`,
-            `Bill No: ${invoiceNumber}\nDate: ${formData.date || '—'}\nReference: ${formData.ref_id || '—'}\nPO No: ${formData.po_number || '—'}`,
+            `${getDocNumberLabel()}: ${invoiceNumber}\nDate: ${formData.date || '—'}\nReference: ${formData.ref_id || '—'}\nPO No: ${formData.po_number || '—'}`,
           ],
         ],
         margin: { left: margin, right: margin },
@@ -1333,7 +1342,51 @@ export const generateMultiLanguagePDF = async (
     // Bottom safe boundary — leave 80pt for footer
     const bottomSafeY = pageHeight - 80;
  
-    const printBlock = (title, value) => {
+    const formatNumberedList = (text) => {
+      if (!text?.trim()) return [];
+      const rawLines = text.split('\n');
+      const items = [];
+      let mainIdx = 0;
+      let subIdx = 0;
+
+      rawLines.forEach((raw) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+
+        const isIndented = /^[\s\t]{2,}/.test(raw);
+        const isBullet = /^[-*•–]\s*/.test(trimmed);
+        const isSubNumber = /^\d+\.\d+[\.\)]?\s*/.test(trimmed) || /^[a-zA-Z][\.\)]\s*/.test(trimmed);
+
+        if (isIndented || isBullet || isSubNumber) {
+          subIdx++;
+          const cleanText = trimmed
+            .replace(/^[-*•–]\s*/, '')
+            .replace(/^\d+\.\d+[\.\)]?\s*/, '')
+            .replace(/^[a-zA-Z][\.\)]\s*/, '')
+            .trim();
+          const parentNum = mainIdx > 0 ? mainIdx : 1;
+          items.push({
+            isSub: true,
+            prefix: `${parentNum}.${subIdx}`,
+            text: cleanText,
+          });
+        } else {
+          mainIdx++;
+          subIdx = 0;
+          const cleanText = trimmed
+            .replace(/^\d+[\.\)\-:]\s*/, '')
+            .trim();
+          items.push({
+            isSub: false,
+            prefix: `${mainIdx}.`,
+            text: cleanText,
+          });
+        }
+      });
+      return items;
+    };
+
+    const printBlock = (title, value, isNumbered = false) => {
       if (!value?.trim()) return;
  
       // --- Title ---
@@ -1353,29 +1406,69 @@ export const generateMultiLanguagePDF = async (
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
  
-      const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
-      lines.forEach((line) => {
-        const wrapped = doc.splitTextToSize(line, contentWidth);
-        wrapped.forEach((wline) => {
-          // If this line would go past the safe boundary, start a new page
-          if (y + 13 > bottomSafeY) {
+      if (isNumbered) {
+        const listItems = formatNumberedList(value);
+        listItems.forEach((item) => {
+          const indent = item.isSub ? 16 : 0;
+          const prefixWidth = item.isSub ? 24 : 18;
+          const textX = margin + indent + prefixWidth;
+          const availableWidth = contentWidth - indent - prefixWidth;
+
+          const wrapped = doc.splitTextToSize(item.text, availableWidth);
+          const neededHeight = wrapped.length * 13 + 3;
+
+          if (y + neededHeight > bottomSafeY) {
             doc.addPage();
             y = drawCompanyHeader(false) + 3;
             drawFooter();
-            // Re-apply font after page break
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
           }
-          doc.text(wline, margin, y);
-          y += 13;
+
+          // Draw number / bullet prefix
+          doc.setFont('helvetica', item.isSub ? 'normal' : 'bold');
+          doc.setFontSize(9.5);
+          doc.text(item.prefix, margin + indent, y);
+
+          // Draw wrapped content lines
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9.5);
+          wrapped.forEach((wline, widx) => {
+            if (widx > 0 && y + 13 > bottomSafeY) {
+              doc.addPage();
+              y = drawCompanyHeader(false) + 3;
+              drawFooter();
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(9.5);
+            }
+            doc.text(wline, textX, y);
+            y += 13;
+          });
+          y += 3; // small gap between points
         });
-      });
+      } else {
+        const lines = value.split('\n').map(p => p.trim()).filter(Boolean);
+        lines.forEach((line) => {
+          const wrapped = doc.splitTextToSize(line, contentWidth);
+          wrapped.forEach((wline) => {
+            // If this line would go past the safe boundary, start a new page
+            if (y + 13 > bottomSafeY) {
+              doc.addPage();
+              y = drawCompanyHeader(false) + 3;
+              drawFooter();
+              // Re-apply font after page break
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(10);
+            }
+            doc.text(wline, margin, y);
+            y += 13;
+          });
+        });
+      }
       y += 12;
     };
  
-    printBlock('Notes', formData.note);
-    printBlock('Payment Terms', formData.payment_terms);
-    printBlock('Terms & Conditions', formData.terms_and_conditions);
+    printBlock('Notes', formData.note, false);
+    printBlock('Payment Terms', formData.payment_terms, true);
+    printBlock('Terms & Conditions', formData.terms_and_conditions, true);
  
     drawFooter();
  

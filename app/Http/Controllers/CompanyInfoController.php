@@ -274,6 +274,16 @@ private function createDefaultExpenseTypes($companyId, $createdBy)
 
    public function update(Request $request, $id)
 {
+    $user = Auth::user();
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    // Only Superadmin (0) or Company Admin (1) of this company can update
+    if ($user->type !== 0 && !($user->type === 1 && (int)$user->company_id === (int)$id)) {
+        return response()->json(['message' => 'Unauthorized. Only company admin can edit company information.'], 403);
+    }
+
     $companyInfo = CompanyInfo::where('company_id', $id)->firstOrFail();
 
     $request->validate([

@@ -226,15 +226,16 @@ const InvoiceDetails = () => {
       )
 
       const pdfUrl = URL.createObjectURL(pdfBlob)
+      const docLabel = Number(formData.invoiceType) === 1 ? 'Quotation' : Number(formData.invoiceType) === 2 ? 'Work Order' : 'Invoice'
 
-      const message = encodeURIComponent(`*Invoice from ${ci?.company_name || 'Company'}*\n
+      const message = encodeURIComponent(`*${docLabel} from ${ci?.company_name || 'Company'}*\n
 Project: ${formData.project_name}
-Invoice Number: ${formData.invoice_number}
+${docLabel} Number: ${formData.invoice_number}
 Total Amount: ₹${formData.finalAmount}
 Amount Paid: ₹${formData.amountPaid}
 Remaining: ₹${remainingAmount}
 
-📄 Download Invoice: ${pdfUrl}
+📄 Download ${docLabel}: ${pdfUrl}
 
 Thank you!`)
 
@@ -361,16 +362,21 @@ Thank you!`)
 
 
   const displayTotals = calculateDisplayTotals()
-  const isWorkOrder = formData.invoiceType == 2
-  console.log(isWorkOrder);
-  
+  const isQuotation = Number(formData.invoiceType) === 1
+  const isWorkOrder = Number(formData.invoiceType) === 2
+
+  const getDocumentLabel = () => {
+    if (isQuotation) return 'Quotation'
+    if (isWorkOrder) return 'Work Order'
+    return 'Invoice'
+  }
 
   return (
     <CCard>
      <CCardHeader>
   <div className="d-flex justify-content-between align-items-center">
     <h5 className="mb-0">
-      Invoice {formData.invoice_number || ''}
+      {getDocumentLabel()} {formData.invoice_number || ''}
     </h5>
     
     <CButton 
@@ -394,7 +400,7 @@ Thank you!`)
               <p><strong>GST Number:</strong> {formData.gst_number}</p>
             </div>
             <div className="col-md-6">
-              <p><strong>Invoice Number:</strong> {formData.invoice_number}</p>
+              <p><strong>{getDocumentLabel()} Number:</strong> {formData.invoice_number}</p>
               <p><strong>Reference ID:</strong> {formData.ref_id}</p>
               {/* <p><strong>Po Number:</strong> {formData.po_number}</p> */}
 
@@ -402,7 +408,7 @@ Thank you!`)
                 <p><strong>PO Number:</strong> <span className="text-success fw-bold">{formData.po_number}</span></p>
               )}
 
-              <p><strong>Invoice Date:</strong> {formData.date}</p>
+              <p><strong>{getDocumentLabel()} Date:</strong> {formData.date}</p>
               <p><strong>PAN Number:</strong> {formData.pan_number}</p>
             </div>
           </div>
@@ -624,28 +630,28 @@ Thank you!`)
               <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
                 Payment Terms
               </h6>
-              <ul className="ms-3">
+              <ol className="ms-3 ps-3">
                 {formData?.payment_terms ? (
-                  formData.payment_terms.split("\n").map((line, index) => (
-                    <li key={index} className="text-dark">{line}</li>
+                  formData.payment_terms.split("\n").filter(l => l.trim()).map((line, index) => (
+                    <li key={index} className="text-dark">{line.replace(/^\d+[\.\)\-:]\s*/, '')}</li>
                   ))
                 ) : (
-                  <li className="text-muted">No payment terms available.</li>
+                  <li className="text-muted list-unstyled">No payment terms available.</li>
                 )}
-              </ul>
+              </ol>
 
               <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
                 Terms & Conditions
               </h6>
-              <ul className="ms-3">
+              <ol className="ms-3 ps-3">
                 {formData?.terms_and_conditions ? (
-                  formData.terms_and_conditions.split("\n").map((line, index) => (
-                    <li key={index} className="text-dark">{line}</li>
+                  formData.terms_and_conditions.split("\n").filter(l => l.trim()).map((line, index) => (
+                    <li key={index} className="text-dark">{line.replace(/^\d+[\.\)\-:]\s*/, '')}</li>
                   ))
                 ) : (
-                  <li className="text-muted">No terms and conditions provided.</li>
+                  <li className="text-muted list-unstyled">No terms and conditions provided.</li>
                 )}
-              </ul>
+              </ol>
             </div>
           </div>
 

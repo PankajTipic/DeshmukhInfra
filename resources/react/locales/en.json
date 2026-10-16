@@ -464,7 +464,9 @@
     "project_expenses": "Project Expenses",
     "select_payment_by": "Select Payment By",
     "work_log": "Daily Work Log",
-    "work_log_report": "Work Log Report"
+    "work_log_report": "Work Log Report",
+    "gst_number":"GST Number",
+    "pan_number":"PAN Number"
   },
   "MSG": {
     "no_income_data": "No Income Data",

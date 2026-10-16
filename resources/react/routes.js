@@ -22,6 +22,7 @@ const NewCompany = React.lazy(() => import('./views/pages/company/NewCompany'))
 const EditCompany = React.lazy(() => import('./views/pages/company/EditCompany'))
 const AllCompanies = React.lazy(() => import('./views/pages/company/AllCompanies'))
 const CompanyReceipts = React.lazy(() => import('./views/pages/company/CompanyReceipt'))
+const CompanyInfo = React.lazy(() => import('./views/pages/company/CompanyInfo'))
 const Plans = React.lazy(() => import('./views/pages/plans/Plans'))
 const invoiceTable = React.lazy(() => import('./views/pages/invoice/invoiceTable.js'))
 const ProformaInvoice = React.lazy(() => import('./views/pages/invoice/CreateProformaInvoice.js'))
@@ -154,6 +155,11 @@ const PurchaseVendorLadger = React.lazy(() => import('./views/pages/report/Purch
 const VendorLadger = React.lazy(() => import('./views/pages/report/VendorLadger.js'))
 
 
+// Purchase Orders
+const PurchaseOrderList = React.lazy(() => import('./views/pages/purchase_orders/PurchaseOrderList.js'))
+const PurchaseOrderForm = React.lazy(() => import('./views/pages/purchase_orders/PurchaseOrderForm.js'))
+const PurchaseOrderView = React.lazy(() => import('./views/pages/purchase_orders/PurchaseOrderView.js'))
+
 export default function fetchRoutes() {
   let user = getUserType();
   const userData = getUserData();
@@ -179,6 +185,7 @@ export default function fetchRoutes() {
       { path: '/company/new', name: 'New Company', element: NewCompany },
       { path: '/company/all', name: 'All Companies', element: AllCompanies },
       { path: '/company/edit/:companyId', name: 'Edit Company', element: EditCompany },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
       { path: '/invoice-details/:id', name: 'InvoiceDetails', element: InvoiceDetails },
       { path: '/bookings', name: 'Adv Bookings', element: Orders },
       { path: '/quotation', name: 'Quotation', element: Orders },
@@ -224,6 +231,12 @@ export default function fetchRoutes() {
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
 
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
@@ -307,6 +320,12 @@ export default function fetchRoutes() {
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
       { path: '/internal-money-transfer', name: 'InternalMoneyTransfer', element: InternalMoneyTransfer },
 
       { path: '/vendorPurches', name: 'Purches Vendor', element: PurchesVendor },
@@ -335,6 +354,7 @@ export default function fetchRoutes() {
       { path: '/RegularProjectsLadger', name: 'Sub Contract Ladger Report', element: RegularProjectsLadger },
       { path: '/PurchaseVendorLadger', name: 'Sub Contract Ladger Report', element: PurchaseVendorLadger },
       { path: '/VendorLadger', name: 'Sub Contract Ladger Report', element: VendorLadger },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
 
 
     ]
@@ -405,6 +425,12 @@ export default function fetchRoutes() {
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
       { path: '/vendorPurches', name: 'Purches Vendor', element: PurchesVendor },
       { path: '/vendorPurchesPayment', name: 'Purches Vendor Payment', element: PurchesVendorPayment },
 
@@ -418,6 +444,7 @@ export default function fetchRoutes() {
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
 
       { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
 
 
     ]
@@ -487,6 +514,12 @@ export default function fetchRoutes() {
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
 
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
+
       { path: '/products/RawMaterial', name: ' Raw Material', element: RawMaterial },
       { path: '/newRawMaterials', name: 'Raw Materials', element: newRawMaterials },
       { path: '/showRawMaterials', name: 'Raw Materials', element: ShowRawMaterials },
@@ -505,6 +538,7 @@ export default function fetchRoutes() {
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
       { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
 
 
     ]
@@ -578,6 +612,12 @@ export default function fetchRoutes() {
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
 
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
+
       { path: '/products/RawMaterial', name: ' Raw Material', element: RawMaterial },
       { path: '/newRawMaterials', name: 'Raw Materials', element: newRawMaterials },
       { path: '/showRawMaterials', name: 'Raw Materials', element: ShowRawMaterials },
@@ -596,6 +636,7 @@ export default function fetchRoutes() {
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
       { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
 
 
     ]
@@ -669,6 +710,12 @@ export default function fetchRoutes() {
       { path: '/create-proforma-invoice', name: 'New Proforma Invoice', element: ProformaInvoice },
       { path: '/proforma-invoice-details/:id', name: 'Proforma Invoice Details', element: ProformaInvoiceDetails },
       { path: '/edit-proforma-invoice/:id', name: 'Edit Proforma Invoice', element: EditProformaInvoice },
+
+      // Purchase Orders
+      { path: '/purchase-orders',             name: 'Purchase Orders',      element: PurchaseOrderList },
+      { path: '/purchase-orders/create',       name: 'New Purchase Order',   element: PurchaseOrderForm },
+      { path: '/purchase-orders/edit/:id',     name: 'Edit Purchase Order',  element: PurchaseOrderForm },
+      { path: '/purchase-orders/view/:id',     name: 'View Purchase Order',  element: PurchaseOrderView },
       { path: '/vendorPurches', name: 'Purches Vendor', element: PurchesVendor },
       { path: '/vendorPurchesPayment', name: 'Purches Vendor Payment', element: PurchesVendorPayment },
 
@@ -681,6 +728,7 @@ export default function fetchRoutes() {
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
       { path: '/dailyActivityDashboard', name: 'Daily Activity Dashobard', element: dailyActivityDashboard },
+      { path: '/company-info', name: 'Company Info', element: CompanyInfo },
 
     ]
   }

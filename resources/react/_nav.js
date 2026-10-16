@@ -167,6 +167,18 @@ export default function fetchNavItems(t1) {
             // style: { backgroundColor: 'cyan', color: 'black' },
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: "New Purchase Order",
+            to: '/purchase-orders/create',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "All Purchase Orders",
+            to: '/purchase-orders',
+            className: 'ms-2',
+          },
 
 
 
@@ -320,6 +332,18 @@ export default function fetchNavItems(t1) {
             to: '/vendorPurches',
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: 'New Purchase Order',
+            to: '/purchase-orders/create',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'All Purchase Orders',
+            to: '/purchase-orders',
+            className: 'ms-2',
+          },
 
 
 
@@ -427,8 +451,12 @@ export default function fetchNavItems(t1) {
             to: '/machineryStockTable',
             className: 'ms-2',
           },
-
-
+          {
+            component: CNavItem,
+            name: "Company Info",
+            to: '/company-info',
+            className: 'ms-2',
+          },
         ],
 
       },
@@ -517,7 +545,12 @@ export default function fetchNavItems(t1) {
             to: '/machineryStockTable',
             className: 'ms-2',
           },
-
+          {
+            component: CNavItem,
+            name: "Company Info",
+            to: '/company-info',
+            className: 'ms-2',
+          },
         ],
       },
     ];
@@ -602,6 +635,18 @@ export default function fetchNavItems(t1) {
             // style: { backgroundColor: 'cyan', color: 'black' },
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: "New Purchase Order",
+            to: '/purchase-orders/create',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "All Purchase Orders",
+            to: '/purchase-orders',
+            className: 'ms-2',
+          },
 
         ]
       },
@@ -626,6 +671,18 @@ export default function fetchNavItems(t1) {
             component: CNavItem,
             name: 'New Purchase',
             to: '/vendorPurches',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'New Purchase Order',
+            to: '/purchase-orders/create',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'All Purchase Orders',
+            to: '/purchase-orders',
             className: 'ms-2',
           },
 
@@ -717,7 +774,12 @@ export default function fetchNavItems(t1) {
             to: '/machineryStockTable',
             className: 'ms-2',
           },
-
+          {
+            component: CNavItem,
+            name: "Company Info",
+            to: '/company-info',
+            className: 'ms-2',
+          },
         ],
       },
     ];
@@ -790,6 +852,18 @@ export default function fetchNavItems(t1) {
             component: CNavItem,
             name: 'New Purchase',
             to: '/vendorPurches',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'New Purchase Order',
+            to: '/purchase-orders/create',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: 'All Purchase Orders',
+            to: '/purchase-orders',
             className: 'ms-2',
           },
 
@@ -882,10 +956,12 @@ export default function fetchNavItems(t1) {
             to: '/machineryStockTable',
             className: 'ms-2',
           },
-
-
-
-
+          {
+            component: CNavItem,
+            name: "Company Info",
+            to: '/company-info',
+            className: 'ms-2',
+          },
         ],
 
       },
@@ -1000,15 +1076,21 @@ export default function fetchNavItems(t1) {
             to: '/machineryStockTable',
             className: 'ms-2',
           },
-
-
-
+          {
+            component: CNavItem,
+            name: "Company Info",
+            to: '/company-info',
+            className: 'ms-2',
+          },
         ],
       },
     ];
   }
 
   // Filter _nav based on custom user permissions if they exist
+  // Some routes are always allowed regardless of custom permissions (core admin pages)
+  const alwaysAllowedRoutes = ['/company-info', '/purchase-orders', '/purchase-orders/create'];
+
   if (permissions && Array.isArray(permissions) && permissions.length > 0) {
     const filterNav = (items) => {
       return items.map(item => {
@@ -1021,6 +1103,8 @@ export default function fetchNavItems(t1) {
         }
         
         if (item.to) {
+          // Always show core admin pages even if not in custom permissions
+          if (alwaysAllowedRoutes.includes(item.to)) return item;
           return permissions.includes(item.to) ? item : null;
         }
         

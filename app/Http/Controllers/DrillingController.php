@@ -312,6 +312,20 @@ public function index(Request $request)
             });
         })
 
+        // ✅ Work Type filter
+        ->when($request->work_type, function ($query) use ($request) {
+            $query->whereHas('workPointDetail', function ($w) use ($request) {
+                $w->where('work_type', $request->work_type);
+            });
+        })
+
+        // ✅ Survey Type filter
+        ->when($request->survey_type, function ($query) use ($request) {
+            $query->whereHas('surveyDetail', function ($s) use ($request) {
+                $s->where('survey_type', $request->survey_type);
+            });
+        })
+
         // ✅ Relations consistency check
         ->where(function ($query) {
             $query->whereHas('surveyDetail', function ($q) {
@@ -401,6 +415,20 @@ public function getDataByUserId(Request $request)
                 ->orWhereHas('compressorRpm', function ($c) use ($request) {
                     $c->where('com_actul_hr', '<=', $request->max_point);
                 });
+            });
+        })
+
+        // ✅ Work Type filter
+        ->when($request->work_type, function ($query) use ($request) {
+            $query->whereHas('workPointDetail', function ($w) use ($request) {
+                $w->where('work_type', $request->work_type);
+            });
+        })
+
+        // ✅ Survey Type filter
+        ->when($request->survey_type, function ($query) use ($request) {
+            $query->whereHas('surveyDetail', function ($s) use ($request) {
+                $s->where('survey_type', $request->survey_type);
             });
         })
 

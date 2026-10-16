@@ -5,6 +5,11 @@ export const receiver_bank=[
     { value: 'Krishna Shitole', label: 'Krishna Shitole' },
     { value: 'Deshmukh infra LLP', label: 'Deshmukh infra LLP' },
      { value: 'Amol Jagtap', label: 'Amol Jagtap' },
+  { value: 'Deshmukh-Union bank', label: 'Deshmukh-Union bank' },
+{ value: 'Deshmukh-Idfc bank', label: 'Deshmukh-Idfc bank' },
+{ value: 'Deshmukh-Latur bank', label: 'Deshmukh-Latur bank' },
+{ value: 'Tejas navale', label: 'Tejas navale' },
+{ value: 'Sagar Patel', label: 'Sagar Patel' },
 ];
 
 export const paymentTypes = [

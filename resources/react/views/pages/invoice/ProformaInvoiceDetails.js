@@ -614,38 +614,42 @@ const ProformaInvoiceDetails = () => {
               )}
 
               {/* Payment Terms */}
-              {proformaInvoice.payment_terms && (
-                <>
-                  <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
-                    Payment Terms
-                  </h6>
-                  <ul className="ms-3">
-                    {proformaInvoice.payment_terms
-                      .split('\n')
-                      .filter((line) => line.trim() !== '')
-                      .map((line, index) => (
-                        <li key={index} className="text-dark">{line}</li>
-                      ))}
-                  </ul>
-                </>
-              )}
+              <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
+                Payment Terms
+              </h6>
+              <ol className="ms-3 ps-3">
+                {proformaInvoice?.payment_terms ? (
+                  proformaInvoice.payment_terms
+                    .split('\n')
+                    .filter((line) => line.trim() !== '')
+                    .map((line, index) => (
+                      <li key={index} className="text-dark">
+                        {line.replace(/^\d+[\.\)\-:]\s*/, '')}
+                      </li>
+                    ))
+                ) : (
+                  <li className="text-muted list-unstyled">No payment terms available.</li>
+                )}
+              </ol>
 
               {/* Terms & Conditions */}
-              {proformaInvoice.terms_conditions && (
-                <>
-                  <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
-                    Terms & Conditions
-                  </h6>
-                  <ul className="ms-3">
-                    {proformaInvoice.terms_conditions
-                      .split('\n')
-                      .filter((line) => line.trim() !== '')
-                      .map((line, index) => (
-                        <li key={index} className="text-dark">{line}</li>
-                      ))}
-                  </ul>
-                </>
-              )}
+              <h6 className="mt-4 mb-2 fw-semibold text-primary border-bottom border-primary pb-2">
+                Terms & Conditions
+              </h6>
+              <ol className="ms-3 ps-3">
+                {proformaInvoice?.terms_conditions ? (
+                  proformaInvoice.terms_conditions
+                    .split('\n')
+                    .filter((line) => line.trim() !== '')
+                    .map((line, index) => (
+                      <li key={index} className="text-dark">
+                        {line.replace(/^\d+[\.\)\-:]\s*/, '')}
+                      </li>
+                    ))
+                ) : (
+                  <li className="text-muted list-unstyled">No terms and conditions provided.</li>
+                )}
+              </ol>
             </div>
           </div>
 
