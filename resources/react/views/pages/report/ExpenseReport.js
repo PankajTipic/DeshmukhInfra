@@ -89,7 +89,8 @@ const ExpenseReport = () => {
         showToast('danger', 'Failed to fetch records');
       }
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      const msg = error.response?.data?.error || error.response?.data?.message || error.message || String(error);
+      showToast('danger', msg);
     }
   }
 
@@ -99,11 +100,18 @@ const ExpenseReport = () => {
       event.preventDefault()
       event.stopPropagation()
       setValidated(true)
+
+      if (!state.start_date || !state.end_date) {
+        showToast('warning', 'Please select both Start Date and End Date before submitting.');
+        return;
+      }
+
       if (form.checkValidity()) {
         await fetchExpense()
       }
     } catch (e) {
-      showToast('danger', 'Error occured ' + e);
+      const msg = e.response?.data?.error || e.response?.data?.message || e.message || String(e);
+      showToast('danger', msg);
     }
   }
 

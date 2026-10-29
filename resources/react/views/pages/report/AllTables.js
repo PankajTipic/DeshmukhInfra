@@ -182,18 +182,21 @@ function All_Tables({
             return (
               (item.date && formatDate(item.date).toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.projectName && item.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (item.projectType && item.projectType.toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.totalIncomeAmount && item.totalIncomeAmount.toString().includes(searchTerm))
             );
           case '2':
             return (
               (item.expenseDate && formatDate(item.expenseDate).toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.projectName && item.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (item.projectType && item.projectType.toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.totalExpense && item.totalExpense.toString().includes(searchTerm))
             );
           case '3':
             return (
               (item.date && formatDate(item.date).toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.projectName && item.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (item.projectType && item.projectType.toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.totalIncome && item.totalIncome.toString().includes(searchTerm)) ||
               (item.totalExpenses && item.totalExpenses.toString().includes(searchTerm)) ||
               (item.profitLoss && item.profitLoss.toString().includes(searchTerm))
@@ -201,6 +204,7 @@ function All_Tables({
           case '4':
             return (
               (item.projectName && item.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (item.projectType && item.projectType.toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
               (item.dPrice && item.dPrice.toString().includes(searchTerm)) ||
               (item.totalQty && item.totalQty.toString().includes(searchTerm)) ||

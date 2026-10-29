@@ -17,7 +17,8 @@ export const paymentTypes = [
     { value: 'rtgs', label: 'RTGS' },
     { value: 'upi', label: 'UPI' },
     { value: 'cash', label: 'Cash' },
-    { value: 'cheque', label: 'Cheque' }
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'neft', label: 'NEFT' }
   ];
 
   export const workTypeDropdown = [

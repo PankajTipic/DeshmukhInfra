@@ -81,6 +81,7 @@ const OperatorList = () => {
       case "1": return "Operator";
       case "2": return "Vendor";
       case "3": return "Purches Vendor";
+      case "4": return "Helper";
       default: return "Unknown";
     }
   };
@@ -146,8 +147,8 @@ const OperatorList = () => {
         showToast("danger", 'Project is required for Supervisor');
         return;
       }
-      if ((currentOperator.type === "0" || currentOperator.type === "1") && !currentOperator.payment) {
-        showToast("danger", 'Payment is required for Supervisor and Operator');
+      if ((currentOperator.type === "0" || currentOperator.type === "1" || currentOperator.type === "4") && !currentOperator.payment) {
+        showToast("danger", 'Payment is required for Supervisor, Operator and Helper');
         return;
       }
       if ((currentOperator.type === "2" || currentOperator.type === "3") && !currentOperator.gst_no.trim()) {
@@ -201,6 +202,7 @@ const OperatorList = () => {
             <option value="1">Operators</option>
             <option value="2">Vendors</option>
             <option value="3">Purches Vendors</option>
+            <option value="4">Helpers</option>
           </CFormSelect>
           <CButton color="danger" onClick={() => navigate("/oprator")}>
             Add User
@@ -310,15 +312,16 @@ const OperatorList = () => {
                       { label: "Supervisor", value: "0" },
                       { label: "Operator", value: "1" },
                       { label: "Vendor", value: "2" },
-                        { label: "Purches Vendor", value: "3" },
+                      { label: "Purches Vendor", value: "3" },
+                      { label: "Helper", value: "4" },
                     ]}
                     required
                   />
                 </CCol>
              
 
-              {/* Payment for Supervisor and Operator */}
-              {(currentOperator.type === "0" || currentOperator.type === "1") && (
+              {/* Payment for Supervisor, Operator, Helper */}
+              {(currentOperator.type === "0" || currentOperator.type === "1" || currentOperator.type === "4") && (
                
                   <CCol md={4}>
                     <CFormInput

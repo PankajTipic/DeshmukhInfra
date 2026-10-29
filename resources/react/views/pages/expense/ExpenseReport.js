@@ -1535,7 +1535,8 @@ const ExpenseReport = () => {
         setHasMorePages(response.has_more_pages || false);
       }
     } catch (error) {
-      showToast('danger', 'Error occurred: ' + error);
+      const msg = error.response?.data?.error || error.response?.data?.message || error.message || String(error);
+      showToast('danger', msg);
     } finally {
       setIsLoading(false);
       setIsFetchingMore(false);
@@ -1548,6 +1549,29 @@ const ExpenseReport = () => {
       event.preventDefault();
       event.stopPropagation();
       setValidated(true);
+
+      // ── Check if at least one filter is selected ──
+      const hasStartDate = Boolean(state.start_date && String(state.start_date).trim() !== '');
+      const hasEndDate = Boolean(state.end_date && String(state.end_date).trim() !== '');
+      const hasDateFilter = hasStartDate && hasEndDate;
+      const hasProjectFilter = Boolean(state.project_id && String(state.project_id).trim() !== '');
+      const hasExpenseTypeFilter = Boolean(state.expense_type_id && String(state.expense_type_id).trim() !== '');
+      const hasPartyFilter = Boolean((state.party_name && String(state.party_name).trim() !== '') || (partySearchTerm && partySearchTerm.trim() !== ''));
+
+      // If user provided only one date
+      if ((hasStartDate && !hasEndDate) || (!hasStartDate && hasEndDate)) {
+        showToast('warning', 'Please select both Start Date and End Date.');
+        return;
+      }
+
+      if (!hasDateFilter && !hasProjectFilter && !hasExpenseTypeFilter && !hasPartyFilter) {
+        showToast(
+          'warning',
+          'Please select at least one filter (Project, Date range, Expense Type, or Party Name) before submitting.'
+        );
+        return; // stop here — do not call API
+      }
+
       if (form.checkValidity()) {
         isInfiniteScrollingRef.current = false;
         scrollPositionRef.current = 0;
@@ -1555,7 +1579,8 @@ const ExpenseReport = () => {
         await fetchExpense(true);
       }
     } catch (e) {
-      showToast('danger', 'Error occurred: ' + e);
+      const msg = e.response?.data?.error || e.response?.data?.message || e.message || String(e);
+      showToast('danger', msg);
     }
   };
 
@@ -1602,7 +1627,8 @@ const ExpenseReport = () => {
       fetchExpense(true);
       showToast('success', t("MSG.expense_deleted_successfully") || 'Expense deleted successfully');
     } catch (error) {
-      showToast('danger', 'Error occurred: ' + error);
+      const msg = error.response?.data?.error || error.response?.data?.message || error.message || String(error);
+      showToast('danger', msg);
     }
   };
 
@@ -1611,7 +1637,8 @@ const ExpenseReport = () => {
       await put('/api/expense/' + expense.id, { ...expense, show: !expense.show });
       fetchExpense(true);
     } catch (error) {
-      showToast('danger', 'Error occurred: ' + error);
+      const msg = error.response?.data?.error || error.response?.data?.message || error.message || String(error);
+      showToast('danger', msg);
     }
   };
 

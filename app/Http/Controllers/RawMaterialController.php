@@ -260,7 +260,7 @@ public function addQty(Request $request, $id)
         'payment_by'   => 'nullable|string|max:255',
         'payment_type' => 'nullable|string|max:255',
         'transaction_id' => 'nullable|string|max:255',
-        'expense_flag' => 'nullable|boolean', // ✅ new flag
+        'expense_flag' => 'nullable|boolean', // ✅ flag
     ]);
 
     DB::beginTransaction();
@@ -268,26 +268,35 @@ public function addQty(Request $request, $id)
     try {
         $companyId = $user->company_id;
 
-        // ✅ Find the latest log entry for this material
-        $log = RawMaterialLog::where('material_id', $id)->latest()->firstOrFail();
+        // ✅ Find the raw material within user's company
+        $rawMaterial = RawMaterial::where('company_id', $companyId)->findOrFail($id);
+
+        // ✅ Find latest log entry if exists
+        $latestLog = RawMaterialLog::where('material_id', $id)->latest()->first();
+
+        $currentStock = $latestLog ? (float)$latestLog->current_stock : 0;
+        $projectId = $latestLog ? $latestLog->project_id : ($request->project_id ?? null);
+        $capacity = $latestLog ? ($latestLog->capacity ?? 0) : 0;
 
         // ✅ Calculate new stock and total
-        $newStock   = $log->current_stock + $request->add_qty;
-        $newTotal   = $newStock * $request->price;
-        $addedTotal = $request->add_qty * $request->price;
+        $newStock   = $currentStock + (float)$request->add_qty;
+        $newTotal   = $newStock * (float)$request->price;
+        $addedTotal = (float)$request->add_qty * (float)$request->price;
 
-        // ✅ Update the log with new stock, price, total
-        $log->update([
+        // ✅ Store new log entry to properly maintain logs history
+        $log = RawMaterialLog::create([
+            'material_id'   => $rawMaterial->id,
+            'company_id'    => $companyId,
+            'project_id'    => $projectId,
             'current_stock' => $newStock,
             'price'         => $request->price,
             'total'         => $newTotal,
             'unit'          => $request->unit,
+            'capacity'      => $capacity,
         ]);
 
-        // ✅ Create expense entry only if checkbox is checked
-        if ($request->boolean('expense_flag', true)) {
-            $projectId = $log->project_id;
-
+        // ✅ Create expense entry only if checkbox is explicitly checked (default: false)
+        if ($request->boolean('expense_flag', false)) {
             $expenseTypeId = ExpenseType::where('company_id', $companyId)
                 ->where('name', 'Raw Material')
                 ->value('id');
@@ -332,7 +341,7 @@ public function addQty(Request $request, $id)
 
         return response()->json([
             'message' => 'Quantity updated successfully',
-            'data'    => $log->fresh()
+            'data'    => $log
         ], 200);
 
     } catch (\Exception $e) {
@@ -420,22 +429,23 @@ public function getMaterialByProject(Request $request)
 
     try {
         $materials = RawMaterial::where('company_id', $companyId)
-            ->when($projectId, function ($query) use ($projectId) {
-                // Only raw materials that have logs for this project
-                $query->whereHas('logs', function ($q) use ($projectId) {
-                    $q->where('project_id', $projectId);
-                });
-            })
-            ->with(['logs' => function ($q) use ($projectId) {
-                // Always latest first
+            ->with(['logs' => function ($q) {
                 $q->latest()->with('project');
-
-                // ✅ if a project is selected, show ONLY that project's logs
-                if ($projectId) {
-                    $q->where('project_id', $projectId);
-                }
             }])
-            ->get();
+            ->get()
+            ->map(function ($material) use ($projectId) {
+                // Find log for this specific project first, or fallback to latest log
+                $projectLog = null;
+                if ($projectId) {
+                    $projectLog = $material->logs->firstWhere('project_id', $projectId);
+                }
+                $log = $projectLog ?: $material->logs->first();
+
+                $material->current_stock = $log ? floatval($log->current_stock) : 0;
+                $material->unit = $log && $log->unit ? $log->unit : 'Ton';
+                $material->log_id = $log ? $log->id : null;
+                return $material;
+            });
 
         return response()->json([
             'message'   => 'Raw Materials fetched successfully',
@@ -493,7 +503,7 @@ public function update(Request $request, $id)
             // ✅ Update the existing latest log
             $latestLog->update([
                 'project_id'    => $request->project_id,
-                'current_stock' => $request->current_stock,
+                'current_stock' => $request->filled('current_stock') ? $request->current_stock : $latestLog->current_stock,
             ]);
         } else {
             // ✅ Create a new log if none exists
@@ -501,12 +511,11 @@ public function update(Request $request, $id)
                 'material_id'   => $rawMaterial->id,
                 'company_id'    => $companyId,
                 'project_id'    => $request->project_id,
-                'current_stock' => $request->current_stock,
-                'price'         => $request->price,
-                
-                'capacity'     => $request->capacity,
-                'total'      => $request->total,
-                'unit'          => $request->unit,
+                'current_stock' => $request->current_stock ?? 0,
+                'price'         => $request->price ?? 0,
+                'capacity'      => $request->capacity ?? 0,
+                'total'         => $request->total ?? 0,
+                'unit'          => $request->unit ?? 'NA',
             ]);
         }
 

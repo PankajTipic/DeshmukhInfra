@@ -31,7 +31,7 @@ const OperatorForm = () => {
     pan_number: '',
     gst_no: '',
     payment: '',
-    type: '',        // 0 = Supervisor, 1 = Operator, 2 = Vendor
+    type: '',        // 0 = Supervisor, 1 = Operator, 2 = Vendor, 3 = Purches Vendor, 4 = Helper
     project_id: '',  // project id if supervisor
     show: true,
   });
@@ -83,8 +83,8 @@ const OperatorForm = () => {
       showToast("danger", 'Project is required for Supervisor');
       return;
     }
-    if ((formData.type === "0" || formData.type === "1") && !formData.payment) {
-      showToast("danger", 'Payment is required for Supervisor and Operator');
+    if ((formData.type === "0" || formData.type === "1" || formData.type === "4") && !formData.payment) {
+      showToast("danger", 'Payment is required for Supervisor, Operator and Helper');
       return;
     }
     if (formData.type === "2" && !formData.gst_no.trim()) {
@@ -112,7 +112,7 @@ const OperatorForm = () => {
 
     const payload = {
       ...formData,
-      project_id: formData.type === "1" || formData.type === "2" ? "0" : formData.project_id,
+      project_id: formData.type === "1" || formData.type === "2" || formData.type === "4" ? "0" : formData.project_id,
       payment: formData.type === "2" || formData.type === "3" ? "0" : formData.payment
     };
 
@@ -287,6 +287,7 @@ const OperatorForm = () => {
                 <option value="1">Operator</option>
                 <option value="2">Vendor</option>
                 <option value="3">Purches Vendor</option>
+                <option value="4">Helper</option>
               </CFormSelect>
             </CCol>
 
@@ -338,8 +339,8 @@ const OperatorForm = () => {
             </CRow>
           )}
 
-          {/* 5. Payment for Operator only */}
-          {formData.type === "1" && (
+          {/* 5. Payment for Operator and Helper */}
+          {(formData.type === "1" || formData.type === "4") && (
             <CRow className="mb-3">
               <CCol md={6}>
                 <CFormLabel>Payment <span style={{color: 'red'}}>*</span></CFormLabel>

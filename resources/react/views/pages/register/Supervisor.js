@@ -32,7 +32,7 @@ import { useToast } from '../../common/toast/ToastContext'
 
 const ROLE_DEFAULTS = {
   1: [ // Admin
-    '/dashboard', '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable',
+    '/dashboard', '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable', '/separateWorkLogReport',
     '/invoice', '/invoiceTable', '/budget', '/ProjectSummeryReport', '/operatorReport', '/vendorReport',
     '/incomeTable', '/internal-money-transfer', 'Reports/Reports', '/expense/expenseReport', '/seprateAllData',
     '/subcontractLadger', '/RegularProjectsLadger', '/PurchaseVendorLadger', '/VendorLedger',
@@ -41,23 +41,23 @@ const ROLE_DEFAULTS = {
     '/OpratorList', '/supervisor', '/showRawMaterials', '/MachineriesTable', '/machineryStockTable'
   ],
   2: [ // User
-    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/separateWorkLogReport', '/expense/expenseReport',
     '/project', '/expense/all-type', '/OpratorList', '/MachineriesTable', '/machineryStockTable'
   ],
   3: [ // User++
-    '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/dailyActivityDashboard', '/worklog', '/expense/new', '/infraDetailsShowTable', '/separateWorkLogReport', '/expense/expenseReport',
     '/invoice', '/invoiceTable', '/budget', '/displayPurchesVendors', '/vendorPurches', '/vendorPurchesPayment',
     '/PurchaseVendorReport', '/project-types', '/work-types', '/survey-types', '/uoms', '/project',
     '/expense/all-type', '/OpratorList', '/MachineriesTable', '/machineryStockTable'
   ],
   4: [ // Purchase Vendor
-    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport',
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/separateWorkLogReport', '/expense/expenseReport',
     '/displayPurchesVendors', '/vendorPurches', '/vendorPurchesPayment', '/PurchaseVendorReport',
     '/project-types', '/work-types', '/survey-types', '/uoms', '/project', '/expense/all-type',
     '/OpratorList', '/MachineriesTable', '/machineryStockTable'
   ],
   5: [ // Work Log User
-    '/worklog', '/expense/new', '/infraDetailsShowTable', '/expense/expenseReport', '/project',
+    '/worklog', '/expense/new', '/infraDetailsShowTable', '/separateWorkLogReport', '/expense/expenseReport', '/project',
     '/project-types', '/work-types', '/survey-types', '/uoms', '/expense/all-type',
     '/MachineriesTable', '/machineryStockTable'
   ]
@@ -77,6 +77,7 @@ const ALL_PAGES = [
       { label: 'Work Log Form', path: '/worklog' },
       { label: 'New Expense Entry', path: '/expense/new' },
       { label: 'Work Log Report Table', path: '/infraDetailsShowTable' },
+      { label: 'Separate Work Log Report (Drilling & Casting)', path: '/separateWorkLogReport' },
       { label: 'Expense Report Page', path: '/expense/expenseReport' },
       { label: 'Separate All Data Tool', path: '/seprateAllData' },
       { label: 'General Reports options', path: 'Reports/Reports' }

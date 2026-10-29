@@ -62,16 +62,27 @@ public function store(Request $request)
 
     // ✅ Step 2: Always override company_id with logged-in user
     $drillingRecord = DrillingRecord::create([
-        'user_id'        => $userId,
-        'company_id'     => $companyId,
-        'project_id'     => $request->project_id ?? null,
-        'date'           => $request->date ?? now()->toDateString(),
-        'oprator_helper' => $request->oprator_helper,
+        'user_id'              => $userId,
+        'company_id'           => $companyId,
+        'project_id'           => $request->project_id ?? null,
+        'tab_type'             => $request->tab_type ?? 'drilling',
+        'date'                 => $request->date ?? now()->toDateString(),
+        'oprator_helper'       => $request->oprator_helper,
+        'start_time'           => $request->start_time ?? null,
+        'end_time'             => $request->end_time ?? null,
+        'break_time'           => $request->break_time ?? null,
+        'net_hours'            => $request->net_hours ?? null,
+        'helper_id'            => $request->helper_id ?? null,
+        'casting_team_name'    => $request->casting_team_name ?? null,
+        'casting_team_no'      => $request->casting_team_no ?? null,
+        'templates_available'  => $request->templates_available ?? null,
+        'capping_available'    => $request->capping_available ?? null,
+        'total_casting_points' => $request->total_casting_points ?? null,
     ]);
 
     $operatorId = $drillingRecord->oprator_helper;
 
-    // ✅ Step 2.1: Create Machine Reading entries & deduct diesel from Machinery
+    // ✅ Step 2.1: Create Machine Reading entries & adjust diesel from Machinery
     if ($request->has('machineReading') && is_array($request->machineReading)) {
         foreach ($request->machineReading as $reading) {
             MachineReading::create([
@@ -84,22 +95,32 @@ public function store(Request $request)
                 'machine_start'     => $reading['machine_start'] ?? null,
                 'machine_end'       => $reading['machine_end'] ?? null,
                 'actual_machine_hr' => $reading['actual_machine_hr'] ?? null,
+                'diesel_filled'     => $reading['diesel_filled'] ?? 0,
                 'diesel_used'       => $reading['diesel_used'] ?? null,
                 'diesel_balance'    => $reading['diesel_balance'] ?? null,
+                'diesel_avg'        => $reading['diesel_avg'] ?? null,
             ]);
 
-            // 🔥 Deduct diesel_used from Machinery.diesel_balance
-            $dieselUsed = floatval($reading['diesel_used'] ?? 0);
-            $machineId  = $reading['machine_id'] ?? null;
-            if ($machineId && $dieselUsed > 0) {
-                Machinery::where('id', $machineId)
-                    ->where('company_id', $companyId)
-                    ->decrement('diesel_balance', $dieselUsed);
+            // Adjust Machinery.diesel_balance: filled increases, used decreases
+            $dieselUsed   = floatval($reading['diesel_used'] ?? 0);
+            $dieselFilled = floatval($reading['diesel_filled'] ?? 0);
+            $machineId    = $reading['machine_id'] ?? null;
+            if ($machineId) {
+                if ($dieselFilled > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->increment('diesel_balance', $dieselFilled);
+                }
+                if ($dieselUsed > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->decrement('diesel_balance', $dieselUsed);
+                }
             }
         }
     }
 
-    // ✅ Step 2.2: Create Compressor RPM entries & deduct diesel from Machinery
+    // ✅ Step 2.2: Create Compressor RPM entries & adjust diesel from Machinery
     if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
         foreach ($request->compressor_rpm as $rpm) {
             CompressorRpm::create([
@@ -112,17 +133,27 @@ public function store(Request $request)
                 'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
                 'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
                 'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
+                'diesel_filled'      => $rpm['diesel_filled'] ?? 0,
                 'diesel_used'        => $rpm['diesel_used'] ?? null,
                 'diesel_balance'     => $rpm['diesel_balance'] ?? null,
+                'diesel_avg'         => $rpm['diesel_avg'] ?? null,
             ]);
 
-            // 🔥 Deduct diesel_used from Machinery.diesel_balance
-            $dieselUsed = floatval($rpm['diesel_used'] ?? 0);
-            $machineId  = $rpm['machine_id'] ?? null;
-            if ($machineId && $dieselUsed > 0) {
-                Machinery::where('id', $machineId)
-                    ->where('company_id', $companyId)
-                    ->decrement('diesel_balance', $dieselUsed);
+            // Adjust Machinery.diesel_balance: filled increases, used decreases
+            $dieselUsed   = floatval($rpm['diesel_used'] ?? 0);
+            $dieselFilled = floatval($rpm['diesel_filled'] ?? 0);
+            $machineId    = $rpm['machine_id'] ?? null;
+            if ($machineId) {
+                if ($dieselFilled > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->increment('diesel_balance', $dieselFilled);
+                }
+                if ($dieselUsed > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->decrement('diesel_balance', $dieselUsed);
+                }
             }
         }
     }
@@ -137,13 +168,23 @@ $usedRawMaterials = [];
 
 if ($request->has('raw_material_usage') && is_array($request->raw_material_usage)) {
     foreach ($request->raw_material_usage as $usage) {
-        $materialId = $usage['material_id'] ?? null;
-        $qtyUsed    = $usage['qty_used'] ?? 0;
-        $miscInput  = $usage['misc'] ?? null; // optional text or notes
+        $materialId   = $usage['material_id'] ?? null;
+        $materialName = $usage['material_type'] ?? $usage['material_name'] ?? null;
+        $qtyUsed      = floatval($usage['qty_used'] ?? $usage['used_qty'] ?? 0);
+        $receivedQty  = floatval($usage['received_qty'] ?? 0);
+        $unit         = $usage['unit'] ?? null;
 
-        if ($materialId && $qtyUsed > 0) {
+        // Find or create material if materialId is not set
+        if (!$materialId && $materialName) {
+            $mat = RawMaterial::firstOrCreate(
+                ['company_id' => $companyId, 'name' => $materialName],
+                ['local_name' => $materialName]
+            );
+            $materialId = $mat->id;
+        }
 
-            // Get the latest log for this material and project
+        if ($materialId && ($qtyUsed > 0 || $receivedQty > 0)) {
+            // Get or create log for this material and project
             $rawLog = RawMaterialLog::where('company_id', $companyId)
                 ->where('material_id', $materialId)
                 ->when($request->project_id, function ($q) use ($request) {
@@ -152,32 +193,45 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
                 ->latest()
                 ->first();
 
-            if ($rawLog) {
-                $pricePerUnit = $rawLog->price ?? 0; // price per unit
-                $amountUsed   = $qtyUsed * $pricePerUnit;
+            if (!$rawLog) {
+                // Fallback to any log of this material to inherit price/unit
+                $baseLog = RawMaterialLog::where('company_id', $companyId)
+                    ->where('material_id', $materialId)
+                    ->latest()
+                    ->first();
 
-                // Deduct quantity (but not below zero)
-                $newQty = max(0, $rawLog->current_stock - $qtyUsed);
-
-                // Deduct total amount/value (but not below zero)
-                $newTotal = max(0, $rawLog->total - $amountUsed);
-
-                // Update RawMaterialLog
-                $rawLog->update([
-                    'current_stock' => $newQty,
-                    'total'         => $newTotal,
+                $rawLog = RawMaterialLog::create([
+                    'material_id'   => $materialId,
+                    'company_id'    => $companyId,
+                    'project_id'    => $request->project_id ?? 0,
+                    'current_stock' => $baseLog ? $baseLog->current_stock : 0,
+                    'price'         => $baseLog ? $baseLog->price : 0,
+                    'total'         => $baseLog ? $baseLog->total : 0,
+                    'unit'          => $unit ?: ($baseLog ? $baseLog->unit : 'Ton'),
+                    'capacity'      => 1000
                 ]);
             }
 
+            $pricePerUnit = floatval($rawLog->price ?? 0);
+            $amountUsed   = $qtyUsed * $pricePerUnit;
+            $newQty       = max(0, floatval($rawLog->current_stock) + $receivedQty - $qtyUsed);
+            $newTotal     = max(0, floatval($rawLog->total) - $amountUsed);
+
+            $rawLog->update([
+                'current_stock' => $newQty,
+                'total'         => $newTotal,
+                'unit'          => $unit ?: $rawLog->unit,
+            ]);
+
             // Store usage in UsesRawMaterial table
             $used = UsesRawMaterial::create([
-                'company_id'  => $companyId,
-                'project_id'  => $request->project_id ?? null,
+                'company_id'         => $companyId,
+                'project_id'         => $request->project_id ?? null,
                 'drilling_record_id' => $drillingRecord->id,
-                'material_id' => $materialId,
-                'used_qty'    => $qtyUsed,
-                'price'       => $rawLog->price ?? 0, // unit price
-                'misc'        => $amountUsed,         // store total amount used here
+                'material_id'        => $materialId,
+                'used_qty'           => $qtyUsed,
+                'price'              => $pricePerUnit,
+                'misc'               => $amountUsed,
             ]);
 
             $usedRawMaterials[] = $used;
@@ -201,6 +255,7 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
                 'project_id'         => $request->project_id ?? null,
                 'drilling_record_id' => $drillingRecord->id,
                 'work_type'          => $workPoint['work_type'] ?? null,
+                'drilling_type'      => $workPoint['drilling_type'] ?? null,
                 'work_point'         => $workPoint['work_point'] ?? null,
                 'uom'                => $workPoint['uom'] ?? null,
                 'rate'               => $workPoint['rate'] ?? null,
@@ -275,12 +330,27 @@ public function index(Request $request)
     $records = DrillingRecord::with([
             'surveyDetail',
             'workPointDetail',
-             'compressorRpm', 
+            'compressorRpm', 
             'machineReading.operator',
             'project:id,project_name',
-            'operator:id,name'
+            'operator:id,name',
+            'helper:id,name',
+            'uses_raw_material.material:id,name'
         ])
         ->where('company_id', $companyId)
+
+        // ✅ Tab Type filter (drilling | casting)
+        ->when($request->tab_type, function ($query) use ($request) {
+            if ($request->tab_type === 'drilling') {
+                $query->where(function ($q) {
+                    $q->where('tab_type', 'drilling')
+                      ->orWhereNull('tab_type')
+                      ->orWhere('tab_type', '');
+                });
+            } else {
+                $query->where('tab_type', $request->tab_type);
+            }
+        })
 
         // ✅ Date filter
         ->when($request->start_date && $request->end_date, function ($query) use ($request) {
@@ -347,7 +417,13 @@ public function index(Request $request)
                 $q->whereColumn('compressor_rpm.company_id', 'drilling_records.company_id')
                   ->orWhereColumn('compressor_rpm.project_id', 'drilling_records.project_id')
                   ->orWhereColumn('compressor_rpm.drilling_record_id', 'drilling_records.id');
-            });
+            })
+            ->orWhereHas('uses_raw_material', function ($q) {
+                $q->whereColumn('uses_raw_material.company_id', 'drilling_records.company_id')
+                  ->orWhereColumn('uses_raw_material.drilling_record_id', 'drilling_records.id');
+            })
+            ->orWhereNotNull('casting_team_name')
+            ->orWhereNotNull('helper_id');
         })
         ->orderBy('id', 'desc')
         ->get();
@@ -383,10 +459,25 @@ public function getDataByUserId(Request $request)
             'compressorRpm',
             'machineReading.operator',
             'project:id,project_name',
-            'operator:id,name'
+            'operator:id,name',
+            'helper:id,name',
+            'uses_raw_material.material:id,name'
         ])
         ->where('company_id', $companyId)
         ->whereIn('project_id', $projectIds) // <-- Filter by supervised projects
+
+        // ✅ Tab Type filter (drilling | casting)
+        ->when($request->tab_type, function ($query) use ($request) {
+            if ($request->tab_type === 'drilling') {
+                $query->where(function ($q) {
+                    $q->where('tab_type', 'drilling')
+                      ->orWhereNull('tab_type')
+                      ->orWhere('tab_type', '');
+                });
+            } else {
+                $query->where('tab_type', $request->tab_type);
+            }
+        })
 
         // ✅ Optional date range filter
         ->when($request->start_date && $request->end_date, function ($query) use ($request) {
@@ -453,7 +544,13 @@ public function getDataByUserId(Request $request)
                 $q->whereColumn('compressor_rpm.company_id', 'drilling_records.company_id')
                   ->orWhereColumn('compressor_rpm.project_id', 'drilling_records.project_id')
                   ->orWhereColumn('compressor_rpm.drilling_record_id', 'drilling_records.id');
-            });
+            })
+            ->orWhereHas('uses_raw_material', function ($q) {
+                $q->whereColumn('uses_raw_material.company_id', 'drilling_records.company_id')
+                  ->orWhereColumn('uses_raw_material.drilling_record_id', 'drilling_records.id');
+            })
+            ->orWhereNotNull('casting_team_name')
+            ->orWhereNotNull('helper_id');
         })
 
         ->orderBy('id', 'desc')
@@ -749,29 +846,55 @@ public function update(Request $request, $id)
 
     // ✅ Step 3: Update drilling record
     $drillingRecord->update([
-        'project_id'     => $request->project_id ?? $drillingRecord->project_id,
-        'date'           => $request->date ?? $drillingRecord->date,
-        'oprator_helper' => $request->oprator_helper ?? $drillingRecord->oprator_helper,
+        'project_id'           => $request->project_id ?? $drillingRecord->project_id,
+        'date'                 => $request->date ?? $drillingRecord->date,
+        'oprator_helper'       => $request->oprator_helper ?? $drillingRecord->oprator_helper,
+        'start_time'           => $request->has('start_time') ? $request->start_time : $drillingRecord->start_time,
+        'end_time'             => $request->has('end_time') ? $request->end_time : $drillingRecord->end_time,
+        'break_time'           => $request->has('break_time') ? $request->break_time : $drillingRecord->break_time,
+        'net_hours'            => $request->has('net_hours') ? $request->net_hours : $drillingRecord->net_hours,
+        'helper_id'            => $request->has('helper_id') ? $request->helper_id : $drillingRecord->helper_id,
+        'casting_team_name'    => $request->has('casting_team_name') ? $request->casting_team_name : $drillingRecord->casting_team_name,
+        'casting_team_no'      => $request->has('casting_team_no') ? $request->casting_team_no : $drillingRecord->casting_team_no,
+        'templates_available'  => $request->has('templates_available') ? $request->templates_available : $drillingRecord->templates_available,
+        'capping_available'    => $request->has('capping_available') ? $request->capping_available : $drillingRecord->capping_available,
+        'total_casting_points' => $request->has('total_casting_points') ? $request->total_casting_points : $drillingRecord->total_casting_points,
     ]);
 
     // ✅ Step 4: Restore old diesel to Machinery before deleting old readings
     $oldMachineReadings = MachineReading::where('drilling_record_id', $drillingRecord->id)->get();
     foreach ($oldMachineReadings as $oldReading) {
-        $oldDiesel = floatval($oldReading->diesel_used ?? 0);
-        if ($oldReading->machine_id && $oldDiesel > 0) {
-            Machinery::where('id', $oldReading->machine_id)
-                ->where('company_id', $companyId)
-                ->increment('diesel_balance', $oldDiesel);
+        $oldUsed = floatval($oldReading->diesel_used ?? 0);
+        $oldFilled = floatval($oldReading->diesel_filled ?? 0);
+        if ($oldReading->machine_id) {
+            if ($oldUsed > 0) {
+                Machinery::where('id', $oldReading->machine_id)
+                    ->where('company_id', $companyId)
+                    ->increment('diesel_balance', $oldUsed);
+            }
+            if ($oldFilled > 0) {
+                Machinery::where('id', $oldReading->machine_id)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $oldFilled);
+            }
         }
     }
 
     $oldCompressorReadings = CompressorRPM::where('drilling_record_id', $drillingRecord->id)->get();
     foreach ($oldCompressorReadings as $oldRpm) {
-        $oldDiesel = floatval($oldRpm->diesel_used ?? 0);
-        if ($oldRpm->machine_id && $oldDiesel > 0) {
-            Machinery::where('id', $oldRpm->machine_id)
-                ->where('company_id', $companyId)
-                ->increment('diesel_balance', $oldDiesel);
+        $oldUsed = floatval($oldRpm->diesel_used ?? 0);
+        $oldFilled = floatval($oldRpm->diesel_filled ?? 0);
+        if ($oldRpm->machine_id) {
+            if ($oldUsed > 0) {
+                Machinery::where('id', $oldRpm->machine_id)
+                    ->where('company_id', $companyId)
+                    ->increment('diesel_balance', $oldUsed);
+            }
+            if ($oldFilled > 0) {
+                Machinery::where('id', $oldRpm->machine_id)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $oldFilled);
+            }
         }
     }
 
@@ -785,7 +908,7 @@ public function update(Request $request, $id)
     $totalWorkPoints = 0;
     $totalSurveys = 0;
 
-    // ✅ Step 5: Insert Machine Reading entries & deduct diesel
+    // ✅ Step 5: Insert Machine Reading entries & adjust diesel
     if ($request->has('machineReading') && is_array($request->machineReading)) {
         foreach ($request->machineReading as $reading) {
             MachineReading::create([
@@ -798,22 +921,32 @@ public function update(Request $request, $id)
                 'machine_start'      => $reading['machine_start'] ?? null,
                 'machine_end'        => $reading['machine_end'] ?? null,
                 'actual_machine_hr'  => $reading['actual_machine_hr'] ?? null,
+                'diesel_filled'      => $reading['diesel_filled'] ?? 0,
                 'diesel_used'        => $reading['diesel_used'] ?? null,
                 'diesel_balance'     => $reading['diesel_balance'] ?? null,
+                'diesel_avg'         => $reading['diesel_avg'] ?? null,
             ]);
 
-            // 🔥 Deduct diesel_used from Machinery.diesel_balance
-            $dieselUsed = floatval($reading['diesel_used'] ?? 0);
-            $machineId  = $reading['machine_id'] ?? null;
-            if ($machineId && $dieselUsed > 0) {
-                Machinery::where('id', $machineId)
-                    ->where('company_id', $companyId)
-                    ->decrement('diesel_balance', $dieselUsed);
+            // Adjust Machinery.diesel_balance: filled increases, used decreases
+            $dieselUsed   = floatval($reading['diesel_used'] ?? 0);
+            $dieselFilled = floatval($reading['diesel_filled'] ?? 0);
+            $machineId    = $reading['machine_id'] ?? null;
+            if ($machineId) {
+                if ($dieselFilled > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->increment('diesel_balance', $dieselFilled);
+                }
+                if ($dieselUsed > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->decrement('diesel_balance', $dieselUsed);
+                }
             }
         }
     }
 
-    // ✅ Step 6: Insert Compressor RPM entries & deduct diesel
+    // ✅ Step 6: Insert Compressor RPM entries & adjust diesel
     if ($request->has('compressor_rpm') && is_array($request->compressor_rpm)) {
         foreach ($request->compressor_rpm as $rpm) {
             CompressorRpm::create([
@@ -826,17 +959,27 @@ public function update(Request $request, $id)
                 'comp_rpm_start'     => $rpm['comp_rpm_start'] ?? null,
                 'comp_rpm_end'       => $rpm['comp_rpm_end'] ?? null,
                 'com_actul_hr'       => $rpm['com_actul_hr'] ?? null,
+                'diesel_filled'      => $rpm['diesel_filled'] ?? 0,
                 'diesel_used'        => $rpm['diesel_used'] ?? null,
                 'diesel_balance'     => $rpm['diesel_balance'] ?? null,
+                'diesel_avg'         => $rpm['diesel_avg'] ?? null,
             ]);
 
-            // 🔥 Deduct diesel_used from Machinery.diesel_balance
-            $dieselUsed = floatval($rpm['diesel_used'] ?? 0);
-            $machineId  = $rpm['machine_id'] ?? null;
-            if ($machineId && $dieselUsed > 0) {
-                Machinery::where('id', $machineId)
-                    ->where('company_id', $companyId)
-                    ->decrement('diesel_balance', $dieselUsed);
+            // Adjust Machinery.diesel_balance: filled increases, used decreases
+            $dieselUsed   = floatval($rpm['diesel_used'] ?? 0);
+            $dieselFilled = floatval($rpm['diesel_filled'] ?? 0);
+            $machineId    = $rpm['machine_id'] ?? null;
+            if ($machineId) {
+                if ($dieselFilled > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->increment('diesel_balance', $dieselFilled);
+                }
+                if ($dieselUsed > 0) {
+                    Machinery::where('id', $machineId)
+                        ->where('company_id', $companyId)
+                        ->decrement('diesel_balance', $dieselUsed);
+                }
             }
         }
     }
@@ -851,6 +994,7 @@ public function update(Request $request, $id)
                 'project_id'         => $request->project_id ?? null,
                 'drilling_record_id' => $drillingRecord->id,
                 'work_type'          => $workPoint['work_type'] ?? null,
+                'drilling_type'      => $workPoint['drilling_type'] ?? null,
                 'work_point'         => $workPoint['work_point'] ?? null,
                 'uom'                => $workPoint['uom'] ?? null,
                 'rate'               => $workPoint['rate'] ?? null,

@@ -777,9 +777,13 @@ const UpdateDrillingForm = () => {
     project_id: '',
     project_name: '',
     date: '',
-    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: '' }],
-    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: '' }],
-    workDetails: [{ operator_id: '', work_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
+    start_time: '',
+    end_time: '',
+    break_time: '',
+    net_hours: 0,
+    machineReading: [{ oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_filled: '', diesel_used: '', diesel_balance: '', diesel_avg: 0, old_diesel_used: 0, old_diesel_filled: 0 }],
+    compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_filled: '', diesel_used: '', diesel_balance: '', diesel_avg: 0, old_diesel_used: 0, old_diesel_filled: 0 }],
+    workDetails: [{ operator_id: '', work_type: '', drilling_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
     surveys: [{ operator_id: '', survey_type: '', uom: '', survey_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
     isGST: false,
     totalBill: 0,
@@ -794,6 +798,7 @@ const UpdateDrillingForm = () => {
   const [workTypes, setWorkTypes] = useState([]);
   const [surveyTypes, setSurveyTypes] = useState([]);
   const [uoms, setUoms] = useState([]);
+  const [customBreak, setCustomBreak] = useState(false);
 
   // Helper: safely extract payload data independent of API shape
   const unwrapApi = (res) => {
@@ -830,9 +835,12 @@ const UpdateDrillingForm = () => {
           machine_start: m.machine_start ?? '',
           machine_end: m.machine_end ?? '',
           actual_machine_hr: m.actual_machine_hr != null ? Number(m.actual_machine_hr) : 0,
+          diesel_filled: m.diesel_filled ?? '',
           diesel_used: m.diesel_used ?? '',
           diesel_balance: m.diesel_balance ?? '',
-          old_diesel_used: m.diesel_used ?? 0,
+          diesel_avg: m.diesel_avg ?? 0,
+          old_diesel_used: m.diesel_used != null ? parseFloat(m.diesel_used) : 0,
+          old_diesel_filled: m.diesel_filled != null ? parseFloat(m.diesel_filled) : 0,
         }));
 
         // map compressor readings
@@ -842,9 +850,12 @@ const UpdateDrillingForm = () => {
           comp_rpm_start: c.comp_rpm_start ?? '',
           comp_rpm_end: c.comp_rpm_end ?? '',
           com_actul_hr: c.com_actul_hr != null ? Number(c.com_actul_hr) : 0,
+          diesel_filled: c.diesel_filled ?? '',
           diesel_used: c.diesel_used ?? '',
           diesel_balance: c.diesel_balance ?? '',
-          old_diesel_used: c.diesel_used ?? 0,
+          diesel_avg: c.diesel_avg ?? 0,
+          old_diesel_used: c.diesel_used != null ? parseFloat(c.diesel_used) : 0,
+          old_diesel_filled: c.diesel_filled != null ? parseFloat(c.diesel_filled) : 0,
         }));
 
         // map work points
@@ -855,6 +866,7 @@ const UpdateDrillingForm = () => {
           return {
             operator_id: w.operator_id != null ? Number(w.operator_id) : '',
             work_type: w.work_type || '',
+            drilling_type: w.drilling_type || '',
             uom: w.uom || '',
             work_point: wp,
             rate,
@@ -886,6 +898,10 @@ const UpdateDrillingForm = () => {
           project_id: data.project_id != null ? Number(data.project_id) : '',
           project_name: data.project?.project_name || '',
           date: data.date || '',
+          start_time: data.start_time ?? '',
+          end_time: data.end_time ?? '',
+          break_time: data.break_time ?? '',
+          net_hours: data.net_hours != null ? Number(data.net_hours) : 0,
           machineReading: machineReading.length ? machineReading : prev.machineReading,
           compressorReading: compressorReading.length ? compressorReading : prev.compressorReading,
           workDetails: workDetails.length ? workDetails : prev.workDetails,
@@ -991,6 +1007,104 @@ const UpdateDrillingForm = () => {
     return diff >= 0 ? Number(diff.toFixed(2)) : 0;
   };
 
+  // Convert "HH:mm" time string to total minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return null;
+    const parts = String(timeStr).split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  };
+
+  // Parse any break/lunch duration to minutes (e.g. "00:30", "00:45", "30", "45", "30 min", "1 hr", "01:00")
+  const parseBreakTimeToMinutes = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    const str = String(val).trim().toLowerCase();
+    if (!str || str === '0' || str === '00:00' || str === '00:00:00') return 0;
+
+    if (str.includes(':')) {
+      const parts = str.split(':');
+      const h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      return h * 60 + m;
+    }
+
+    if (str.includes('min') || str.includes('m')) {
+      const num = parseFloat(str.replace(/[^0-9.]/g, ''));
+      return isNaN(num) ? 0 : num;
+    }
+
+    if (str.includes('hr') || str.includes('h')) {
+      const num = parseFloat(str.replace(/[^0-9.]/g, ''));
+      return isNaN(num) ? 0 : Math.round(num * 60);
+    }
+
+    const num = parseFloat(str);
+    if (!isNaN(num)) {
+      if (num < 5 && str.includes('.')) {
+        return Math.round(num * 60);
+      }
+      return num;
+    }
+    return 0;
+  };
+
+  // Format net hours e.g. 8.5 -> "(8h 30m)"
+  const formatNetHoursDuration = (netHours) => {
+    if (!netHours || isNaN(netHours) || netHours <= 0) return '';
+    const totalMinutes = Math.round(Number(netHours) * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (h > 0 && m > 0) return `(${h}h ${m}m)`;
+    if (h > 0) return `(${h}h)`;
+    return `(${m}m)`;
+  };
+
+  // Normalize break_time to standard "HH:mm" if matching known presets, or return as-is
+  const normalizeBreakValue = (val) => {
+    if (!val || val === '0' || val === '00:00' || val === '00:00:00') return '00:00';
+    const s = String(val).trim();
+    if (s === '30' || s === '00:30' || s === '00:30:00') return '00:30';
+    if (s === '45' || s === '00:45' || s === '00:45:00') return '00:45';
+    if (s === '60' || s === '01:00' || s === '01:00:00') return '01:00';
+    if (s === '15' || s === '00:15' || s === '00:15:00') return '00:15';
+    if (s === '75' || s === '01:15' || s === '01:15:00') return '01:15';
+    if (s === '90' || s === '01:30' || s === '01:30:00') return '01:30';
+    if (s === '120' || s === '02:00' || s === '02:00:00') return '02:00';
+    if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.substring(0, 5);
+    return s;
+  };
+
+  // Calculate Net Working Hours: (End Time - Start Time) - (Break / Lunch)
+  const calculateNetWorkingHours = (startTime, endTime, breakTime) => {
+    const startMins = timeToMinutes(startTime);
+    const endMins = timeToMinutes(endTime);
+    if (startMins === null || endMins === null) return 0;
+
+    let totalMins = endMins - startMins;
+    if (totalMins < 0) {
+      totalMins += 24 * 60;
+    }
+
+    const breakMins = parseBreakTimeToMinutes(breakTime);
+    const netMins = Math.max(0, totalMins - breakMins);
+    return parseFloat((netMins / 60).toFixed(2));
+  };
+
+  const handleWorkTimingChange = (field, value) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      updated.net_hours = calculateNetWorkingHours(
+        updated.start_time,
+        updated.end_time,
+        updated.break_time
+      );
+      return updated;
+    });
+  };
+
   // Handlers
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -1003,31 +1117,80 @@ const UpdateDrillingForm = () => {
     setShowDropdown(false);
   };
 
+  // Sequential cascade recalculation for Edit Form
+  const recalculateAllReadings = (readingsState, machineriesList) => {
+    const machineBaselines = {};
+
+    // Restore baseline before this record was saved
+    (readingsState.machineReading || []).forEach(r => {
+      if (r.machine_id) {
+        const id = String(r.machine_id);
+        if (!(id in machineBaselines)) {
+          const found = (machineriesList || []).find(m => String(m.value) === id);
+          machineBaselines[id] = found ? parseFloat(found.diesel_balance) || 0 : 0;
+        }
+        machineBaselines[id] += (parseFloat(r.old_diesel_used) || 0) - (parseFloat(r.old_diesel_filled) || 0);
+      }
+    });
+
+    (readingsState.compressorReading || []).forEach(r => {
+      if (r.machine_id) {
+        const id = String(r.machine_id);
+        if (!(id in machineBaselines)) {
+          const found = (machineriesList || []).find(m => String(m.value) === id);
+          machineBaselines[id] = found ? parseFloat(found.diesel_balance) || 0 : 0;
+        }
+        machineBaselines[id] += (parseFloat(r.old_diesel_used) || 0) - (parseFloat(r.old_diesel_filled) || 0);
+      }
+    });
+
+    const runningBalances = { ...machineBaselines };
+
+    const processRow = (row, hrField) => {
+      const mId = row.machine_id ? String(row.machine_id) : '';
+      const filled = parseFloat(row.diesel_filled) || 0;
+      const used = parseFloat(row.diesel_used) || 0;
+      const hrs = parseFloat(row[hrField]) || 0;
+      const avg = (hrs > 0 && used > 0) ? parseFloat((used / hrs).toFixed(2)) : 0;
+
+      let bal = 0;
+      if (mId) {
+        if (!(mId in runningBalances)) {
+          const found = (machineriesList || []).find(m => String(m.value) === mId);
+          runningBalances[mId] = found ? parseFloat(found.diesel_balance) || 0 : 0;
+        }
+        runningBalances[mId] = runningBalances[mId] + filled - used;
+        bal = parseFloat(runningBalances[mId].toFixed(2));
+      }
+
+      return {
+        ...row,
+        diesel_balance: bal,
+        diesel_avg: avg,
+      };
+    };
+
+    const newMR = (readingsState.machineReading || []).map(r => processRow(r, 'actual_machine_hr'));
+    const newCR = (readingsState.compressorReading || []).map(r => processRow(r, 'com_actul_hr'));
+
+    return {
+      ...readingsState,
+      machineReading: newMR,
+      compressorReading: newCR,
+    };
+  };
+
   const handleMachineReadingChange = (index, field, value) => {
     setFormData((prev) => {
       const updated = prev.machineReading.map((r, i) => i === index ? { ...r } : r);
       updated[index][field] = (field === 'oprator_id' || field === 'machine_id') ? (value === '' ? '' : Number(value)) : value;
-      
-      if (field === 'machine_id') {
-        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
-        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
-        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
-        updated[index].diesel_balance = currentBal + oldUsed;
-        updated[index].diesel_used = '';
-      }
-
-      if (field === 'diesel_used') {
-        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
-        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
-        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
-        const used = parseFloat(value) || 0;
-        updated[index].diesel_balance = (currentBal + oldUsed) - used;
-      }
 
       if (field === 'machine_start' || field === 'machine_end') {
         updated[index].actual_machine_hr = calculateMachineHours(updated[index].machine_start, updated[index].machine_end);
       }
-      return { ...prev, machineReading: updated };
+
+      const nextState = { ...prev, machineReading: updated };
+      return recalculateAllReadings(nextState, machineries);
     });
   };
 
@@ -1035,51 +1198,50 @@ const UpdateDrillingForm = () => {
     setFormData((prev) => {
       const updated = prev.compressorReading.map((r, i) => i === index ? { ...r } : r);
       updated[index][field] = (field === 'oprator_id' || field === 'machine_id') ? (value === '' ? '' : Number(value)) : value;
-      
-      if (field === 'machine_id') {
-        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
-        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
-        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
-        updated[index].diesel_balance = currentBal + oldUsed;
-        updated[index].diesel_used = '';
-      }
-
-      if (field === 'diesel_used') {
-        const selectedMachine = machineries.find(m => m.value === updated[index].machine_id);
-        const currentBal = selectedMachine ? parseFloat(selectedMachine.diesel_balance) || 0 : 0;
-        const oldUsed = parseFloat(updated[index].old_diesel_used) || 0;
-        const used = parseFloat(value) || 0;
-        updated[index].diesel_balance = (currentBal + oldUsed) - used;
-      }
 
       if (field === 'comp_rpm_start' || field === 'comp_rpm_end') {
         updated[index].com_actul_hr = calculateCompressorHours(updated[index].comp_rpm_start, updated[index].comp_rpm_end);
       }
-      return { ...prev, compressorReading: updated };
+
+      const nextState = { ...prev, compressorReading: updated };
+      return recalculateAllReadings(nextState, machineries);
     });
   };
 
   const addMachineReading = () => {
-    setFormData((prev) => ({
-      ...prev,
-      machineReading: [...prev.machineReading, { oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_used: '', diesel_balance: '' }]
-    }));
+    setFormData((prev) => {
+      const nextState = {
+        ...prev,
+        machineReading: [...prev.machineReading, { oprator_id: '', machine_id: '', machine_start: '', machine_end: '', actual_machine_hr: 0, diesel_filled: '', diesel_used: '', diesel_balance: '', diesel_avg: 0, old_diesel_used: 0, old_diesel_filled: 0 }]
+      };
+      return recalculateAllReadings(nextState, machineries);
+    });
   };
 
   const removeMachineReading = (index) => {
-    setFormData((prev) => ({ ...prev, machineReading: prev.machineReading.filter((_, i) => i !== index) }));
+    setFormData((prev) => {
+      const nextState = { ...prev, machineReading: prev.machineReading.filter((_, i) => i !== index) };
+      return recalculateAllReadings(nextState, machineries);
+    });
   };
 
   const addCompressorReading = () => {
-    setFormData((prev) => ({
-      ...prev,
-      compressorReading: [...prev.compressorReading, { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_used: '', diesel_balance: '' }]
-    }));
+    setFormData((prev) => {
+      const nextState = {
+        ...prev,
+        compressorReading: [...prev.compressorReading, { oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_filled: '', diesel_used: '', diesel_balance: '', diesel_avg: 0, old_diesel_used: 0, old_diesel_filled: 0 }]
+      };
+      return recalculateAllReadings(nextState, machineries);
+    });
   };
 
   const removeCompressorReading = (index) => {
-    setFormData((prev) => ({ ...prev, compressorReading: prev.compressorReading.filter((_, i) => i !== index) }));
+    setFormData((prev) => {
+      const nextState = { ...prev, compressorReading: prev.compressorReading.filter((_, i) => i !== index) };
+      return recalculateAllReadings(nextState, machineries);
+    });
   };
+
 
   const handleWorkDetailChange = (index, field, value) => {
     setFormData((prev) => {
@@ -1097,7 +1259,7 @@ const UpdateDrillingForm = () => {
   const addWorkDetail = () => {
     setFormData((prev) => ({
       ...prev,
-      workDetails: [...prev.workDetails, { operator_id: '', work_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }]
+      workDetails: [...prev.workDetails, { operator_id: '', work_type: '', drilling_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }]
     }));
   };
 
@@ -1205,6 +1367,10 @@ const UpdateDrillingForm = () => {
     const payload = {
       project_id: formData.project_id,
       date: formData.date,
+      start_time: formData.start_time || null,
+      end_time: formData.end_time || null,
+      break_time: formData.break_time || null,
+      net_hours: formData.net_hours != null ? formData.net_hours : null,
       oprator_helper: formData.oprator_helper ?? null,
       machineReading: formData.machineReading.map((m) => ({
         oprator_id: m.oprator_id || null,
@@ -1212,8 +1378,10 @@ const UpdateDrillingForm = () => {
         machine_start: m.machine_start || null,
         machine_end: m.machine_end || null,
         actual_machine_hr: m.actual_machine_hr || 0,
-        diesel_used: m.diesel_used !== '' ? parseFloat(m.diesel_used) : null,
-        diesel_balance: m.diesel_balance !== '' ? parseFloat(m.diesel_balance) : null,
+        diesel_filled: m.diesel_filled !== '' ? parseFloat(m.diesel_filled) : 0,
+        diesel_used: m.diesel_used !== '' ? parseFloat(m.diesel_used) : 0,
+        diesel_balance: m.diesel_balance !== '' ? parseFloat(m.diesel_balance) : 0,
+        diesel_avg: m.diesel_avg !== '' ? parseFloat(m.diesel_avg) : 0,
       })),
       compressor_rpm: formData.compressorReading.map((c) => ({
         oprator_id: c.oprator_id || null,
@@ -1221,12 +1389,15 @@ const UpdateDrillingForm = () => {
         comp_rpm_start: c.comp_rpm_start || null,
         comp_rpm_end: c.comp_rpm_end || null,
         com_actul_hr: c.com_actul_hr || 0,
-        diesel_used: c.diesel_used !== '' ? parseFloat(c.diesel_used) : null,
-        diesel_balance: c.diesel_balance !== '' ? parseFloat(c.diesel_balance) : null,
+        diesel_filled: c.diesel_filled !== '' ? parseFloat(c.diesel_filled) : 0,
+        diesel_used: c.diesel_used !== '' ? parseFloat(c.diesel_used) : 0,
+        diesel_balance: c.diesel_balance !== '' ? parseFloat(c.diesel_balance) : 0,
+        diesel_avg: c.diesel_avg !== '' ? parseFloat(c.diesel_avg) : 0,
       })),
       work_points: formData.workDetails.map((w) => ({
         operator_id: w.operator_id || null,
         work_type: w.work_type || '',
+        drilling_type: w.drilling_type || null,
         uom: w.uom || null,
         work_point: w.work_point || 0,
         rate: w.rate || 0,
@@ -1336,6 +1507,206 @@ const UpdateDrillingForm = () => {
               </CCardBody>
             </CCard>
 
+            {/* Work Timing - Red/Pink Card matching uploaded design */}
+            <div
+              className="mb-4 rounded-3 p-3 p-md-4"
+              style={{
+                backgroundColor: '#fff1f2',
+                border: '1px solid #fecdd3',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              }}
+            >
+              <div className="d-flex align-items-center mb-3">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#e11d48"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="me-2"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <h5 className="mb-0 fw-bold" style={{ color: '#e11d48', fontSize: '18px' }}>
+                  Work Timing
+                </h5>
+              </div>
+
+              <CRow className="g-3 align-items-end">
+                <CCol xs={12} sm={6} md={3}>
+                  <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
+                    Start Time <span className="text-danger">*</span>
+                  </CFormLabel>
+                  <CFormInput
+                    type="time"
+                    value={formData.start_time || ''}
+                    onChange={(e) => handleWorkTimingChange('start_time', e.target.value)}
+                    className="bg-white"
+                    style={{
+                      borderRadius: '8px',
+                      height: '44px',
+                      fontSize: '15px',
+                      borderColor: '#e5e7eb',
+                    }}
+                  />
+                </CCol>
+
+                <CCol xs={12} sm={6} md={3}>
+                  <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
+                    End Time <span className="text-danger">*</span>
+                  </CFormLabel>
+                  <CFormInput
+                    type="time"
+                    value={formData.end_time || ''}
+                    onChange={(e) => handleWorkTimingChange('end_time', e.target.value)}
+                    className="bg-white"
+                    style={{
+                      borderRadius: '8px',
+                      height: '44px',
+                      fontSize: '15px',
+                      borderColor: '#e5e7eb',
+                    }}
+                  />
+                </CCol>
+
+                <CCol xs={12} sm={6} md={3}>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                      Break / Lunch
+                    </CFormLabel>
+                    {formData.break_time && parseBreakTimeToMinutes(formData.break_time) > 0 && (
+                      <span className="badge bg-danger-subtle text-danger" style={{ fontSize: '11px' }}>
+                        -{parseBreakTimeToMinutes(formData.break_time)} min
+                      </span>
+                    )}
+                  </div>
+
+                  {!customBreak ? (
+                    <CFormSelect
+                      value={normalizeBreakValue(formData.break_time)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setCustomBreak(true);
+                        } else {
+                          handleWorkTimingChange('break_time', val);
+                        }
+                      }}
+                      className="bg-white"
+                      style={{
+                        borderRadius: '8px',
+                        height: '44px',
+                        fontSize: '14px',
+                        borderColor: '#e5e7eb',
+                      }}
+                    >
+                      <option value="00:00">No Break (0 min)</option>
+                      <option value="00:15">15 min</option>
+                      <option value="00:30">30 min (Fixed)</option>
+                      <option value="00:45">45 min (Fixed)</option>
+                      <option value="01:00">1 hr (60 min)</option>
+                      <option value="01:15">1 hr 15 min</option>
+                      <option value="01:30">1 hr 30 min</option>
+                      <option value="02:00">2 hrs</option>
+                      <option value="custom">✏️ Custom Time / Minutes...</option>
+                    </CFormSelect>
+                  ) : (
+                    <div className="d-flex gap-1 align-items-center">
+                      <CFormInput
+                        type="text"
+                        placeholder="e.g. 30 or 45 or 00:30"
+                        value={formData.break_time || ''}
+                        onChange={(e) => handleWorkTimingChange('break_time', e.target.value)}
+                        className="bg-white"
+                        style={{
+                          borderRadius: '8px',
+                          height: '44px',
+                          fontSize: '14px',
+                          borderColor: '#e5e7eb',
+                        }}
+                      />
+                      <CButton
+                        type="button"
+                        color="secondary"
+                        variant="outline"
+                        size="sm"
+                        style={{ height: '44px' }}
+                        title="Back to Fixed Options"
+                        onClick={() => setCustomBreak(false)}
+                      >
+                        List
+                      </CButton>
+                    </div>
+                  )}
+
+                  {/* Quick Selection Chips */}
+                  <div className="d-flex gap-1 mt-1 flex-wrap align-items-center">
+                    <span className="text-muted" style={{ fontSize: '11px' }}>Quick:</span>
+                    {[
+                      { label: '0m', val: '00:00' },
+                      { label: '30m', val: '00:30' },
+                      { label: '45m', val: '00:45' },
+                      { label: '1h', val: '01:00' },
+                    ].map((chip) => {
+                      const isSelected = normalizeBreakValue(formData.break_time) === chip.val && !customBreak;
+                      return (
+                        <button
+                          key={chip.val}
+                          type="button"
+                          onClick={() => {
+                            setCustomBreak(false);
+                            handleWorkTimingChange('break_time', chip.val);
+                          }}
+                          className={`btn btn-sm py-0 px-2 rounded-pill ${
+                            isSelected
+                              ? 'btn-danger text-white shadow-sm'
+                              : 'btn-outline-secondary'
+                          }`}
+                          style={{ fontSize: '11px', fontWeight: 600, height: '22px', lineHeight: '20px' }}
+                        >
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CCol>
+
+                <CCol xs={12} sm={6} md={3}>
+                  <div
+                    className="rounded-3 px-3 py-2 h-100 d-flex flex-column justify-content-between"
+                    style={{
+                      backgroundColor: '#fef9c3',
+                      border: '1px solid #fef08a',
+                      minHeight: '72px',
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="fw-semibold" style={{ fontSize: '13px', color: '#4b5563' }}>
+                        Net Working Hours
+                      </span>
+                      {formatNetHoursDuration(formData.net_hours) && (
+                        <span className="fw-semibold text-secondary" style={{ fontSize: '12px' }}>
+                          {formatNetHoursDuration(formData.net_hours)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="d-flex justify-content-between align-items-baseline mt-1">
+                      <span className="fw-bold" style={{ fontSize: '26px', color: '#111827', lineHeight: '1' }}>
+                        {Number(formData.net_hours || 0).toFixed(2)}
+                      </span>
+                      <span className="fw-semibold text-dark" style={{ fontSize: '15px' }}>
+                        hrs
+                      </span>
+                    </div>
+                  </div>
+                </CCol>
+              </CRow>
+            </div>
+
             {/* Machine Usage */}
             <CCard className="mb-4 border-0" color="success" textColor="dark">
               <CCardBody className="bg-success-subtle rounded rounded-lg">
@@ -1357,9 +1728,9 @@ const UpdateDrillingForm = () => {
 
                 <CRow className="g-1">
                   {formData.machineReading.map((reading, index) => (
-                    <CRow className="mb-2 gx-1" key={index}>
-                      <CCol xs={12} md={3} className="p-1">
-                        <CFormLabel>Operator / Helper *</CFormLabel>
+                    <CRow className="mb-2 gx-1 align-items-end" key={index}>
+                      <CCol xs={12} md={2} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Operator / Helper *</CFormLabel>
                         <Select
                           options={operators}
                           isSearchable
@@ -1370,7 +1741,7 @@ const UpdateDrillingForm = () => {
                       </CCol>
 
                       <CCol xs={12} md={2} className="p-1">
-                        <CFormLabel>Machinery *</CFormLabel>
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Machinery *</CFormLabel>
                         <Select
                           options={machineries}
                           isSearchable
@@ -1380,11 +1751,11 @@ const UpdateDrillingForm = () => {
                         />
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={2} className="p-1">
-                        <CFormLabel>Machine Start</CFormLabel>
+                      <CCol xs={6} sm={4} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Start</CFormLabel>
                         <CFormInput
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           pattern="[0-9.:]*"
                           value={reading.machine_start === 0 ? '' : reading.machine_start}
                           placeholder="0"
@@ -1395,11 +1766,11 @@ const UpdateDrillingForm = () => {
                         />
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={2} className="p-1">
-                        <CFormLabel>Machine End</CFormLabel>
+                      <CCol xs={6} sm={4} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>End</CFormLabel>
                         <CFormInput
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           pattern="[0-9.:]*"
                           value={reading.machine_end === 0 ? '' : reading.machine_end}
                           placeholder="0"
@@ -1410,44 +1781,75 @@ const UpdateDrillingForm = () => {
                         />
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={2} className="p-1">
-                        <CFormLabel>Actual Hours</CFormLabel>
+                      <CCol xs={6} sm={4} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Actual Hrs</CFormLabel>
                         <CInputGroup>
-                          <CFormInput type="text" value={String(reading.actual_machine_hr ?? 0)} readOnly />
-                          <CInputGroupText>hrs</CInputGroupText>
+                          <CFormInput type="text" value={String(reading.actual_machine_hr ?? 0)} readOnly className="bg-light fw-semibold" />
                         </CInputGroup>
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={2} className="p-1">
-                        <CFormLabel>Diesel Used</CFormLabel>
+                      <CCol xs={6} sm={3} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Filed</CFormLabel>
                         <CFormInput
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           pattern="[0-9.]*"
-                          value={reading.diesel_used}
+                          value={reading.diesel_filled}
+                          placeholder="0"
                           onChange={(e) => {
                             let val = e.target.value.replace(/[^0-9.]/g, '');
+                            const parts = val.split('.');
+                            if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                            handleMachineReadingChange(index, 'diesel_filled', val);
+                          }}
+                        />
+                      </CCol>
+
+                      <CCol xs={6} sm={3} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Used</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          inputMode="decimal"
+                          pattern="[0-9.]*"
+                          value={reading.diesel_used}
+                          placeholder="0"
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9.]/g, '');
+                            const parts = val.split('.');
+                            if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
                             handleMachineReadingChange(index, 'diesel_used', val);
                           }}
                         />
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={2} className="p-1">
-                        <CFormLabel>Diesel Balance</CFormLabel>
+                      <CCol xs={6} sm={3} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Balance</CFormLabel>
                         <CFormInput
                           type="text"
                           value={reading.diesel_balance}
                           readOnly
-                          className="bg-light fw-bold"
+                          className="bg-light fw-bold text-success"
                         />
                       </CCol>
 
-                      <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">
+                      <CCol xs={6} sm={3} md={1} className="p-1">
+                        <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }} title="Formula: Diesel Used / Machine HR">Diesel Avg.</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          value={reading.diesel_avg}
+                          readOnly
+                          className="bg-light fw-bold text-primary"
+                          placeholder="0.00"
+                          title="Formula: Diesel Used / Machine HR"
+                        />
+                      </CCol>
+
+                      <CCol xs={12} sm={12} md={1} className="d-flex align-items-center justify-content-center p-1">
                         {formData.machineReading.length > 1 && (
                           <CButton
                             color="danger"
                             variant="ghost"
-                            size="lg"
+                            size="md"
                             onClick={() => removeMachineReading(index)}
                           >
                             <CIcon icon={cilX} />
@@ -1480,9 +1882,9 @@ const UpdateDrillingForm = () => {
                 </div>
 
                 {formData.compressorReading.map((reading, index) => (
-                  <CRow className="mb-2 gx-1" key={index}>
-                    <CCol xs={12} md={3} className="p-1">
-                      <CFormLabel>Operator / Helper *</CFormLabel>
+                  <CRow className="mb-2 gx-1 align-items-end" key={index}>
+                    <CCol xs={12} md={2} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Operator / Helper *</CFormLabel>
                       <Select
                         options={operators}
                         isSearchable
@@ -1493,7 +1895,7 @@ const UpdateDrillingForm = () => {
                     </CCol>
 
                     <CCol xs={12} md={2} className="p-1">
-                      <CFormLabel>Machinery *</CFormLabel>
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Machinery *</CFormLabel>
                       <Select
                         options={machineries}
                         isSearchable
@@ -1503,11 +1905,11 @@ const UpdateDrillingForm = () => {
                       />
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={2} className="p-1">
-                      <CFormLabel>RPM Start</CFormLabel>
+                    <CCol xs={6} sm={4} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Start</CFormLabel>
                       <CFormInput
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         pattern="[0-9.:]*"
                         value={reading.comp_rpm_start === 0 ? '' : reading.comp_rpm_start}
                         placeholder="0"
@@ -1518,11 +1920,11 @@ const UpdateDrillingForm = () => {
                       />
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={2} className="p-1">
-                      <CFormLabel>RPM End</CFormLabel>
+                    <CCol xs={6} sm={4} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>End</CFormLabel>
                       <CFormInput
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         pattern="[0-9.:]*"
                         value={reading.comp_rpm_end === 0 ? '' : reading.comp_rpm_end}
                         placeholder="0"
@@ -1533,44 +1935,75 @@ const UpdateDrillingForm = () => {
                       />
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={2} className="p-1">
-                      <CFormLabel>Actual Hours</CFormLabel>
+                    <CCol xs={6} sm={4} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>RPM Hrs</CFormLabel>
                       <CInputGroup>
-                        <CFormInput type="text" value={String(reading.com_actul_hr ?? 0)} readOnly />
-                        <CInputGroupText>hrs</CInputGroupText>
+                        <CFormInput type="text" value={String(reading.com_actul_hr ?? 0)} readOnly className="bg-light fw-semibold" />
                       </CInputGroup>
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={2} className="p-1">
-                      <CFormLabel>Diesel Used</CFormLabel>
+                    <CCol xs={6} sm={3} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Filed</CFormLabel>
                       <CFormInput
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         pattern="[0-9.]*"
-                        value={reading.diesel_used}
+                        value={reading.diesel_filled}
+                        placeholder="0"
                         onChange={(e) => {
                           let val = e.target.value.replace(/[^0-9.]/g, '');
+                          const parts = val.split('.');
+                          if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                          handleCompressorChange(index, 'diesel_filled', val);
+                        }}
+                      />
+                    </CCol>
+
+                    <CCol xs={6} sm={3} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Used</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={reading.diesel_used}
+                        placeholder="0"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          const parts = val.split('.');
+                          if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
                           handleCompressorChange(index, 'diesel_used', val);
                         }}
                       />
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={2} className="p-1">
-                      <CFormLabel>Diesel Balance</CFormLabel>
+                    <CCol xs={6} sm={3} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }}>Diesel Balance</CFormLabel>
                       <CFormInput
                         type="text"
                         value={reading.diesel_balance}
                         readOnly
-                        className="bg-light fw-bold"
+                        className="bg-light fw-bold text-success"
                       />
                     </CCol>
 
-                    <CCol xs={12} sm={6} md={1} className="d-flex align-items-center mt-4 p-1">
+                    <CCol xs={6} sm={3} md={1} className="p-1">
+                      <CFormLabel className="text-nowrap" style={{ fontSize: '13px' }} title="Formula: Diesel Used / RPM HR">Diesel Avg.</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        value={reading.diesel_avg}
+                        readOnly
+                        className="bg-light fw-bold text-primary"
+                        placeholder="0.00"
+                        title="Formula: Diesel Used / RPM HR"
+                      />
+                    </CCol>
+
+                    <CCol xs={12} sm={12} md={1} className="d-flex align-items-center justify-content-center p-1">
                       {formData.compressorReading.length > 1 && (
                         <CButton
                           color="danger"
                           variant="ghost"
-                          size="lg"
+                          size="md"
                           onClick={() => removeCompressorReading(index)}
                         >
                           <CIcon icon={cilX} />
@@ -1612,6 +2045,16 @@ const UpdateDrillingForm = () => {
                         {workTypes.map((type) => (
                           <option key={type.id} value={type.name}>{type.name}</option>
                         ))}
+                      </CFormSelect>
+                    </CCol>
+
+                    <CCol lg={2}>
+                      <CFormLabel>Drilling Type (Optional)</CFormLabel>
+                      <CFormSelect value={work.drilling_type || ''} onChange={(e) => handleWorkDetailChange(index, 'drilling_type', e.target.value)}>
+                        <option value="">Select Drilling Type</option>
+                        <option value="Hard">Hard</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Soft">Soft</option>
                       </CFormSelect>
                     </CCol>
 

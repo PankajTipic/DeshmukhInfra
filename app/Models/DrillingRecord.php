@@ -21,7 +21,24 @@ class DrillingRecord extends Model
         'user_id',
         'date',
         'project_id',
+        'tab_type',
+        'start_time',
+        'end_time',
+        'break_time',
+        'net_hours',
         'oprator_helper',
+        'helper_id',
+        'casting_team_name',
+        'casting_team_no',
+        'templates_available',
+        'capping_available',
+        'total_casting_points',
+        'dth_no',
+        'dth_type',
+        'dth_bit_no',
+        'dth_rod_used',
+        'other_material',
+        'notes',
         'machine_start',
         'machine_end',
         'actual_machine_hr',
@@ -31,6 +48,11 @@ class DrillingRecord extends Model
     ];
 
     // Relationships
+    public function helper()
+    {
+        return $this->belongsTo(Operator::class, 'helper_id');
+    }
+
     public function workPoints()
     {
         return $this->hasMany(WorkPointDetail::class, 'drilling_record_id');

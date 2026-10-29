@@ -75,8 +75,10 @@ class MachineReading extends Model
         'machine_start',
         'machine_end',
         'actual_machine_hr',
+        'diesel_filled',
         'diesel_used',
         'diesel_balance',
+        'diesel_avg',
     ];
 
     public function drillingRecord()

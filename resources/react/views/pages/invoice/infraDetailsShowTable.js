@@ -1186,18 +1186,45 @@ function InfraDetailsShowTable() {
           surveyDetails = surveyDetails.filter((s) => (s.survey_type || '').toLowerCase() === filters.survey_type.toLowerCase())
         }
 
+        const machineReadings = rec.machine_reading || rec.machineReading || []
+        const compressorRpms = rec.compressor_rpm || rec.compressorRpm || []
+
+        const effectiveMachine = machineReadings.length > 0 ? machineReadings : (
+          (rec.machine_start != null || rec.machine_end != null || rec.actual_machine_hr != null) ? [{
+            machine_start: rec.machine_start,
+            machine_end: rec.machine_end,
+            actual_machine_hr: rec.actual_machine_hr,
+            diesel_filled: rec.machine_diesel_filled,
+            diesel_used: rec.machine_diesel_used,
+            diesel_balance: rec.machine_diesel_balance,
+            diesel_avg: rec.machine_diesel_avg,
+          }] : []
+        )
+
+        const effectiveCompressor = compressorRpms.length > 0 ? compressorRpms : (
+          (rec.comp_rpm_start != null || rec.comp_rpm_end != null || rec.com_actul_hr != null) ? [{
+            comp_rpm_start: rec.comp_rpm_start,
+            comp_rpm_end: rec.comp_rpm_end,
+            com_actul_hr: rec.com_actul_hr,
+            diesel_filled: rec.comp_diesel_filled,
+            diesel_used: rec.comp_diesel_used,
+            diesel_balance: rec.comp_diesel_balance,
+            diesel_avg: rec.comp_diesel_avg,
+          }] : []
+        )
+
         const workLen = workDetails.length
         const surveyLen = surveyDetails.length
-        const machineLen = rec.machine_reading?.length || 0
-        const compressorRpmLen = rec.compressor_rpm?.length || 0
+        const machineLen = effectiveMachine.length
+        const compressorRpmLen = effectiveCompressor.length
 
         const totalRows = Math.max(workLen, surveyLen, machineLen, compressorRpmLen, 1)
 
         for (let i = 0; i < totalRows; i++) {
           const work = workDetails[i] || {}
           const survey = surveyDetails[i] || {}
-          const machine = rec.machine_reading?.[i] || {}
-          const compressorRpm = rec.compressor_rpm?.[i] || {}
+          const machine = effectiveMachine[i] || {}
+          const compressorRpm = effectiveCompressor[i] || {}
 
           flattened.push({
             srNo: idx + 1,
@@ -1205,19 +1232,24 @@ function InfraDetailsShowTable() {
             site: rec.project?.project_name || '',
             operator: machine.operator?.name || rec.operator?.name || '',
 
-            machineStart: machine.machine_start || '',
-            machineEnd: machine.machine_end || '',
-            machineHr: machine.actual_machine_hr || '',
+            machineStart: machine.machine_start != null && machine.machine_start !== '' ? machine.machine_start : '',
+            machineEnd: machine.machine_end != null && machine.machine_end !== '' ? machine.machine_end : '',
+            machineHr: machine.actual_machine_hr != null && machine.actual_machine_hr !== '' ? machine.actual_machine_hr : '',
+            machineDieselFilled: machine.diesel_filled ?? '',
             machineDieselUsed: machine.diesel_used ?? '',
             machineDieselBalance: machine.diesel_balance ?? '',
+            machineDieselAvg: machine.diesel_avg ?? '',
 
-            compressorStart: compressorRpm.comp_rpm_start || '',
-            compressorEnd: compressorRpm.comp_rpm_end || '',
-            compressorHr: compressorRpm.com_actul_hr || '',
+            compressorStart: compressorRpm.comp_rpm_start != null && compressorRpm.comp_rpm_start !== '' ? compressorRpm.comp_rpm_start : '',
+            compressorEnd: compressorRpm.comp_rpm_end != null && compressorRpm.comp_rpm_end !== '' ? compressorRpm.comp_rpm_end : '',
+            compressorHr: compressorRpm.com_actul_hr != null && compressorRpm.com_actul_hr !== '' ? compressorRpm.com_actul_hr : '',
+            compressorDieselFilled: compressorRpm.diesel_filled ?? '',
             compressorDieselUsed: compressorRpm.diesel_used ?? '',
             compressorDieselBalance: compressorRpm.diesel_balance ?? '',
+            compressorDieselAvg: compressorRpm.diesel_avg ?? '',
 
-            workType: work.work_type || '',
+            workType: work.work_type ? `${work.work_type}${work.drilling_type ? ` (${work.drilling_type})` : ''}` : '',
+            drillingType: work.drilling_type || '',
             workPoint: work.work_point || '',
             workRate: work.rate || '',
             workTotal: Number(work.total) || 0,
@@ -1262,7 +1294,9 @@ function InfraDetailsShowTable() {
       surveyHrs: rows.reduce((sum, row) => sum + (parseFloat(row.surveyHrs) || 0), 0),
       surveyDiesel: rows.reduce((sum, row) => sum + (parseFloat(row.surveyDiesel) || 0), 0),
       grandTotal: rows.reduce((sum, row) => sum + (Number(row.rowTotal) || 0), 0),
+      machineDieselFilled: rows.reduce((sum, row) => sum + (parseFloat(row.machineDieselFilled) || 0), 0),
       machineDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.machineDieselUsed) || 0), 0),
+      compressorDieselFilled: rows.reduce((sum, row) => sum + (parseFloat(row.compressorDieselFilled) || 0), 0),
       compressorDieselUsed: rows.reduce((sum, row) => sum + (parseFloat(row.compressorDieselUsed) || 0), 0),
     }
   }, [rows])
@@ -1357,6 +1391,9 @@ function InfraDetailsShowTable() {
                   </CButton>
                   <CButton color="danger" className="pe-3" onClick={handleDownloadPDF}>
                     Download PDF
+                  </CButton>
+                  <CButton color="primary" variant="outline" onClick={() => navigate('/separateWorkLogReport')}>
+                    Separate (Drilling & Casting) Report ↗
                   </CButton>
                 </div>
                 <h4 className="mb-0">Total Amount : {tableTotals.grandTotal.toFixed(2)}</h4>
@@ -1460,13 +1497,17 @@ function InfraDetailsShowTable() {
                         <CTableHeaderCell>Machine Start</CTableHeaderCell>
                         <CTableHeaderCell>Machine End</CTableHeaderCell>
                         <CTableHeaderCell>Machine Hr</CTableHeaderCell>
+                        <CTableHeaderCell className="table-warning">Diesel Filed</CTableHeaderCell>
                         <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
                         <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
+                        <CTableHeaderCell className="table-warning">Diesel Avg</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
+                        <CTableHeaderCell className="table-info">Diesel Filed</CTableHeaderCell>
                         <CTableHeaderCell className="table-info">Diesel Used</CTableHeaderCell>
                         <CTableHeaderCell className="table-info">Diesel Bal</CTableHeaderCell>
+                        <CTableHeaderCell className="table-info">Diesel Avg</CTableHeaderCell>
                         <CTableHeaderCell>Work Type</CTableHeaderCell>
                         <CTableHeaderCell>Point</CTableHeaderCell>
                         <CTableHeaderCell>Rate</CTableHeaderCell>
@@ -1501,17 +1542,21 @@ function InfraDetailsShowTable() {
                           <CTableDataCell>{row.machineStart}</CTableDataCell>
                           <CTableDataCell>{row.machineEnd}</CTableDataCell>
                           <CTableDataCell>{row.machineHr}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-warning">{row.machineDieselFilled}</CTableDataCell>
                           <CTableDataCell className="fw-bold text-warning">{row.machineDieselUsed}</CTableDataCell>
                           <CTableDataCell className="fw-bold text-warning">
                             {row.machineDieselBalance}
                           </CTableDataCell>
+                          <CTableDataCell className="fw-bold text-warning">{row.machineDieselAvg}</CTableDataCell>
                           <CTableDataCell>{row.compressorStart}</CTableDataCell>
                           <CTableDataCell>{row.compressorEnd}</CTableDataCell>
                           <CTableDataCell>{row.compressorHr}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-info">{row.compressorDieselFilled}</CTableDataCell>
                           <CTableDataCell className="fw-bold text-info">{row.compressorDieselUsed}</CTableDataCell>
                           <CTableDataCell className="fw-bold text-info">
                             {row.compressorDieselBalance}
                           </CTableDataCell>
+                          <CTableDataCell className="fw-bold text-info">{row.compressorDieselAvg}</CTableDataCell>
                           <CTableDataCell>{row.workType}</CTableDataCell>
                           <CTableDataCell>{row.workPoint}</CTableDataCell>
                           <CTableDataCell>{row.workRate}</CTableDataCell>
@@ -1560,16 +1605,24 @@ function InfraDetailsShowTable() {
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell className="text-center text-warning">
+                          {tableTotals.machineDieselFilled.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-warning">
                           {tableTotals.machineDieselUsed.toFixed(2)}
                         </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         {/* Compressor cols */}
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell className="text-center text-info">
+                          {tableTotals.compressorDieselFilled.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center text-info">
                           {tableTotals.compressorDieselUsed.toFixed(2)}
                         </CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         {/* Work cols */}
                         <CTableDataCell></CTableDataCell>

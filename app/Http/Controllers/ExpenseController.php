@@ -1747,6 +1747,7 @@ class ExpenseController extends Controller
             'acc_number'            => 'nullable|string',
             'ifsc'                  => 'nullable|string',
             'transaction_id'        => 'nullable|string',
+            'isGst'                 => 'nullable|boolean',
             'gst'                   => 'nullable|numeric',
             'sgst'                  => 'nullable|numeric',
             'cgst'                  => 'nullable|numeric',
@@ -1771,7 +1772,10 @@ class ExpenseController extends Controller
             $oldDate      = $expense->expense_date;
             $oldProjectId = $expense->project_id;
 
+            $newProjectId = $request->filled('project_id') ? $request->project_id : $oldProjectId;
+
             $expense->update([
+                'project_id'        => $newProjectId,
                 'expense_id'        => $request->expense_id,
                 'name'              => $request->name,
                 'expense_date'      => $request->expense_date,
@@ -1786,6 +1790,7 @@ class ExpenseController extends Controller
                 'acc_number'        => $request->acc_number,
                 'ifsc'              => $request->ifsc,
                 'transaction_id'    => $request->transaction_id,
+                'isGst'             => $request->isGst,
                 'gst'               => $request->gst,
                 'sgst'              => $request->sgst,
                 'cgst'              => $request->cgst,
@@ -1829,19 +1834,44 @@ class ExpenseController extends Controller
                 }
             }
 
-            ExpenseSummary::where('expense_date', $oldDate)
-                ->where('company_id', $companyId)
-                ->where('project_id', $oldProjectId)
-                ->update(['total_expense' => DB::raw('total_expense - ' . $oldTotal)]);
+            if ($oldProjectId != $newProjectId || $oldDate != $request->expense_date) {
+                ExpenseSummary::where('expense_date', $oldDate)
+                    ->where('company_id', $companyId)
+                    ->where('project_id', $oldProjectId)
+                    ->update([
+                        'total_expense' => DB::raw('total_expense - ' . $oldTotal),
+                        'expense_count' => DB::raw('GREATEST(0, expense_count - 1)'),
+                    ]);
 
-            ExpenseSummary::updateOrCreate(
-                [
-                    'expense_date' => $request->expense_date,
-                    'company_id'   => $companyId,
-                    'project_id'   => $request->project_id,
-                ],
-                ['total_expense' => DB::raw('total_expense + ' . $request->total_price)]
-            );
+                ExpenseSummary::updateOrCreate(
+                    [
+                        'expense_date' => $request->expense_date,
+                        'company_id'   => $companyId,
+                        'project_id'   => $newProjectId,
+                    ],
+                    [
+                        'total_expense' => DB::raw('total_expense + ' . $request->total_price),
+                        'expense_count' => DB::raw('expense_count + 1'),
+                    ]
+                );
+            } else {
+                $diff = $request->total_price - $oldTotal;
+                ExpenseSummary::updateOrCreate(
+                    [
+                        'expense_date' => $request->expense_date,
+                        'company_id'   => $companyId,
+                        'project_id'   => $newProjectId,
+                    ],
+                    [
+                        'total_expense' => DB::raw('total_expense + ' . $diff),
+                    ]
+                );
+            }
+
+            // Clean up any zero/negative summaries
+            ExpenseSummary::where('company_id', $companyId)
+                ->where('total_expense', '<=', 0)
+                ->delete();
 
             DB::commit();
 
@@ -1889,8 +1919,12 @@ class ExpenseController extends Controller
             ->where('project_id', $projectId)
             ->update([
                 'total_expense' => DB::raw("total_expense - $total"),
-                'expense_count' => DB::raw('expense_count - 1'),
+                'expense_count' => DB::raw('GREATEST(0, expense_count - 1)'),
             ]);
+
+        ExpenseSummary::where('company_id', $companyId)
+            ->where('total_expense', '<=', 0)
+            ->delete();
 
         return response()->json(['success' => true, 'message' => 'Expense deleted successfully.']);
     }
@@ -1923,7 +1957,8 @@ class ExpenseController extends Controller
             $query = ExpenseSummary::leftJoin('projects', 'expense_summaries.project_id', '=', 'projects.id')
                 ->leftJoin('project_types', 'projects.project_type_id', '=', 'project_types.id')
                 ->where('expense_summaries.company_id', $companyId)
-                ->whereBetween('expense_summaries.expense_date', [$startDate, $endDate]);
+                ->whereBetween('expense_summaries.expense_date', [$startDate, $endDate])
+                ->where('expense_summaries.total_expense', '>', 0);
 
             if ($projectId)     $query->where('expense_summaries.project_id', $projectId);
             if ($projectTypeId) $query->where('projects.project_type_id', $projectTypeId);
@@ -1932,13 +1967,15 @@ class ExpenseController extends Controller
                 'expense_summaries.id',
                 'expense_summaries.expense_date',
                 'expense_summaries.total_expense',
-                'projects.project_name',
-                'project_types.name as project_type'
+                DB::raw("COALESCE(projects.project_name, 'General Expense') as project_name"),
+                DB::raw("COALESCE(project_types.name, 'N/A') as project_type"),
+                DB::raw("COALESCE(project_types.name, 'N/A') as project_type_name")
             )->orderBy('expense_summaries.expense_date', 'desc');
 
             $summary = DB::table('expense_summaries')
                 ->where('expense_summaries.company_id', $companyId)
-                ->whereBetween('expense_summaries.expense_date', [$startDate, $endDate]);
+                ->whereBetween('expense_summaries.expense_date', [$startDate, $endDate])
+                ->where('expense_summaries.total_expense', '>', 0);
 
             if ($projectId)     $summary->where('expense_summaries.project_id', $projectId);
             if ($projectTypeId) {

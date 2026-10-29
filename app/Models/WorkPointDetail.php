@@ -15,6 +15,7 @@ class WorkPointDetail extends Model
          'operator_id',
         'drilling_record_id',
         'work_type',
+        'drilling_type',
         'work_point',
         'rate',
         'total',

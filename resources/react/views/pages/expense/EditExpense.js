@@ -867,6 +867,7 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   CButton,
   CForm,
+  CFormCheck,
   CFormInput,
   CFormLabel,
   CFormSelect,
@@ -924,17 +925,24 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
     total_price: 0,
     expense_date: new Date().toISOString().split("T")[0],
     show: true,
+    project_id: "",
 
-    // New Fields from backend
-    gst: "",
-    sgst: "",
-    cgst: "",
-    igst: "",
+    // GST Fields
+    isGst: false,
+    gst: 18,
+    sgst: 9,
+    cgst: 9,
+    igst: 0,
+    gstAmount: 0,
+    sgstAmount: 0,
+    cgstAmount: 0,
+    igstAmount: 0,
+    baseAmount: 0,
+
     contact: "",
     payment_by: "",
     payment_type: "",
     pending_amount: "",
-    isGst: 0,
     photoAvailable: 0,
     photo_url: "",
     photo_remark: "",
@@ -977,14 +985,114 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
     if (visible) fetchExpenseTypes();
   }, [i18n.language, visible]);
 
+  // Compute tax amounts contained inside total_price (total includes GST)
+  const computeTaxesFromTotal = (updated) => {
+    const total = parseFloat(updated.total_price) || 0;
+    const gstPct = parseFloat(updated.gst) || 0;
+    const cgstPct = parseFloat(updated.cgst) || 0;
+    const sgstPct = parseFloat(updated.sgst) || 0;
+    const igstPct = parseFloat(updated.igst) || 0;
+
+    if (gstPct <= 0 || total <= 0) {
+      updated.baseAmount = Number(total.toFixed(2));
+      updated.gstAmount = updated.cgstAmount = updated.sgstAmount = updated.igstAmount = 0;
+      return updated;
+    }
+
+    // base = total / (1 + gst/100)
+    const base = total / (1 + gstPct / 100);
+
+    const cgstAmount = base * (cgstPct / 100);
+    const sgstAmount = base * (sgstPct / 100);
+    const igstAmount = base * (igstPct / 100);
+
+    // round to 2 decimals
+    updated.baseAmount = Number(base.toFixed(2));
+    updated.cgstAmount = Number(cgstAmount.toFixed(2));
+    updated.sgstAmount = Number(sgstAmount.toFixed(2));
+    updated.igstAmount = Number(igstAmount.toFixed(2));
+    updated.gstAmount = Number((updated.cgstAmount + updated.sgstAmount + updated.igstAmount).toFixed(2));
+
+    return updated;
+  };
+
+  const calculateFinalAmount = (item) => {
+    const qtyNum = parseFloat(item.qty) || 0;
+    const priceNum = parseFloat(item.price) || 0;
+    const total = Number((qtyNum * priceNum).toFixed(2));
+    item.total_price = total;
+
+    if (item.isGst) {
+      computeTaxesFromTotal(item);
+    } else {
+      item.baseAmount = total;
+      item.gstAmount = item.cgstAmount = item.sgstAmount = item.igstAmount = 0;
+    }
+  };
+
   useEffect(() => {
     if (expense && visible) {
+      const isGst = Boolean(expense.isGst === 1 || expense.isGst === true || expense.isGst === '1');
+      const totalPrice = Number((parseFloat(expense.total_price) || 0).toFixed(2));
+      const savedGst = parseFloat(expense.gst) || 0;
+      const savedCgst = parseFloat(expense.cgst) || 0;
+      const savedSgst = parseFloat(expense.sgst) || 0;
+      const savedIgst = parseFloat(expense.igst) || 0;
+
+      let gstPct = 18;
+      let cgstPct = 9;
+      let sgstPct = 9;
+      let igstPct = 0;
+      let gstAmount = 0;
+      let cgstAmount = 0;
+      let sgstAmount = 0;
+      let igstAmount = 0;
+      let baseAmount = totalPrice;
+
+      if (isGst) {
+        if (savedGst > 0 && totalPrice > savedGst) {
+          const base = totalPrice - savedGst;
+          baseAmount = Number(base.toFixed(2));
+          gstAmount = Number(savedGst.toFixed(2));
+          cgstAmount = Number(savedCgst.toFixed(2));
+          sgstAmount = Number(savedSgst.toFixed(2));
+          igstAmount = Number(savedIgst.toFixed(2));
+          gstPct = Number(((savedGst / base) * 100).toFixed(2));
+          cgstPct = Number(((savedCgst / base) * 100).toFixed(2));
+          sgstPct = Number(((savedSgst / base) * 100).toFixed(2));
+          igstPct = Number(((savedIgst / base) * 100).toFixed(2));
+        } else {
+          gstPct = 18;
+          cgstPct = 9;
+          sgstPct = 9;
+          igstPct = 0;
+          if (totalPrice > 0) {
+            const base = totalPrice / (1 + gstPct / 100);
+            baseAmount = Number(base.toFixed(2));
+            cgstAmount = Number((base * (cgstPct / 100)).toFixed(2));
+            sgstAmount = Number((base * (sgstPct / 100)).toFixed(2));
+            igstAmount = 0;
+            gstAmount = Number((cgstAmount + sgstAmount).toFixed(2));
+          }
+        }
+      }
+
       setState({
-        ...state,
         ...expense,
+        isGst: isGst,
+        gst: gstPct,
+        cgst: cgstPct,
+        sgst: sgstPct,
+        igst: igstPct,
+        gstAmount: gstAmount,
+        cgstAmount: cgstAmount,
+        sgstAmount: sgstAmount,
+        igstAmount: igstAmount,
+        baseAmount: baseAmount,
         expense_date:
           expense.expense_date || new Date().toISOString().split("T")[0],
         show: expense.show !== undefined ? expense.show : true,
+        project_id: expense.project_id || '',
       });
       
       // Load existing photos
@@ -1005,23 +1113,65 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
   const roundToTwoDecimals = (value) =>
     Number((Math.round(value * 100) / 100).toFixed(2));
 
-  const calculateFinalAmount = (item) => {
-    const qty = roundToTwoDecimals(parseFloat(item.qty) || 0);
-    const price = roundToTwoDecimals(parseFloat(item.price) || 0);
-    item.total_price = Math.round(qty * price);
-  };
-
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (["price", "qty"].includes(name)) {
-      setState((prev) => {
-        const updated = { ...prev, [name]: value };
-        calculateFinalAmount(updated);
+    const { name, value, type, checked } = e.target;
+
+    setState((prev) => {
+      let updated = { ...prev };
+
+      // checkbox - isGst
+      if (type === "checkbox" && name === "isGst") {
+        updated.isGst = checked;
+        // If turning ON GST, compute taxes from current total_price
+        if (checked) {
+          computeTaxesFromTotal(updated);
+        } else {
+          // turning off GST: clear tax fields
+          updated.baseAmount = Number((updated.total_price || 0).toFixed(2));
+          updated.gstAmount = updated.cgstAmount = updated.sgstAmount = updated.igstAmount = 0;
+        }
         return updated;
-      });
-    } else {
-      setState((prev) => ({ ...prev, [name]: value }));
-    }
+      }
+
+      // price or qty -> recalc total_price, then recompute taxes (if GST on)
+      if (name === "price" || name === "qty") {
+        updated[name] = value === '' ? '' : value;
+        const qtyNum = parseFloat(name === "qty" ? (value || 0) : (updated.qty || 0)) || 0;
+        const priceNum = parseFloat(name === "price" ? (value || 0) : (updated.price || 0)) || 0;
+        updated.total_price = Number((qtyNum * priceNum).toFixed(2));
+        if (updated.isGst) computeTaxesFromTotal(updated);
+        return updated;
+      }
+
+      // If total_price is edited directly, update and recalc taxes
+      if (name === "total_price") {
+        updated.total_price = Number(value || 0);
+        if (updated.isGst) computeTaxesFromTotal(updated);
+        return updated;
+      }
+
+      // GST percentage changed -> auto split cgst/sgst and recompute
+      if (name === "gst") {
+        updated.gst = Number(value || 0);
+        const half = (Number(value) || 0) / 2;
+        updated.cgst = Number(half.toFixed(2));
+        updated.sgst = Number(half.toFixed(2));
+        if (updated.isGst) computeTaxesFromTotal(updated);
+        return updated;
+      }
+
+      // When cgst/sgst/igst changed individually -> update total gst sum and recompute
+      if (["cgst", "sgst", "igst"].includes(name)) {
+        updated[name] = Number(value || 0);
+        updated.gst = Number(((Number(updated.cgst) || 0) + (Number(updated.sgst) || 0) + (Number(updated.igst) || 0)).toFixed(2));
+        if (updated.isGst) computeTaxesFromTotal(updated);
+        return updated;
+      }
+
+      // default case (other form fields)
+      updated[name] = type === "checkbox" ? checked : value;
+      return updated;
+    });
   };
 
   // Photo handling functions
@@ -1152,6 +1302,7 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
         formData.append('_method', 'PUT');
         
         formData.append('expense_id', state.expense_id);
+        if (state.project_id) formData.append('project_id', state.project_id);
         formData.append('price', state.price);
         formData.append('qty', state.qty);
         formData.append('total_price', state.total_price);
@@ -1166,21 +1317,21 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
         if (state.pending_amount) formData.append('pending_amount', state.pending_amount);
         
         formData.append('isGst', state.isGst ? 1 : 0);
-        if (state.gst) formData.append('gst', state.gst);
-        if (state.sgst) formData.append('sgst', state.sgst);
-        if (state.cgst) formData.append('cgst', state.cgst);
-        if (state.igst) formData.append('igst', state.igst);
+        formData.append('gst', state.isGst ? (state.gstAmount != null ? state.gstAmount : '') : '');
+        formData.append('sgst', state.isGst ? (state.sgstAmount != null ? state.sgstAmount : '') : '');
+        formData.append('cgst', state.isGst ? (state.cgstAmount != null ? state.cgstAmount : '') : '');
+        formData.append('igst', state.isGst ? (state.igstAmount != null ? state.igstAmount : '') : '');
         
-        if (state.bank_name) formData.append('bank_name', state.bank_name);
-        if (state.acc_number) formData.append('acc_number', state.acc_number);
-        if (state.ifsc) formData.append('ifsc', state.ifsc);
-        if (state.transaction_id) formData.append('transaction_id', state.transaction_id);
-        if (state.aadhar) formData.append('aadhar', state.aadhar);
-        if (state.pan) formData.append('pan', state.pan);
+        formData.append('bank_name', state.bank_name || '');
+        formData.append('acc_number', state.acc_number || '');
+        formData.append('ifsc', state.ifsc || '');
+        formData.append('transaction_id', state.transaction_id || '');
+        formData.append('aadhar', state.aadhar || '');
+        formData.append('pan', state.pan || '');
 
-        if (state.party_name) formData.append('party_name', state.party_name);
-        if (state.party_gst_number) formData.append('party_gst_number', state.party_gst_number);
-        if (state.party_address) formData.append('party_address', state.party_address);
+        formData.append('party_name', state.party_name || '');
+        formData.append('party_gst_number', state.party_gst_number || '');
+        formData.append('party_address', state.party_address || '');
 
         // Photos to delete
         if (photosToDelete.length > 0) {
@@ -1343,8 +1494,20 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
                 required
               />
             </div>
+          </div>
 
-            <div className="col-sm-4 mb-3">
+          <div className="row align-items-center">
+            <div className="col-sm-6 mb-3">
+              <CFormCheck
+                id="isGst"
+                name="isGst"
+                label="Is GST Bill"
+                checked={Boolean(state.isGst)}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="col-sm-6 mb-3">
               <CFormLabel><b>{t("LABELS.total_price")}</b></CFormLabel>
               <CFormInput
                 readOnly
@@ -1353,6 +1516,81 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
               />
             </div>
           </div>
+
+          {/* GST calculation block — show only when isGst is true */}
+          {state.isGst && (
+            <div className="row mt-2 p-3 border rounded bg-light mb-3">
+              <div className="col-sm-3">
+                <CFormLabel><b>Total GST (%)</b></CFormLabel>
+                <div className="d-flex align-items-center">
+                  <CFormInput
+                    type="number"
+                    name="gst"
+                    value={state.gst}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="ms-2">%</span>
+                </div>
+                <small className="text-muted">GST Amount: ₹{state.gstAmount?.toFixed(2) || '0.00'}</small>
+              </div>
+
+              <div className="col-sm-3">
+                <CFormLabel><b>SGST (%)</b></CFormLabel>
+                <div className="d-flex align-items-center">
+                  <CFormInput
+                    type="number"
+                    name="sgst"
+                    value={state.sgst}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="ms-2">%</span>
+                </div>
+                <small className="text-muted">SGST Amount: ₹{state.sgstAmount?.toFixed(2) || '0.00'}</small>
+              </div>
+
+              <div className="col-sm-3">
+                <CFormLabel><b>CGST (%)</b></CFormLabel>
+                <div className="d-flex align-items-center">
+                  <CFormInput
+                    type="number"
+                    name="cgst"
+                    value={state.cgst}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="ms-2">%</span>
+                </div>
+                <small className="text-muted">CGST Amount: ₹{state.cgstAmount?.toFixed(2) || '0.00'}</small>
+              </div>
+
+              <div className="col-sm-3">
+                <CFormLabel><b>IGST (%)</b></CFormLabel>
+                <div className="d-flex align-items-center">
+                  <CFormInput
+                    type="number"
+                    name="igst"
+                    value={state.igst}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="ms-2">%</span>
+                </div>
+                <small className="text-muted">IGST Amount: ₹{state.igstAmount?.toFixed(2) || '0.00'}</small>
+              </div>
+
+              <div className="col-12 mt-2">
+                <div className="p-2 bg-info-subtle rounded">
+                  <strong>Note:</strong> Total price remains unchanged. The values above show how much GST/CGST/SGST/IGST are included inside the current total price.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Contact and Payment Section */}
           <div className="row">

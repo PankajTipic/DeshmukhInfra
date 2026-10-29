@@ -136,6 +136,12 @@ export default function fetchNavItems(t1) {
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
+      {
+        component: CNavItem,
+        name: 'Separate Work Log Report',
+        to: '/separateWorkLogReport',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+      },
 
       {
         component: CNavGroup,
@@ -487,6 +493,12 @@ export default function fetchNavItems(t1) {
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
+      {
+        component: CNavItem,
+        name: 'Separate Work Log Report',
+        to: '/separateWorkLogReport',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+      },
 
       {
         component: CNavGroup,
@@ -588,6 +600,12 @@ export default function fetchNavItems(t1) {
         name: 'Work Log Report',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Separate Work Log Report',
+        to: '/separateWorkLogReport',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
       },
 
       {
@@ -817,6 +835,12 @@ export default function fetchNavItems(t1) {
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
       },
+      {
+        component: CNavItem,
+        name: 'Separate Work Log Report',
+        to: '/separateWorkLogReport',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+      },
 
       {
         component: CNavGroup,
@@ -992,6 +1016,12 @@ export default function fetchNavItems(t1) {
         name: 'Work Log Report',
         to: '/infraDetailsShowTable',
         icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Separate Work Log Report',
+        to: '/separateWorkLogReport',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
       },
 
       {

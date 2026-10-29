@@ -95,12 +95,13 @@ public function showComapnyIdWise(Request $request)
 
 
 
-public function showTypeWise()
+public function showTypeWise(Request $request)
 {
     $userCompanyId = auth()->user()->company_id;
+    $type = $request->query('type', '1');
 
     $operators = Operator::where('company_id', $userCompanyId)
-                         ->where('type', 1) // 🔹 only type = 1
+                         ->where('type', $type)
                          ->get();
 
     return response()->json($operators);
@@ -124,7 +125,7 @@ public function showTypeWise()
     ];
 
     // ✅ Conditional validation rules
-    if ($type == '1' || $type == '2' || $type == '3') {
+    if ($type == '1' || $type == '2' || $type == '3' || $type == '4') {
         // For type 1 and type 2 (e.g. users)
         $rules = array_merge($rules, [
             'name'           => 'sometimes|required|string|max:255',

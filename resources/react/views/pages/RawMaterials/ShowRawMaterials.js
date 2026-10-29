@@ -676,6 +676,13 @@ const RawMaterialList = () => {
     setAddQtyVisible(true);
   };
 
+  const [logsModalVisible, setLogsModalVisible] = useState(false);
+  const [selectedMaterialForLogs, setSelectedMaterialForLogs] = useState(null);
+  const handleViewLogs = (material) => {
+    setSelectedMaterialForLogs(material);
+    setLogsModalVisible(true);
+  };
+
   const [selectedProject, setSelectedProject] = useState("");
   const handleProjectFilter = (e) => {
     const project_id = e.target.value;
@@ -755,6 +762,14 @@ const RawMaterialList = () => {
                         </CButton>
                         <CButton
                           size="sm"
+                          color="info"
+                          className="text-white"
+                          onClick={() => handleViewLogs(m)}
+                        >
+                          Logs
+                        </CButton>
+                        <CButton
+                          size="sm"
                           color="warning"
                           onClick={() => handleEdit(m)}
                         >
@@ -797,6 +812,69 @@ const RawMaterialList = () => {
         material={selectedMaterial}
         refreshList={fetchMaterials}
       />
+
+      {/* Logs History Modal */}
+      <CModal
+        visible={logsModalVisible}
+        onClose={() => setLogsModalVisible(false)}
+        size="lg"
+      >
+        <CModalHeader onClose={() => setLogsModalVisible(false)}>
+          <CModalTitle>
+            Logs History - {selectedMaterialForLogs?.name}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="table-responsive">
+            <table className="table table-striped align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Date & Time</th>
+                  <th>Project</th>
+                  <th>Stock</th>
+                  <th>Unit</th>
+                  <th>Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedMaterialForLogs?.logs && selectedMaterialForLogs.logs.length > 0 ? (
+                  selectedMaterialForLogs.logs.map((log, index) => (
+                    <tr key={log.id || index}>
+                      <td>{index + 1}</td>
+                      <td>
+                        {log.created_at
+                          ? new Date(log.created_at).toLocaleString()
+                          : "-"}
+                      </td>
+                      <td>{log.project?.project_name || "-"}</td>
+                      <td>{log.current_stock ?? "-"}</td>
+                      <td>{log.unit ?? "-"}</td>
+                      <td>{log.price ?? "-"}</td>
+                      <td>{log.total ?? "-"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center">
+                      No logs found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => setLogsModalVisible(false)}
+          >
+            Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
       {/* Edit Modal */}
       <CModal visible={editModal} onClose={handleClose}>

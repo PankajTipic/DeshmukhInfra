@@ -169,7 +169,16 @@ async function handleError(response, url) {
   }
 
   // Create error object with response data attached
-  const error = new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  const parsedMessage =
+    errorData?.error ||
+    errorData?.message ||
+    (errorData?.errors
+      ? (typeof errorData.errors === 'string'
+          ? errorData.errors
+          : Object.values(errorData.errors).flat().join(', '))
+      : null) ||
+    `HTTP error! status: ${response.status}`;
+  const error = new Error(parsedMessage);
   error.response = {
     status: response.status,
     data: errorData

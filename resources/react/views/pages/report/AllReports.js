@@ -310,10 +310,10 @@ function All_Reports({ companyId }) {
         if (responseIncomes && responseIncomes.incomes) {
           const incomeArray = responseIncomes.incomes.map(log => ({
             date: log.date,
-            projectName: log.project_name || 'Unknown Project',
+            projectName: log.project_name || 'General Income',
             totalIncomeAmount: Number(log.totalIncomeAmount) || 0,
             taxAmount: Number(log.taxAmount) || 0,
-            projectType: log.project_type_name || 'N/A'
+            projectType: log.project_type_name || log.project_type || 'N/A'
           }));
 
           rawIncomeData = [...incomeArray];
@@ -344,8 +344,8 @@ function All_Reports({ companyId }) {
             id: expense.id,
             expenseDate: expense.expense_date,
             totalExpense: Number(expense.total_expense) || 0,
-            projectName: expense.project_name || 'Unknown Project',
-            projectType: expense.project_type_name || 'N/A'
+            projectName: expense.project_name || 'General Expense',
+            projectType: expense.project_type_name || expense.project_type || 'N/A'
           }));
 
           rawExpenseData = [...expenseArray];
@@ -374,7 +374,7 @@ function All_Reports({ companyId }) {
             dPrice: Number(item.product_dPrice) || 0,
             totalQty: Number(item.totalQty) || 0,
             totalRevenue: Number(item.totalRevenue) || 0,
-            projectName: item.project_name || 'Unknown Project'
+            projectName: item.project_name || 'General'
           }));
 
           setProductWiseData(prevData => {
@@ -417,6 +417,9 @@ function All_Reports({ companyId }) {
             projectType: expense.projectType
           };
           existing.totalExpenses += expense.totalExpense;
+          if (!existing.projectType || existing.projectType === 'N/A') {
+            existing.projectType = expense.projectType || 'N/A';
+          }
           existing.profitLoss = (existing.totalIncome - existing.totalTax) - existing.totalExpenses;
           pnlMap.set(key, existing);
         });

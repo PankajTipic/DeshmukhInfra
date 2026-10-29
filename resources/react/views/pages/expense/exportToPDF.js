@@ -966,8 +966,8 @@ headerHeight = yPosition;
       exp.payment_type || '-',
       exp.contact || '-',
       exp.bank_name || '-',
-      exp.account_number || '-',
-      exp.ifsc_code || '-',
+      exp.acc_number || exp.account_number || '-',
+      exp.ifsc || exp.ifsc_code || '-',
       exp.transaction_id || '-',
       exp.name || '-'
     ]);

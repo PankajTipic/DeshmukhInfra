@@ -32,6 +32,7 @@ const InternalMoneyTransfer = React.lazy(() => import('./views/pages/invoice/Int
 
 
 const infraDetailsShowTable = React.lazy(() => import('./views/pages/invoice/infraDetailsShowTable'))
+const SeparateWorkLogReport = React.lazy(() => import('./views/pages/invoice/SeparateWorkLogReport'))
 
 //infra page by samir 
 const OperatorReport = React.lazy(() => import('./views/pages/infraPages/OperatorReport'))
@@ -240,6 +241,7 @@ export default function fetchRoutes() {
 
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
 
 
 
@@ -289,6 +291,7 @@ export default function fetchRoutes() {
 
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
       { path: '/supervisor', name: 'Supervisor', element: supervisor },
@@ -403,6 +406,7 @@ export default function fetchRoutes() {
       { path: '/infraCalculation', name: 'Infra Calculation', element: infraCalculation },
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
       { path: '/projects/new', name: 'New Project', element: newProject },
@@ -494,6 +498,7 @@ export default function fetchRoutes() {
       { path: '/infraCalculation', name: 'Infra Calculation', element: infraCalculation },
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
       { path: '/projects/new', name: 'New Project', element: newProject },
@@ -592,6 +597,7 @@ export default function fetchRoutes() {
       { path: '/infraCalculation', name: 'Infra Calculation', element: infraCalculation },
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
       { path: '/projects/new', name: 'New Project', element: newProject },
@@ -688,6 +694,7 @@ export default function fetchRoutes() {
       { path: '/infraCalculation', name: 'Infra Calculation', element: infraCalculation },
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
+      { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
       { path: '/projects/new', name: 'New Project', element: newProject },
