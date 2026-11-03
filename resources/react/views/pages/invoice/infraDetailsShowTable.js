@@ -1064,6 +1064,7 @@ function InfraDetailsShowTable() {
   const [loading, setLoading] = useState(false)
   const [projects, setProjects] = useState([])
   const [projectName, setProjectName] = useState('')
+  const [machineryMap, setMachineryMap] = useState({})
   const [visible, setVisible] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
 
@@ -1085,20 +1086,32 @@ function InfraDetailsShowTable() {
     }
   }
 
-  // Fetch work types and survey types for dropdown options
+  // Fetch work types and survey types for dropdown options, plus machineries map
   const fetchFilterTypes = async () => {
     try {
-      const [wtRes, stRes] = await Promise.all([
+      const [wtRes, stRes, machRes] = await Promise.all([
         getAPICall('/api/work-types'),
         getAPICall('/api/survey-types'),
+        getAPICall('/api/machineries'),
       ])
       const wtList = (Array.isArray(wtRes) ? wtRes : (wtRes?.data || [])).map((item) => item.name || item).filter(Boolean)
       const stList = (Array.isArray(stRes) ? stRes : (stRes?.data || [])).map((item) => item.name || item).filter(Boolean)
 
       setWorkTypeOptions((prev) => Array.from(new Set([...prev, ...wtList])))
       setSurveyTypeOptions((prev) => Array.from(new Set([...prev, ...stList])))
+
+      const mMap = {}
+      const machList = machRes?.data || machRes || []
+      if (Array.isArray(machList)) {
+        machList.forEach((m) => {
+          if (m && m.id) mMap[String(m.id)] = m.machine_name
+        })
+      }
+      setMachineryMap(mMap)
+      return mMap
     } catch (err) {
-      console.error('Error fetching work/survey types:', err)
+      console.error('Error fetching work/survey types / machineries:', err)
+      return {}
     }
   }
 
@@ -1121,8 +1134,9 @@ function InfraDetailsShowTable() {
     }
   }, [multiSiteDate, activeKey])
 
-  const fetchRecords = async (filters = {}) => {
+  const fetchRecords = async (filters = {}, directMachMap = null) => {
     try {
+      const activeMachMap = directMachMap || machineryMap
       const userType = getUserType()
       let apiUrl = '/api/drilling'
 
@@ -1230,8 +1244,10 @@ function InfraDetailsShowTable() {
             srNo: idx + 1,
             date: rec.date,
             site: rec.project?.project_name || '',
+            supervisor: rec.supervisor || rec.project?.supervisor?.name || '—',
             operator: machine.operator?.name || rec.operator?.name || '',
 
+            machineName: machine.machine?.machine_name || machine.machinery?.machine_name || (activeMachMap && activeMachMap[String(machine.machine_id)]) || machine.machine_name || '—',
             machineStart: machine.machine_start != null && machine.machine_start !== '' ? machine.machine_start : '',
             machineEnd: machine.machine_end != null && machine.machine_end !== '' ? machine.machine_end : '',
             machineHr: machine.actual_machine_hr != null && machine.actual_machine_hr !== '' ? machine.actual_machine_hr : '',
@@ -1240,6 +1256,7 @@ function InfraDetailsShowTable() {
             machineDieselBalance: machine.diesel_balance ?? '',
             machineDieselAvg: machine.diesel_avg ?? '',
 
+            compressorMachineName: compressorRpm.machine?.machine_name || compressorRpm.machinery?.machine_name || (activeMachMap && activeMachMap[String(compressorRpm.machine_id)]) || compressorRpm.machine_name || '—',
             compressorStart: compressorRpm.comp_rpm_start != null && compressorRpm.comp_rpm_start !== '' ? compressorRpm.comp_rpm_start : '',
             compressorEnd: compressorRpm.comp_rpm_end != null && compressorRpm.comp_rpm_end !== '' ? compressorRpm.comp_rpm_end : '',
             compressorHr: compressorRpm.com_actul_hr != null && compressorRpm.com_actul_hr !== '' ? compressorRpm.com_actul_hr : '',
@@ -1323,9 +1340,12 @@ function InfraDetailsShowTable() {
   }
 
   useEffect(() => {
-    fetchProjects()
-    fetchRecords()
-    fetchFilterTypes()
+    const init = async () => {
+      fetchProjects()
+      const mMap = await fetchFilterTypes()
+      fetchRecords({}, mMap)
+    }
+    init()
   }, [])
 
   const handleFilter = () => {
@@ -1493,7 +1513,9 @@ function InfraDetailsShowTable() {
                         <CTableHeaderCell>Sr.No.</CTableHeaderCell>
                         <CTableHeaderCell>Date</CTableHeaderCell>
                         <CTableHeaderCell>Site</CTableHeaderCell>
+                        <CTableHeaderCell>Supervisor</CTableHeaderCell>
                         <CTableHeaderCell>Operator/Helper</CTableHeaderCell>
+                        <CTableHeaderCell>Machine Name</CTableHeaderCell>
                         <CTableHeaderCell>Machine Start</CTableHeaderCell>
                         <CTableHeaderCell>Machine End</CTableHeaderCell>
                         <CTableHeaderCell>Machine Hr</CTableHeaderCell>
@@ -1501,6 +1523,7 @@ function InfraDetailsShowTable() {
                         <CTableHeaderCell className="table-warning">Diesel Used</CTableHeaderCell>
                         <CTableHeaderCell className="table-warning">Diesel Bal</CTableHeaderCell>
                         <CTableHeaderCell className="table-warning">Diesel Avg</CTableHeaderCell>
+                        <CTableHeaderCell>Comp Machine</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm Start</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm End</CTableHeaderCell>
                         <CTableHeaderCell>Comp rpm Hr</CTableHeaderCell>
@@ -1535,10 +1558,12 @@ function InfraDetailsShowTable() {
                                 {new Date(row.date).toLocaleDateString('en-GB')}
                               </CTableDataCell>
                               <CTableDataCell rowSpan={row.rowSpan}>{row.site}</CTableDataCell>
+                              <CTableDataCell rowSpan={row.rowSpan}>{row.supervisor}</CTableDataCell>
                             </>
                           )}
 
                           <CTableDataCell>{row.operator}</CTableDataCell>
+                          <CTableDataCell className="fw-semibold">{row.machineName}</CTableDataCell>
                           <CTableDataCell>{row.machineStart}</CTableDataCell>
                           <CTableDataCell>{row.machineEnd}</CTableDataCell>
                           <CTableDataCell>{row.machineHr}</CTableDataCell>
@@ -1548,6 +1573,7 @@ function InfraDetailsShowTable() {
                             {row.machineDieselBalance}
                           </CTableDataCell>
                           <CTableDataCell className="fw-bold text-warning">{row.machineDieselAvg}</CTableDataCell>
+                          <CTableDataCell className="fw-semibold">{row.compressorMachineName}</CTableDataCell>
                           <CTableDataCell>{row.compressorStart}</CTableDataCell>
                           <CTableDataCell>{row.compressorEnd}</CTableDataCell>
                           <CTableDataCell>{row.compressorHr}</CTableDataCell>
@@ -1597,10 +1623,11 @@ function InfraDetailsShowTable() {
                     {/* Footer with totals */}
                     <CTableFoot>
                       <CTableRow style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
-                        <CTableDataCell colSpan={4} className="text-end">
+                        <CTableDataCell colSpan={5} className="text-end">
                           TOTAL
                         </CTableDataCell>
-                        {/* Machine cols */}
+                        {/* Machine cols (Machine Name + 3 times + 2 diesel + 2 bal/avg = 8 cols) */}
+                        <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
@@ -1612,7 +1639,8 @@ function InfraDetailsShowTable() {
                         </CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
-                        {/* Compressor cols */}
+                        {/* Compressor cols (Comp Machine + 3 times + 2 diesel + 2 bal/avg = 8 cols) */}
+                        <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>
                         <CTableDataCell></CTableDataCell>

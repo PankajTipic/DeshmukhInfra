@@ -80,6 +80,7 @@ const SeparateWorkLogReport = () => {
   const [projects, setProjects] = useState([]);
   const [workTypeOptions, setWorkTypeOptions] = useState([]);
   const [surveyTypeOptions, setSurveyTypeOptions] = useState([]);
+  const [machineryMap, setMachineryMap] = useState({});
 
   // Data States
   const [rawRecords, setRawRecords] = useState([]);
@@ -96,16 +97,26 @@ const SeparateWorkLogReport = () => {
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const [projRes, wtRes, stRes] = await Promise.all([
+        const [projRes, wtRes, stRes, machRes] = await Promise.all([
           getAPICall('/api/myProjects'),
           getAPICall('/api/work-types'),
           getAPICall('/api/survey-types'),
+          getAPICall('/api/machineries'),
         ]);
         setProjects(projRes || []);
         const wtList = (Array.isArray(wtRes) ? wtRes : (wtRes?.data || [])).map(item => item.name || item).filter(Boolean);
         const stList = (Array.isArray(stRes) ? stRes : (stRes?.data || [])).map(item => item.name || item).filter(Boolean);
         setWorkTypeOptions(Array.from(new Set(wtList)));
         setSurveyTypeOptions(Array.from(new Set(stList)));
+
+        const mMap = {};
+        const machList = machRes?.data || machRes || [];
+        if (Array.isArray(machList)) {
+          machList.forEach(m => {
+            if (m && m.id) mMap[String(m.id)] = m.machine_name;
+          });
+        }
+        setMachineryMap(mMap);
       } catch (err) {
         console.error('Error fetching dropdown options:', err);
       }
@@ -270,7 +281,7 @@ const SeparateWorkLogReport = () => {
           srNo: recIdx + 1,
           date: rec.date,
           site: rec.project?.project_name || rec.site_name || '—',
-          supervisor: rec.supervisor || '—',
+          supervisor: rec.supervisor || rec.project?.supervisor?.name || '—',
           startTime: rec.start_time || '—',
           endTime: rec.end_time || '—',
           breakTime: rec.break_time || '—',
@@ -283,6 +294,7 @@ const SeparateWorkLogReport = () => {
           helperName: rec.helper?.name || '—',
 
           // Machine Usage
+          machineName: machine.machine?.machine_name || machine.machinery?.machine_name || machineryMap[String(machine.machine_id)] || machine.machine_name || '—',
           machineStart: machine.machine_start != null && machine.machine_start !== '' ? machine.machine_start : '—',
           machineEnd: machine.machine_end != null && machine.machine_end !== '' ? machine.machine_end : '—',
           machineHr: machine.actual_machine_hr != null && machine.actual_machine_hr !== '' ? machine.actual_machine_hr : '—',
@@ -292,6 +304,7 @@ const SeparateWorkLogReport = () => {
           machineDieselAvg: machine.diesel_avg != null && machine.diesel_avg !== '' ? machine.diesel_avg : '—',
 
           // Compressor Usage (available for both Drilling & Casting)
+          compMachineName: comp.machine?.machine_name || comp.machinery?.machine_name || machineryMap[String(comp.machine_id)] || comp.machine_name || '—',
           compStart: comp.comp_rpm_start != null && comp.comp_rpm_start !== '' ? comp.comp_rpm_start : '—',
           compEnd: comp.comp_rpm_end != null && comp.comp_rpm_end !== '' ? comp.comp_rpm_end : '—',
           compHr: comp.com_actul_hr != null && comp.com_actul_hr !== '' ? comp.com_actul_hr : '—',
@@ -329,7 +342,7 @@ const SeparateWorkLogReport = () => {
     });
 
     return list;
-  }, [rawRecords, drillingType, castingTeamFilter, searchQuery, activeTab]);
+  }, [rawRecords, drillingType, castingTeamFilter, searchQuery, activeTab, machineryMap]);
 
   // Aggregate Totals
   const totals = useMemo(() => {
@@ -775,6 +788,7 @@ const SeparateWorkLogReport = () => {
                     <CTableHeaderCell rowSpan={2} style={{ width: 40 }}>#</CTableHeaderCell>
                     <CTableHeaderCell rowSpan={2}>Date</CTableHeaderCell>
                     <CTableHeaderCell rowSpan={2}>Site / Project</CTableHeaderCell>
+                    <CTableHeaderCell rowSpan={2}>Supervisor</CTableHeaderCell>
                     <CTableHeaderCell rowSpan={2}>Operator</CTableHeaderCell>
 
                     {/* Casting Team specific columns */}
@@ -789,11 +803,11 @@ const SeparateWorkLogReport = () => {
                     <CTableHeaderCell rowSpan={2}>Timing (Net)</CTableHeaderCell>
 
                     {/* Machine & Compressor Readings */}
-                    <CTableHeaderCell colSpan={7} className="table-warning">
+                    <CTableHeaderCell colSpan={8} className="table-warning">
                       Machine Usage
                     </CTableHeaderCell>
 
-                    <CTableHeaderCell colSpan={7} className="table-primary">
+                    <CTableHeaderCell colSpan={8} className="table-primary">
                       Compressor Usage
                     </CTableHeaderCell>
 
@@ -822,6 +836,7 @@ const SeparateWorkLogReport = () => {
 
                   <CTableRow>
                     {/* Machine columns */}
+                    <CTableHeaderCell className="table-warning">Machine</CTableHeaderCell>
                     <CTableHeaderCell className="table-warning">Start</CTableHeaderCell>
                     <CTableHeaderCell className="table-warning">End</CTableHeaderCell>
                     <CTableHeaderCell className="table-warning">Hrs</CTableHeaderCell>
@@ -831,6 +846,7 @@ const SeparateWorkLogReport = () => {
                     <CTableHeaderCell className="table-warning">Avg</CTableHeaderCell>
 
                     {/* Compressor columns */}
+                    <CTableHeaderCell className="table-primary">Compressor</CTableHeaderCell>
                     <CTableHeaderCell className="table-primary">Start</CTableHeaderCell>
                     <CTableHeaderCell className="table-primary">End</CTableHeaderCell>
                     <CTableHeaderCell className="table-primary">Hr</CTableHeaderCell>
@@ -888,6 +904,9 @@ const SeparateWorkLogReport = () => {
                             {row.site}
                           </CTableDataCell>
                           <CTableDataCell rowSpan={row.rowSpan} className="bg-white">
+                            {row.supervisor}
+                          </CTableDataCell>
+                          <CTableDataCell rowSpan={row.rowSpan} className="bg-white">
                             {row.operator}
                           </CTableDataCell>
 
@@ -920,6 +939,7 @@ const SeparateWorkLogReport = () => {
                       )}
 
                       {/* Machine Usage */}
+                      <CTableDataCell className="fw-semibold text-start">{row.machineName}</CTableDataCell>
                       <CTableDataCell>{row.machineStart}</CTableDataCell>
                       <CTableDataCell>{row.machineEnd}</CTableDataCell>
                       <CTableDataCell className="fw-semibold">{row.machineHr}</CTableDataCell>
@@ -929,6 +949,7 @@ const SeparateWorkLogReport = () => {
                       <CTableDataCell>{row.machineDieselAvg}</CTableDataCell>
 
                       {/* Compressor Usage (Both Drilling and Casting) */}
+                      <CTableDataCell className="fw-semibold text-start">{row.compMachineName}</CTableDataCell>
                       <CTableDataCell>{row.compStart}</CTableDataCell>
                       <CTableDataCell>{row.compEnd}</CTableDataCell>
                       <CTableDataCell className="fw-semibold">{row.compHr}</CTableDataCell>
@@ -1021,10 +1042,10 @@ const SeparateWorkLogReport = () => {
 
                 <CTableFoot className="table-light fw-bold">
                   <CTableRow>
-                    <CTableDataCell colSpan={4} className="text-end">
+                    <CTableDataCell colSpan={5} className="text-end">
                       Grand Total:
                     </CTableDataCell>
-                    <CTableDataCell colSpan={activeTab === 'drilling' ? 29 : 27} className="text-start fs-6 text-success">
+                    <CTableDataCell colSpan={activeTab === 'drilling' ? 31 : 29} className="text-start fs-6 text-success">
                       ₹ {totals.grandTotal.toLocaleString()}
                     </CTableDataCell>
                   </CTableRow>

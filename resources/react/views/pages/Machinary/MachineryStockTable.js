@@ -108,8 +108,8 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
   const [showTransfer,  setShowTransfer]  = useState(null);
   const [showHistory,   setShowHistory]   = useState(null);
   
-  const [addForm, setAddForm] = useState({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', minQty:'', category:'Consumable' });
-  const [editForm, setEditForm] = useState({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', minQty:'', category:'Consumable' });
+  const [addForm, setAddForm] = useState({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', price:'', minQty:'', category:'Consumable' });
+  const [editForm, setEditForm] = useState({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', price:'', minQty:'', category:'Consumable' });
   const [usageForm, setUsageForm] = useState({ qty:'', note:'' });
   const [tfForm, setTfForm] = useState({ toProjectId:'', toMachineId:'', qty:'', note:'' });
   
@@ -132,15 +132,16 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
         item_name: addForm.itemName,
         category: addForm.category,
         unit: addForm.unit,
+        price: Number(addForm.price || 0),
         initial_qty: Number(addForm.initialQty),
         min_qty: Number(addForm.minQty || 0)
       });
       showToast('success', 'Stock item added successfully!');
       setShowAdd(false);
-      setAddForm({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', minQty:'', category:'Consumable' });
+      setAddForm({ projectId:'', machineId:'', itemName:'', unit:'NOS', initialQty:'', price:'', minQty:'', category:'Consumable' });
       onRefresh();
     } catch (err) {
-     showToast('danger', err.message || 'Failed to add stock item'); //alert(err.message || 'Failed to add stock item');
+      showToast('danger', err.message || 'Failed to add stock item'); //alert(err.message || 'Failed to add stock item');
     }
   };
 
@@ -153,6 +154,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
         item_name: editForm.itemName,
         category: editForm.category,
         unit: editForm.unit,
+        price: Number(editForm.price || 0),
         initial_qty: Number(editForm.initialQty),
         min_qty: Number(editForm.minQty || 0)
       });
@@ -291,13 +293,14 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
 }}>
         {[
           { label:'Total Items',    val: stockMaster.length,     color:'#2563EB' },
+          { label:'Stock Value',    val: `₹${money(stockMaster.reduce((sum, s) => sum + ((Number(s.currentQty) || 0) * (Number(s.price) || 0)), 0))}`, color:'#059669' },
           { label:'Critical',       val: dashboardStats.criticalAlerts || 0, color:'#E24B4A' },
           { label:'Low Stock',      val: dashboardStats.lowStock || 0, color:'#BA7517' },
           { label:'Transfers',      val: dashboardStats.totalTransfers || 0, color:'#7C3AED' },
         ].map(s=>(
           <div key={s.label} style={{ background:'#F8FAFC',borderRadius:10,padding:'14px 16px',border:'1px solid #E2E8F0' }}>
             <div style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.4px',color:'#94A3B8' }}>{s.label}</div>
-            <div style={{ fontSize:28,fontWeight:800,color:s.color,marginTop:4 }}>{s.val}</div>
+            <div style={{ fontSize:24,fontWeight:800,color:s.color,marginTop:4 }}>{s.val}</div>
           </div>
         ))}
       </div>
@@ -306,7 +309,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
         <table style={{ width:'100%',borderCollapse:'collapse',fontSize:13 }}>
           <thead>
             <tr style={{ background:'#F8FAFC' }}>
-              {['Item Name','Project','Machine','Category','Initial','Current','Min Qty','Status','Stock %','Actions'].map(h=>(
+              {['Item Name','Project','Machine','Category','Price / Unit','Initial','Current','Total Value','Min Qty','Status','Stock %','Actions'].map(h=>(
                 <th key={h} style={{ padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.4px',borderBottom:'1px solid #E2E8F0',whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -321,8 +324,21 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
                   <td style={{ padding:'10px 14px',color:'#475569' }}>{proj(s.projectId)}</td>
                   <td style={{ padding:'10px 14px',color:'#475569' }}>{mach(s.machineId)}</td>
                   <td style={{ padding:'10px 14px' }}><Badge label={s.category} color="#2563EB" bg="#EFF6FF" /></td>
+                  <td style={{ padding:'10px 14px',fontWeight:600,color:'#1E293B',whiteSpace:'nowrap' }}>
+                    ₹{Number(s.price || 0).toLocaleString('en-IN')}
+                  </td>
                   <td style={{ padding:'10px 14px',color:'#475569' }}>{s.initialQty} {s.unit}</td>
                   <td style={{ padding:'10px 14px',fontWeight:700,color:'#0F172A' }}>{s.currentQty} {s.unit}</td>
+                  <td style={{ padding:'10px 14px',whiteSpace:'nowrap' }}>
+                    <div style={{ fontWeight:700,color:'#059669',fontSize:13 }}>
+                      ₹{((Number(s.currentQty) || 0) * (Number(s.price) || 0)).toLocaleString('en-IN')}
+                    </div>
+                    {Number(s.initialQty) !== Number(s.currentQty) && (
+                      <div style={{ fontSize:10,color:'#94A3B8' }}>
+                        Init: ₹{((Number(s.initialQty) || 0) * (Number(s.price) || 0)).toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ padding:'10px 14px',color:'#94A3B8' }}>{s.minQty} {s.unit}</td>
                   <td style={{ padding:'10px 14px' }}><Badge label={st.label} color={st.color} bg={st.bg} /></td>
                   <td style={{ padding:'10px 14px',minWidth:100 }}>
@@ -342,6 +358,7 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
                           itemName: s.itemName || '',
                           category: s.category || 'Consumable',
                           unit: s.unit || 'NOS',
+                          price: s.price != null ? s.price : '',
                           initialQty: s.initialQty || '',
                           minQty: s.minQty || ''
                         });
@@ -438,6 +455,40 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
 }}
  placeholder="e.g. 10" style={inp} value={addForm.initialQty} onChange={e=>setAddForm({...addForm, initialQty:e.target.value})} />
           </FRow>
+          <FRow label="Price per Unit (₹)">
+            <input type="number" min="0" step="any" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}}
+ placeholder="e.g. 100" style={inp} value={addForm.price} onChange={e=>setAddForm({...addForm, price:e.target.value})} />
+          </FRow>
+          {(Number(addForm.initialQty) > 0 || Number(addForm.price) > 0) && (
+            <div style={{
+              background: '#F0FDF4',
+              border: '1.5px solid #BBF7D0',
+              borderRadius: 8,
+              padding: '10px 14px',
+              marginBottom: 14,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Price (Qty × Price)</span>
+                <div style={{ fontSize: 13, color: '#15803D', fontWeight: 600 }}>
+                  {addForm.initialQty || 0} {addForm.unit || 'unit'} × ₹{addForm.price || 0}
+                </div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#166534' }}>
+                ₹{((Number(addForm.initialQty) || 0) * (Number(addForm.price) || 0)).toLocaleString('en-IN')}
+              </div>
+            </div>
+          )}
           <FRow label="Min Qty (Low Alert Level)">
             <input type="number" onKeyDown={(e) => {
   if (
@@ -501,6 +552,39 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
   }
 }} min="0" placeholder="e.g. 10" style={inp} value={editForm.initialQty} onChange={e=>setEditForm({...editForm, initialQty:e.target.value})} />
           </FRow>
+          <FRow label="Price per Unit (₹)">
+            <input type="number" min="0" step="any" onKeyDown={(e) => {
+  if (
+    e.key === '-' ||
+    e.key === 'e' ||
+    e.key === 'E'
+  ) {
+    e.preventDefault();
+  }
+}} placeholder="e.g. 100" style={inp} value={editForm.price} onChange={e=>setEditForm({...editForm, price:e.target.value})} />
+          </FRow>
+          {(Number(editForm.initialQty) > 0 || Number(editForm.price) > 0) && (
+            <div style={{
+              background: '#F0FDF4',
+              border: '1.5px solid #BBF7D0',
+              borderRadius: 8,
+              padding: '10px 14px',
+              marginBottom: 14,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Price (Qty × Price)</span>
+                <div style={{ fontSize: 13, color: '#15803D', fontWeight: 600 }}>
+                  {editForm.initialQty || 0} {editForm.unit || 'unit'} × ₹{editForm.price || 0}
+                </div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#166534' }}>
+                ₹{((Number(editForm.initialQty) || 0) * (Number(editForm.price) || 0)).toLocaleString('en-IN')}
+              </div>
+            </div>
+          )}
           <FRow label="Min Qty (Low Alert Level)">
             <input type="number" min="0" placeholder="e.g. 2" style={inp} value={editForm.minQty} onChange={e=>setEditForm({...editForm, minQty:e.target.value})} />
           </FRow>
@@ -516,6 +600,9 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
           <div style={{ background:'#F8FAFC',borderRadius:8,padding:'12px 14px',marginBottom:16,border:'1px solid #E2E8F0',fontSize:13 }}>
             <div>Current Balance: <strong>{showUsage.currentQty} {showUsage.unit}</strong></div>
             <div>Project: <strong>{proj(showUsage.projectId)}</strong></div>
+            {Number(showUsage.price) > 0 && (
+              <div style={{ marginTop: 4 }}>Unit Price: <strong>₹{Number(showUsage.price).toLocaleString('en-IN')}</strong> / {showUsage.unit}</div>
+            )}
           </div>
           <FRow label="Usage Qty *">
             <input type="number" onKeyDown={(e) => {
@@ -528,6 +615,26 @@ function StockMasterTab({ state, onRefresh, openDeleteModal}) {
   }
 }} min="0" max={showUsage.currentQty} placeholder="e.g. 2" style={inp} value={usageForm.qty} onChange={e=>setUsageForm({...usageForm, qty:e.target.value})} />
           </FRow>
+          {Number(showUsage.price) > 0 && Number(usageForm.qty) > 0 && (
+            <div style={{
+              background: '#FFFBEB',
+              border: '1.5px solid #FDE68A',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 14,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 12
+            }}>
+              <span style={{ color: '#92400E', fontWeight: 600 }}>
+                Cost of Used Stock ({usageForm.qty} × ₹{showUsage.price}):
+              </span>
+              <span style={{ color: '#B45309', fontWeight: 800, fontSize: 14 }}>
+                ₹{((Number(usageForm.qty) || 0) * (Number(showUsage.price) || 0)).toLocaleString('en-IN')}
+              </span>
+            </div>
+          )}
           <FRow label="Remarks / Purpose">
             <textarea placeholder="e.g. Used for maintenance work" rows={3} style={{ ...inp, resize:'vertical' }} value={usageForm.note} onChange={e=>setUsageForm({...usageForm, note:e.target.value})} />
           </FRow>
@@ -1577,6 +1684,7 @@ function Dashboard({ state }) {
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:16,marginBottom:28 }}>
         {[
           { label:'Stock Items',      val: dashboardStats.stockItems || 0, color:'#2563EB', sub:'in inventory'       },
+          { label:'Stock Valuation',  val: `₹${money(stockMaster.reduce((sum, s) => sum + ((Number(s.currentQty) || 0) * (Number(s.price) || 0)), 0))}`, color:'#059669', sub:'current inventory value' },
           { label:'Critical Alerts',  val: dashboardStats.criticalAlerts || 0,    color:'#E24B4A', sub:'need restock'       },
           { label:'Today\'s Logs',    val: dashboardStats.todayLogs || 0,   color:'#059669', sub:'work entries today' },
           { label:'Hours Today',      val: `${dashboardStats.hoursToday || 0}h`, color:'#7C3AED', sub:'machine hours'     },

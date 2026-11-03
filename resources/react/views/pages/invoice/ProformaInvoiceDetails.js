@@ -18,6 +18,7 @@ import { getAPICall } from '../../../util/api'
 import { useToast } from '../../common/toast/ToastContext'
 import { generateProformaInvoicePDF } from './ProformaInvoicePDF'
 import RecordPaymentModal from './RecordPaymentModal'
+import { formatQty } from '../../../util/format'
 
 const ProformaInvoiceDetails = () => {
   const { id } = useParams()
@@ -365,7 +366,7 @@ const ProformaInvoiceDetails = () => {
 
 
                           <td>{item.uom || 'N/A'}</td>
-                          <td>{qty.toFixed(2)}</td>
+                          <td>{formatQty(qty)}</td>
                           <td>₹{price.toFixed(2)}</td>
                           {showRowGST && <td>₹{baseAmount.toFixed(2)}</td>}
                           {showRowGST && <td>{gstPercent ? `${gstPercent}%` : '-'}</td>}

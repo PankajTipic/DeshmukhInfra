@@ -2790,6 +2790,7 @@ import { cilArrowLeft, cilPencil, cilSave, cilX, cilPlus } from '@coreui/icons'
 import { post, getAPICall } from '../../../util/api'
 import { useToast } from '../../common/toast/ToastContext'
 import { paymentTypes, receiver_bank } from '../../../util/Feilds'
+import { formatQty } from '../../../util/format'
 
 const CreateProformaInvoice = () => {
   const location = useLocation()
@@ -3125,15 +3126,23 @@ const validateQtyOnBlur = (index) => {
 
 
     if (val > remaining) {
-      showToast('warning', `Entered amount cannot be greater than pending (${formatNumber(remaining)})`)
+      showToast('warning', `Entered amount cannot be greater than pending (${formatQty(remaining)})`)
       row.qty = ''   // ❗ clear instead of forcing value
       setWorks(updated)
       return
     }
   }
 
-  // ✅ Accept value
-  row.qty = val
+  // ✅ Accept value formatted
+  const trimmed = String(row.qty).trim();
+  const parts = trimmed.split('.');
+  if (parts.length > 1 && parts[1].length === 3) {
+    row.qty = val.toFixed(3);
+  } else if (parts.length > 1 && parts[1].length === 2) {
+    row.qty = val.toFixed(2);
+  } else {
+    row.qty = val.toFixed(2);
+  }
   setWorks(updated)
 
   recalcRow(index, updated) // calculate only after valid
@@ -3987,9 +3996,9 @@ const validateQtyOnBlur = (index) => {
   </CFormLabel>
   {w.original_qty > 0 && (
     <small className="text-danger d-block mt-1" style={{ lineHeight: '1.2' }}>
-      Total: {formatNumber(w.original_qty)}<br />
-      Billed: {formatNumber(w.used_qty)}<br />
-      <strong>Remaining: {formatNumber(w.original_qty - w.used_qty)}</strong>
+      Total: {formatQty(w.original_qty)}<br />
+      Billed: {formatQty(w.used_qty)}<br />
+      <strong>Remaining: {formatQty(w.original_qty - w.used_qty)}</strong>
     </small>
   )}
  <CFormInput
@@ -4001,10 +4010,15 @@ const validateQtyOnBlur = (index) => {
         ? '' 
         : (typeof w.qty === 'string' 
             ? w.qty 
-            : Number(w.qty).toFixed(2)
+            : formatQty(w.qty)
           )
     }
-  onChange={e => handleWorkChange(idx, 'qty', e.target.value)}
+  onChange={e => {
+    const value = e.target.value;
+    if (/^\d*\.?\d{0,3}$/.test(value)) {
+      handleWorkChange(idx, 'qty', value);
+    }
+  }}
   onBlur={() => validateQtyOnBlur(idx)}
   placeholder="0.00"
 />

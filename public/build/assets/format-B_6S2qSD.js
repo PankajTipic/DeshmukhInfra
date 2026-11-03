@@ -1,0 +1,1 @@
+const o=t=>{if(t==null||t==="")return"";const r=parseFloat(t);if(isNaN(r))return"";const e=String(t).trim().split(".");if(e.length>1){const n=e[1];return n.length>=3?n.length===3&&n[2]==="0"?r.toFixed(2):r.toFixed(3):r.toFixed(2)}return r.toFixed(2)};export{o as f};

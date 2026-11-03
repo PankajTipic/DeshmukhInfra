@@ -80,6 +80,13 @@ public function store(Request $request)
         'total_casting_points' => $request->total_casting_points ?? null,
     ]);
 
+    // Optional: assign supervisor to project if selected/changed
+    if ($request->filled('supervisor_id') && $request->filled('project_id')) {
+        \App\Models\Project::where('id', $request->project_id)
+            ->where('company_id', $companyId)
+            ->update(['supervisor_id' => $request->supervisor_id]);
+    }
+
     $operatorId = $drillingRecord->oprator_helper;
 
     // ✅ Step 2.1: Create Machine Reading entries & adjust diesel from Machinery
@@ -330,9 +337,12 @@ public function index(Request $request)
     $records = DrillingRecord::with([
             'surveyDetail',
             'workPointDetail',
-            'compressorRpm', 
-            'machineReading.operator',
-            'project:id,project_name',
+            'compressorRpm.operator:id,name',
+            'compressorRpm.machine:id,machine_name', 
+            'machineReading.operator:id,name',
+            'machineReading.machine:id,machine_name',
+            'project:id,project_name,supervisor_id',
+            'project.supervisor:id,name',
             'operator:id,name',
             'helper:id,name',
             'uses_raw_material.material:id,name'
@@ -456,9 +466,12 @@ public function getDataByUserId(Request $request)
     $records = \App\Models\DrillingRecord::with([
             'surveyDetail',
             'workPointDetail',
-            'compressorRpm',
-            'machineReading.operator',
-            'project:id,project_name',
+            'compressorRpm.operator:id,name',
+            'compressorRpm.machine:id,machine_name',
+            'machineReading.operator:id,name',
+            'machineReading.machine:id,machine_name',
+            'project:id,project_name,supervisor_id',
+            'project.supervisor:id,name',
             'operator:id,name',
             'helper:id,name',
             'uses_raw_material.material:id,name'

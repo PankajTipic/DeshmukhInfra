@@ -71,7 +71,7 @@ public function index(Request $request)
             'project_type_id',
             'is_subcontract'
         )
-        ->with('projectType') // Eager load project type
+        ->with(['projectType', 'supervisor']) // Eager load project type and supervisor
         ->where('company_id', $user->company_id)
         ->where('is_visible', true);
         // ->where('is_confirm', 1);  // ✅ only confirmed projects
@@ -119,6 +119,14 @@ public function index(Request $request)
             'project_type' => $p->projectType ? $p->projectType->name : null,
             'project_type_id' => $p->project_type_id,
             'is_subcontract' => $p->is_subcontract,
+            'supervisor_id'  => $p->supervisor_id,
+            'supervisor_name'=> $p->supervisor ? $p->supervisor->name : null,
+            'supervisor'     => $p->supervisor ? [
+                'id'    => $p->supervisor->id,
+                'name'  => $p->supervisor->name,
+                'email' => $p->supervisor->email ?? null,
+                'mobile'=> $p->supervisor->mobile ?? null,
+            ] : null,
         ];
     });
 
@@ -211,7 +219,8 @@ public function store(Request $request)
 
     public function show(Project $project)
     {
-        return $project;
+        $project->load(['projectType', 'supervisor']);
+        return response()->json($project);
     }
 
 

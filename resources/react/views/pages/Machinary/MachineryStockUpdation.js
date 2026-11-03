@@ -547,6 +547,8 @@ function MachineryStockUpdate() {
   const [stockItems, setStockItems] = useState([
     {
       stock_name: '',
+      price: '',
+      total_price: '',
       issued_qty: '',
       used_qty: '',
       remaining_qty: '',
@@ -602,10 +604,11 @@ function MachineryStockUpdate() {
 
     updatedStocks[index][field] = value;
 
-    // Auto calculate and validate remaining quantity
-    if (field === 'issued_qty' || field === 'used_qty') {
+    // Auto calculate and validate remaining quantity & total price
+    if (field === 'issued_qty' || field === 'used_qty' || field === 'price') {
       let issued = parseFloat(updatedStocks[index].issued_qty) || 0;
       let used = parseFloat(updatedStocks[index].used_qty) || 0;
+      let price = parseFloat(updatedStocks[index].price) || 0;
 
       // Prevent Used Qty > Issued Qty
       if (used > issued) {
@@ -616,6 +619,7 @@ function MachineryStockUpdate() {
 
       const remaining = issued - used;
       updatedStocks[index].remaining_qty = remaining.toString();
+      updatedStocks[index].total_price = (issued * price).toString();
     }
 
     setStockItems(updatedStocks);
@@ -626,6 +630,8 @@ function MachineryStockUpdate() {
       ...stockItems,
       {
         stock_name: '',
+        price: '',
+        total_price: '',
         issued_qty: '',
         used_qty: '',
         remaining_qty: '',
@@ -701,6 +707,8 @@ function MachineryStockUpdate() {
 
       setStockItems([{
         stock_name: '',
+        price: '',
+        total_price: '',
         issued_qty: '',
         used_qty: '',
         remaining_qty: '',
@@ -860,7 +868,9 @@ function MachineryStockUpdate() {
                     <CTableHead>
                       <CTableRow>
                         <CTableHeaderCell>Stock Name / Part *</CTableHeaderCell>
+                        <CTableHeaderCell>Price / Unit (₹)</CTableHeaderCell>
                         <CTableHeaderCell>Issued Qty</CTableHeaderCell>
+                        <CTableHeaderCell>Total Price (₹)</CTableHeaderCell>
                         <CTableHeaderCell>Used Qty</CTableHeaderCell>
                         <CTableHeaderCell>Remaining Qty</CTableHeaderCell>
                         <CTableHeaderCell>Remarks</CTableHeaderCell>
@@ -881,6 +891,19 @@ function MachineryStockUpdate() {
                             <CFormInput
                               type="number"
                               min="0"
+                              step="any"
+                              placeholder="e.g. 100"
+                              value={item.price || ''}
+                              onKeyDown={(e) => {
+                                if (e.key === '-') e.preventDefault();
+                              }}
+                              onChange={(e) => handleStockChange(index, 'price', e.target.value)}
+                            />
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CFormInput
+                              type="number"
+                              min="0"
                               value={item.issued_qty}
                                onKeyDown={(e) => {
     // Prevent negative sign
@@ -889,6 +912,15 @@ function MachineryStockUpdate() {
     }
   }}
                               onChange={(e) => handleStockChange(index, 'issued_qty', e.target.value)}
+                            />
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CFormInput
+                              type="number"
+                              value={item.total_price || ''}
+                              readOnly
+                              className="bg-light fw-bold text-success"
+                              placeholder="0.00"
                             />
                           </CTableDataCell>
                           <CTableDataCell>

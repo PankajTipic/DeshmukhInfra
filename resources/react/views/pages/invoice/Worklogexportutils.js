@@ -138,7 +138,9 @@ export const downloadWorkLogExcel = ({
     'Sr.No.',
     'Date',
     'Site',
+    'Supervisor',
     'Operator/Helper',
+    'Machine Name',
     'Machine Start',
     'Machine End',
     'Machine Hr',
@@ -146,6 +148,7 @@ export const downloadWorkLogExcel = ({
     'Machine Diesel Used',
     'Machine Diesel Bal',
     'Machine Diesel Avg',
+    'Compressor Machine',
     'Compressor rpm Start',
     'Compressor rpm End',
     'Compressor rpm Hr',
@@ -172,7 +175,9 @@ export const downloadWorkLogExcel = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -180,6 +185,7 @@ export const downloadWorkLogExcel = ({
     row.machineDieselUsed === '—' ? '' : (row.machineDieselUsed ?? ''),
     row.machineDieselBalance === '—' ? '' : (row.machineDieselBalance ?? ''),
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
+    (row.compressorMachineName || row.compMachineName || '') === '—' ? '' : (row.compressorMachineName || row.compMachineName || ''),
     getFieldVal(row, 'compressorStart', 'compStart'),
     getFieldVal(row, 'compressorEnd', 'compEnd'),
     getFieldVal(row, 'compressorHr', 'compHr'),
@@ -203,15 +209,15 @@ export const downloadWorkLogExcel = ({
   ])
 
   const totalsRow = [
-    '', '', '', '',
-    '', '', '',
+    '', '', '', '', '', // Sr, Date, Site, Supervisor, Operator
+    '', '', '', '', // Machine Name, Start, End, Hr
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
-    '', '',
-    '', '', '',
+    '', '', // Bal, Avg
+    '', '', '', '', // Comp Machine, Start, End, Hr
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
-    '', '',
+    '', '', // Bal, Avg
     'TOTAL',
     (parseFloat(tableTotals.workPoint) || 0).toFixed(2),
     (parseFloat(tableTotals.workRate) || 0).toFixed(2),
@@ -304,9 +310,9 @@ export const downloadWorkLogPDF = ({
   }
 
   const tableColumn = [
-    'Sr', 'Date', 'Site', 'Opr',
-    'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
-    'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
+    'Sr', 'Date', 'Site', 'Supervisor', 'Opr',
+    'Machine', 'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
+    'Comp', 'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
     'WrkTyp', 'Pt', 'Rate', 'W.Tot', 'W.Hr', 'W.Dsl',
     'SrvTyp', 'Pt', 'Rate', 'S.Tot', 'S.Hr', 'S.Dsl', 'Gr.Tot',
   ]
@@ -315,7 +321,9 @@ export const downloadWorkLogPDF = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -323,6 +331,7 @@ export const downloadWorkLogPDF = ({
     row.machineDieselUsed === '—' ? '' : (row.machineDieselUsed ?? ''),
     row.machineDieselBalance === '—' ? '' : (row.machineDieselBalance ?? ''),
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
+    (row.compressorMachineName || row.compMachineName || '') === '—' ? '' : (row.compressorMachineName || row.compMachineName || ''),
     getFieldVal(row, 'compressorStart', 'compStart'),
     getFieldVal(row, 'compressorEnd', 'compEnd'),
     getFieldVal(row, 'compressorHr', 'compHr'),
@@ -346,12 +355,12 @@ export const downloadWorkLogPDF = ({
   ])
 
   tableRows.push([
+    '', '', '', '', '',
     '', '', '', '',
-    '', '', '',
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
     '', '',
-    '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
     '', '',
@@ -458,8 +467,10 @@ export const downloadDrillingExcel = ({
     'Sr.No.',
     'Date',
     'Site',
+    'Supervisor',
     'Operator',
     'Timing',
+    'Machine Name',
     'Machine Start',
     'Machine End',
     'Machine Hr',
@@ -467,6 +478,7 @@ export const downloadDrillingExcel = ({
     'Machine Diesel Used',
     'Machine Diesel Bal',
     'Machine Diesel Avg',
+    'Compressor Machine',
     'Compressor rpm Start',
     'Compressor rpm End',
     'Compressor rpm Hr',
@@ -494,8 +506,10 @@ export const downloadDrillingExcel = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
     row.startTime && row.endTime ? `${row.startTime} - ${row.endTime}` : (row.timing || ''),
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -503,6 +517,7 @@ export const downloadDrillingExcel = ({
     row.machineDieselUsed === '—' ? '' : (row.machineDieselUsed ?? ''),
     row.machineDieselBalance === '—' ? '' : (row.machineDieselBalance ?? ''),
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
+    (row.compMachineName || row.compressorMachineName || '') === '—' ? '' : (row.compMachineName || row.compressorMachineName || ''),
     getFieldVal(row, 'compStart', 'compressorStart'),
     getFieldVal(row, 'compEnd', 'compressorEnd'),
     getFieldVal(row, 'compHr', 'compressorHr'),
@@ -527,12 +542,12 @@ export const downloadDrillingExcel = ({
   ])
 
   const totalsRow = [
-    '', '', '', '', '',
-    '', '', '',
+    '', '', '', '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
     '', '',
-    '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
     '', '',
@@ -629,9 +644,9 @@ export const downloadDrillingPDF = ({
   }
 
   const tableColumn = [
-    'Sr', 'Date', 'Site', 'Opr',
-    'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
-    'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
+    'Sr', 'Date', 'Site', 'Supervisor', 'Opr',
+    'Machine', 'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
+    'Comp', 'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
     'WrkTyp', 'Pt', 'Rate', 'W.Tot', 'W.Hr', 'W.Dsl',
     'SrvTyp', 'Pt', 'Rate', 'S.Tot', 'S.Hr', 'S.Dsl', 'Gr.Tot',
   ]
@@ -640,7 +655,9 @@ export const downloadDrillingPDF = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -648,6 +665,7 @@ export const downloadDrillingPDF = ({
     row.machineDieselUsed === '—' ? '' : (row.machineDieselUsed ?? ''),
     row.machineDieselBalance === '—' ? '' : (row.machineDieselBalance ?? ''),
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
+    (row.compMachineName || row.compressorMachineName || '') === '—' ? '' : (row.compMachineName || row.compressorMachineName || ''),
     getFieldVal(row, 'compStart', 'compressorStart'),
     getFieldVal(row, 'compEnd', 'compressorEnd'),
     getFieldVal(row, 'compHr', 'compressorHr'),
@@ -671,12 +689,12 @@ export const downloadDrillingPDF = ({
   ])
 
   tableRows.push([
+    '', '', '', '', '',
     '', '', '', '',
-    '', '', '',
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
     '', '',
-    '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
     '', '',
@@ -783,11 +801,13 @@ export const downloadCastingExcel = ({
     'Sr.No.',
     'Date',
     'Site',
+    'Supervisor',
     'Operator',
     'Casting Team Name',
     'Casting Team No',
     'Helper Name',
     'Timing',
+    'Machine Name',
     'Machine Start',
     'Machine End',
     'Machine Hr',
@@ -795,6 +815,7 @@ export const downloadCastingExcel = ({
     'Machine Diesel Used',
     'Machine Diesel Bal',
     'Machine Diesel Avg',
+    'Compressor Machine',
     'Compressor rpm Start',
     'Compressor rpm End',
     'Compressor rpm Hr',
@@ -816,11 +837,13 @@ export const downloadCastingExcel = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
     row.castingTeamName === '—' ? '' : (row.castingTeamName || ''),
     row.castingTeamNo === '—' ? '' : (row.castingTeamNo || ''),
     row.helperName === '—' ? '' : (row.helperName || ''),
     row.startTime && row.endTime ? `${row.startTime} - ${row.endTime}` : (row.timing || ''),
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -828,6 +851,7 @@ export const downloadCastingExcel = ({
     row.machineDieselUsed === '—' ? '' : (row.machineDieselUsed ?? ''),
     row.machineDieselBalance === '—' ? '' : (row.machineDieselBalance ?? ''),
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
+    (row.compMachineName || row.compressorMachineName || '') === '—' ? '' : (row.compMachineName || row.compressorMachineName || ''),
     getFieldVal(row, 'compStart', 'compressorStart'),
     getFieldVal(row, 'compEnd', 'compressorEnd'),
     getFieldVal(row, 'compHr', 'compressorHr'),
@@ -846,12 +870,12 @@ export const downloadCastingExcel = ({
   ])
 
   const totalsRow = [
-    '', '', '', '', '', '', '', '',
-    '', '', '',
+    '', '', '', '', '', '', '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
     '', '',
-    '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
     '', '',
@@ -942,9 +966,9 @@ export const downloadCastingPDF = ({
   }
 
   const tableColumn = [
-    'Sr', 'Date', 'Site', 'Opr', 'Team', 'Helper',
-    'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
-    'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
+    'Sr', 'Date', 'Site', 'Supervisor', 'Opr', 'Team', 'Helper',
+    'Machine', 'M.Strt', 'M.End', 'M.Hr', 'M.D.Fld', 'M.D.Usd', 'M.D.Bal', 'M.D.Avg',
+    'Comp', 'C.Strt', 'C.End', 'C.Hr', 'C.D.Fld', 'C.D.Usd', 'C.D.Bal', 'C.D.Avg',
     'WrkTyp', 'Pt', 'Rate', 'W.Tot', 'W.Hr',
     'Material', 'Used Qty', 'Gr.Tot',
   ]
@@ -953,6 +977,7 @@ export const downloadCastingPDF = ({
     row.srNo,
     row.date ? new Date(row.date).toLocaleDateString('en-GB') : '',
     row.site === '—' ? '' : (row.site || ''),
+    row.supervisor === '—' ? '' : (row.supervisor || ''),
     row.operator === '—' ? '' : (row.operator || ''),
     row.castingTeamName && row.castingTeamName !== '—'
       ? `${row.castingTeamName}${row.castingTeamNo && row.castingTeamNo !== '—' ? ` (${row.castingTeamNo})` : ''}`
@@ -960,6 +985,7 @@ export const downloadCastingPDF = ({
     row.helperName === '—' ? '' : (row.helperName || ''),
 
     // Machine Usage
+    row.machineName === '—' ? '' : (row.machineName || ''),
     row.machineStart === '—' ? '' : (row.machineStart ?? ''),
     row.machineEnd === '—' ? '' : (row.machineEnd ?? ''),
     row.machineHr === '—' ? '' : (row.machineHr ?? ''),
@@ -969,6 +995,7 @@ export const downloadCastingPDF = ({
     row.machineDieselAvg === '—' ? '' : (row.machineDieselAvg ?? ''),
 
     // Compressor Usage (Fully visible)
+    (row.compMachineName || row.compressorMachineName || '') === '—' ? '' : (row.compMachineName || row.compressorMachineName || ''),
     getFieldVal(row, 'compStart', 'compressorStart'),
     getFieldVal(row, 'compEnd', 'compressorEnd'),
     getFieldVal(row, 'compHr', 'compressorHr'),
@@ -993,12 +1020,12 @@ export const downloadCastingPDF = ({
   ])
 
   tableRows.push([
-    '', '', '', '', '', '',
-    '', '', '',
+    '', '', '', '', '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.machineDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.machineDieselUsed) || 0).toFixed(2),
     '', '',
-    '', '', '',
+    '', '', '', '',
     (parseFloat(tableTotals.compressorDieselFilled) || 0).toFixed(2),
     (parseFloat(tableTotals.compressorDieselUsed) || 0).toFixed(2),
     '', '',

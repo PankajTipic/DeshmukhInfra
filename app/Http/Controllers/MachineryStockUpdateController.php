@@ -46,18 +46,26 @@ class MachineryStockUpdateController extends Controller
     private function formatStockItem(MachineryStockItem $s): array
     {
         $parent = $s->stockUpdate;
+        $price = (float) ($s->price ?? 0);
+        $remainingQty = (float) $s->remaining_qty;
+        $issuedQty = (float) $s->issued_qty;
+        $totalPrice = (float) ($s->total_price ?? ($price * $remainingQty));
+        $initialTotalPrice = (float) ($price * $issuedQty);
+
         return [
-            'id'          => $s->id,
-            'projectId'   => $parent ? $parent->project_id : null,
-            'machineId'   => $parent ? $parent->machine_id : null,
-            'itemName'    => $s->stock_name,
-            'unit'        => 'NOS',
-            'initialQty'  => (float) $s->issued_qty,
-            'currentQty'  => (float) $s->remaining_qty,
-            'minQty'      => (float) ($s->issued_qty * 0.2), // Low stock alert at 20%
-            // 'category'    => $this->guessCategory($s->stock_name),
-            'category'    => $s->category ?? $this->guessCategory($s->stock_name),
-            'createdAt'   => optional($s->created_at)->toDateString(),
+            'id'                => $s->id,
+            'projectId'         => $parent ? $parent->project_id : null,
+            'machineId'         => $parent ? $parent->machine_id : null,
+            'itemName'          => $s->stock_name,
+            'unit'              => $s->unit ?? 'NOS',
+            'price'             => $price,
+            'totalPrice'        => $totalPrice,
+            'initialTotalPrice' => $initialTotalPrice,
+            'initialQty'        => $issuedQty,
+            'currentQty'        => $remainingQty,
+            'minQty'            => (float) ($s->min_qty ?? ($issuedQty * 0.2)),
+            'category'          => $s->category ?? $this->guessCategory($s->stock_name),
+            'createdAt'         => optional($s->created_at)->toDateString(),
         ];
     }
 
@@ -169,6 +177,75 @@ class MachineryStockUpdateController extends Controller
     {
         $companyId = auth()->user()->company_id;
 
+        // Support batch stock items array if submitted from MachineryStockUpdation form
+        if ($request->has('stock_items') && is_array($request->stock_items)) {
+            $request->validate([
+                'project_id'  => 'required|exists:projects,id',
+                'machine_id'  => 'nullable|exists:machineries,id',
+            ]);
+
+            $update = MachineryStockUpdate::create([
+                'company_id'       => $companyId,
+                'project_id'       => $request->project_id,
+                'machine_id'       => $request->machine_id,
+                'supervisor_id'    => $request->supervisor_id,
+                'update_date'      => $request->update_date ?? now()->toDateString(),
+                'maintenance_date' => $request->maintenance_date,
+                'hrs'              => $request->hrs,
+                'oil_bal'          => $request->oil_bal,
+                'hammer'           => $request->hammer,
+                'tamplet'          => $request->tamplet,
+                'capping'          => $request->capping,
+                'damage_part'      => $request->damage_part,
+                'bit'              => $request->bit,
+                'used_bit'         => $request->used_bit,
+                'remarks'          => $request->remarks ?? 'Added via Stock Inventory',
+                'created_by'       => auth()->id(),
+            ]);
+
+            $createdItems = [];
+            foreach ($request->stock_items as $item) {
+                if (empty($item['stock_name'])) continue;
+                $iPrice = (float) ($item['price'] ?? 0);
+                $iIssued = (float) ($item['issued_qty'] ?? 0);
+                $iUsed = (float) ($item['used_qty'] ?? 0);
+                $iRemaining = $iIssued - $iUsed;
+                $iTotalPrice = $iRemaining * $iPrice;
+
+                $sItem = MachineryStockItem::create([
+                    'machinery_stock_update_id' => $update->id,
+                    'stock_name'                => $item['stock_name'],
+                    'issued_qty'                => $iIssued,
+                    'used_qty'                  => $iUsed,
+                    'remaining_qty'             => $iRemaining,
+                    'min_qty'                   => $item['min_qty'] ?? ($iIssued * 0.2),
+                    'category'                  => $item['category'] ?? $this->guessCategory($item['stock_name']),
+                    'remarks'                   => $item['remarks'] ?? 'Stock added',
+                    'unit'                      => $item['unit'] ?? 'NOS',
+                    'price'                     => $iPrice,
+                    'total_price'               => $iTotalPrice,
+                ]);
+
+                MachineryStockLog::create([
+                    'machinery_stock_item_id' => $sItem->id,
+                    'type'                    => 'issued',
+                    'quantity'                => $iIssued,
+                    'remaining_after'         => $iRemaining,
+                    'remarks'                 => 'Initial stock added',
+                    'created_by'              => auth()->id(),
+                    'log_date'                => now()->toDateString(),
+                ]);
+
+                $createdItems[] = $this->formatStockItem($sItem);
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Stock items added successfully',
+                'data'    => $createdItems,
+            ], 201);
+        }
+
         $request->validate([
             'project_id'  => 'required|exists:projects,id',
             'machine_id'  => 'nullable|exists:machineries,id',
@@ -176,7 +253,8 @@ class MachineryStockUpdateController extends Controller
             'unit'        => 'required|string|max:50',
             'initial_qty' => 'required|numeric|min:0',
             'min_qty'     => 'required|numeric|min:0',
-            'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool',
+            'price'       => 'nullable|numeric|min:0',
+            'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool,Spare',
         ]);
 
         $update = MachineryStockUpdate::create([
@@ -188,33 +266,30 @@ class MachineryStockUpdateController extends Controller
             'created_by'  => auth()->id(),
         ]);
 
-        // $stockItem = MachineryStockItem::create([
-        //     'machinery_stock_update_id' => $update->id,
-        //     'stock_name'                => $request->item_name,
-        //     'issued_qty'                => $request->initial_qty,
-        //     'used_qty'                  => 0,
-        //     'remaining_qty'             => $request->initial_qty,
-        //     'remarks'                   => 'Initial stock added',
-        // ]);
+        $price = (float) ($request->price ?? 0);
+        $initialQty = (float) $request->initial_qty;
+        $totalPrice = $initialQty * $price;
 
-                $stockItem = MachineryStockItem::create([
+        $stockItem = MachineryStockItem::create([
             'machinery_stock_update_id' => $update->id,
             'stock_name'                => $request->item_name,
-            'issued_qty'                => $request->initial_qty,
+            'issued_qty'                => $initialQty,
             'used_qty'                  => 0,
-            'remaining_qty'             => $request->initial_qty,
-            'min_qty'                   => $request->min_qty ?? ($request->initial_qty * 0.2), // ← Added
-            'category'                  => $request->category,        // ← FIXED
+            'remaining_qty'             => $initialQty,
+            'min_qty'                   => $request->min_qty ?? ($initialQty * 0.2),
+            'price'                     => $price,
+            'total_price'               => $totalPrice,
+            'category'                  => $request->category,
             'remarks'                   => 'Initial stock added',
-            'unit'                      => $request->unit ?? 'NOS',   // ← Better to save unit too
+            'unit'                      => $request->unit ?? 'NOS',
         ]);
 
         // Record the initial "issued" log entry
         MachineryStockLog::create([
             'machinery_stock_item_id' => $stockItem->id,
             'type'                    => 'issued',
-            'quantity'                => $request->initial_qty,
-            'remaining_after'         => $request->initial_qty,
+            'quantity'                => $initialQty,
+            'remaining_after'         => $initialQty,
             'remarks'                 => 'Initial stock added',
             'created_by'              => auth()->id(),
             'log_date'                => now()->toDateString(),
@@ -258,9 +333,11 @@ class MachineryStockUpdateController extends Controller
 
         $newRemaining = $stock->remaining_qty - $request->qty;
         $newUsed = $stock->used_qty + $request->qty;
+        $newTotalPrice = $newRemaining * ($stock->price ?? 0);
         $stock->update([
             'used_qty'      => $newUsed,
             'remaining_qty' => $newRemaining,
+            'total_price'   => $newTotalPrice,
         ]);
 
         $log = MachineryStockLog::create([
@@ -674,14 +751,19 @@ class MachineryStockUpdateController extends Controller
             $q->where('company_id', $companyId);
         })->count();
 
+        $totalStockValue = $stockItems->sum(fn($s) => (float)($s->remaining_qty * ($s->price ?? 0)));
+        $totalInitialStockValue = $stockItems->sum(fn($s) => (float)($s->issued_qty * ($s->price ?? 0)));
+
         return response()->json([
-            'stockItems'     => $stockItems->count(),
-            'criticalAlerts' => $critical,
-            'lowStock'       => $lowStock,
-            'todayLogs'      => $dailyLogsCount,
-            'hoursToday'     => (float) $hoursToday,
-            'overdueM'       => $overdueM,
-            'totalTransfers' => $transfers,
+            'stockItems'         => $stockItems->count(),
+            'criticalAlerts'     => $critical,
+            'lowStock'           => $lowStock,
+            'todayLogs'          => $dailyLogsCount,
+            'hoursToday'         => (float) $hoursToday,
+            'overdueM'           => $overdueM,
+            'totalTransfers'     => $transfers,
+            'totalStockValue'    => $totalStockValue,
+            'totalInitialValue'  => $totalInitialStockValue,
         ]);
     }
 
@@ -705,7 +787,8 @@ class MachineryStockUpdateController extends Controller
             'unit'        => 'required|string|max:50',
             'initial_qty' => 'required|numeric|min:0',
             'min_qty'     => 'required|numeric|min:0',
-            'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool',
+            'price'       => 'nullable|numeric|min:0',
+            'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool,Spare',
         ]);
 
         $stockItem->stockUpdate->update([
@@ -713,10 +796,18 @@ class MachineryStockUpdateController extends Controller
             'machine_id' => $request->machine_id,
         ]);
 
+        $price = $request->has('price') ? (float) $request->price : (float) ($stockItem->price ?? 0);
+        $newRemaining = $request->initial_qty - $stockItem->used_qty;
+        $totalPrice = $newRemaining * $price;
+
         $stockItem->update([
             'stock_name'    => $request->item_name,
+            'unit'          => $request->unit ?? $stockItem->unit ?? 'NOS',
+            'price'         => $price,
+            'total_price'   => $totalPrice,
             'issued_qty'    => $request->initial_qty,
-            'remaining_qty' => $request->initial_qty - $stockItem->used_qty,
+            'remaining_qty' => $newRemaining,
+            'min_qty'       => $request->min_qty ?? ($request->initial_qty * 0.2),
             'category'      => $request->category,
         ]);
 

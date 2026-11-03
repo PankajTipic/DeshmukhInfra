@@ -26,4 +26,14 @@ class CompressorRpm extends Model
         'diesel_balance',
         'diesel_avg',
     ];
+
+    public function operator()
+    {
+        return $this->belongsTo(Operator::class, 'oprator_id');
+    }
+
+    public function machine()
+    {
+        return $this->belongsTo(Machinery::class, 'machine_id');
+    }
 }

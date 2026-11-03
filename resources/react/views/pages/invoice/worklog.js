@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   CCard, CCardBody, CCardHeader, CRow, CCol, CForm, CFormLabel, CFormInput,
   CFormSelect, CButton, CContainer, CAlert,
-  CInputGroup, CInputGroupText,
+  CInputGroup, CInputGroupText, CBadge,
   CNav, CNavItem, CNavLink
 } from '@coreui/react';
-import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilSearch, cilPeople } from '@coreui/icons';
+import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilSearch, cilPeople, cilInfo } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { getAPICall, post } from '../../../util/api';
 import { useNavigate } from 'react-router-dom';
@@ -51,8 +51,12 @@ const MachineUsageForm = () => {
   const [projectInfo, setProjectInfo] = useState({
     project_id: '',
     project_name: '',
+    supervisor_id: '',
     date: '',
   });
+
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
+  const [supervisors, setSupervisors] = useState([]);
 
   // Tab State: 'drilling' | 'casting'
   const [activeTab, setActiveTab] = useState('drilling');
@@ -120,6 +124,42 @@ const MachineUsageForm = () => {
       .catch((error) => {
         console.error("Error fetching helpers:", error);
       });
+
+    // Fetch Supervisors from usersData and operators
+    const fetchSupervisors = async () => {
+      try {
+        const [usersRes, opsRes] = await Promise.allSettled([
+          getAPICall("/api/usersData"),
+          getAPICall("/api/operatorsByType?type=0")
+        ]);
+
+        const list = [];
+        const seenIds = new Set();
+
+        if (usersRes.status === 'fulfilled' && usersRes.value?.users) {
+          usersRes.value.users.forEach((u) => {
+            if (u && u.id && !seenIds.has(String(u.id))) {
+              seenIds.add(String(u.id));
+              list.push({ value: u.id, label: u.name });
+            }
+          });
+        }
+
+        if (opsRes.status === 'fulfilled' && Array.isArray(opsRes.value)) {
+          opsRes.value.forEach((op) => {
+            if (op && op.id && !seenIds.has(String(op.id))) {
+              seenIds.add(String(op.id));
+              list.push({ value: op.id, label: op.name });
+            }
+          });
+        }
+
+        setSupervisors(list);
+      } catch (err) {
+        console.error("Error fetching supervisors:", err);
+      }
+    };
+    fetchSupervisors();
 
     const fetchConfigData = async () => {
       try {
@@ -745,11 +785,14 @@ const MachineUsageForm = () => {
 
   // Top Section: Project selection
   const handleProjectChange = (project) => {
+    const supId = project.supervisor_id || (project.supervisor?.id) || '';
     setProjectInfo(prev => ({
       ...prev,
       project_id: project.id,
-      project_name: project.project_name
+      project_name: project.project_name,
+      supervisor_id: supId ? String(supId) : prev.supervisor_id,
     }));
+    setSelectedProjectDetails(project);
     setSearchQuery(project.project_name);
     setProjects([]);
     setShowDropdown(false);
@@ -930,6 +973,7 @@ const MachineUsageForm = () => {
 
     const payload = {
       project_id: projectInfo.project_id,
+      supervisor_id: projectInfo.supervisor_id || null,
       date: projectInfo.date,
       tab_type: tabKey,
       start_time: currentTab.start_time || null,
@@ -986,7 +1030,9 @@ const MachineUsageForm = () => {
       ...prev,
       project_name: "",
       project_id: "",
+      supervisor_id: "",
     }));
+    setSelectedProjectDetails(null);
     setSearchQuery("");
     setShowDropdown(false);
   };
@@ -1019,7 +1065,7 @@ const MachineUsageForm = () => {
                     <CIcon icon={cilFile} className="me-2" /> 1. Project Information
                   </h5>
                   <CRow className="g-3">
-                    <CCol md={6}>
+                    <CCol md={4}>
                       <CFormLabel className="fw-semibold">Project Name *</CFormLabel>
                       <CInputGroup>
                         <CFormInput
@@ -1082,7 +1128,28 @@ const MachineUsageForm = () => {
                       )}
                     </CCol>
 
-                    <CCol md={6}>
+                    <CCol md={4}>
+                      <CFormLabel className="fw-semibold">Select Supervisor</CFormLabel>
+                      <Select
+                        options={supervisors}
+                        value={
+                          supervisors.find(s => String(s.value) === String(projectInfo.supervisor_id)) ||
+                          (projectInfo.supervisor_id ? {
+                            value: projectInfo.supervisor_id,
+                            label: selectedProjectDetails?.supervisor_name || selectedProjectDetails?.supervisor?.name || 'Selected Supervisor'
+                          } : null)
+                        }
+                        onChange={(selected) => setProjectInfo(prev => ({
+                          ...prev,
+                          supervisor_id: selected ? selected.value : ''
+                        }))}
+                        placeholder="Select Supervisor..."
+                        isClearable
+                        isSearchable
+                      />
+                    </CCol>
+
+                    <CCol md={4}>
                       <CFormLabel className="fw-semibold">Date *</CFormLabel>
                       <CFormInput
                         type="date"
@@ -1091,6 +1158,114 @@ const MachineUsageForm = () => {
                       />
                     </CCol>
                   </CRow>
+
+                  {/* Selected Project All Details */}
+                  {selectedProjectDetails && (
+                    <div className="mt-3 pt-3 border-top border-info-subtle">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <CIcon icon={cilInfo} className="text-info" />
+                          <span className="fw-bold text-dark" style={{ fontSize: '14px' }}>
+                            Selected Project Details
+                          </span>
+                        </div>
+                        {selectedProjectDetails.is_subcontract === 1 ? (
+                          <CBadge color="warning" className="px-2 py-1">Subcontract Project</CBadge>
+                        ) : (
+                          <CBadge color="primary" className="px-2 py-1">Normal Project</CBadge>
+                        )}
+                      </div>
+
+                      <div className="bg-white p-3 rounded-3 border shadow-sm">
+                        <CRow className="g-3" style={{ fontSize: '13px' }}>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Customer Name</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.customer_name || selectedProjectDetails.customer?.name || '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Mobile Number</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.mobile_number || selectedProjectDetails.customer?.mobile || '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Work Place / Location</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.work_place || selectedProjectDetails.customer?.address || '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Project Type</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.project_type || '—'}
+                            </div>
+                          </CCol>
+
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Project Cost</div>
+                            <div className="fw-semibold text-success">
+                              {selectedProjectDetails.project_cost
+                                ? `₹${parseFloat(selectedProjectDetails.project_cost).toLocaleString()}`
+                                : '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Supervisor</div>
+                            <div className="fw-semibold text-dark">
+                              {supervisors.find(s => String(s.value) === String(projectInfo.supervisor_id))?.label ||
+                               selectedProjectDetails.supervisor_name ||
+                               selectedProjectDetails.supervisor?.name ||
+                               '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">Start Date</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.start_date || '—'}
+                            </div>
+                          </CCol>
+                          <CCol md={3} sm={6}>
+                            <div className="text-muted small">End Date</div>
+                            <div className="fw-semibold text-dark">
+                              {selectedProjectDetails.end_date || '—'}
+                            </div>
+                          </CCol>
+
+                          {(selectedProjectDetails.gst_number || selectedProjectDetails.pan_number) && (
+                            <>
+                              {selectedProjectDetails.gst_number && (
+                                <CCol md={3} sm={6}>
+                                  <div className="text-muted small">GST Number</div>
+                                  <div className="fw-semibold text-dark">
+                                    {selectedProjectDetails.gst_number}
+                                  </div>
+                                </CCol>
+                              )}
+                              {selectedProjectDetails.pan_number && (
+                                <CCol md={3} sm={6}>
+                                  <div className="text-muted small">PAN Number</div>
+                                  <div className="fw-semibold text-dark">
+                                    {selectedProjectDetails.pan_number}
+                                  </div>
+                                </CCol>
+                              )}
+                            </>
+                          )}
+
+                          {selectedProjectDetails.remark && (
+                            <CCol md={12}>
+                              <div className="text-muted small">Remark</div>
+                              <div className="fw-normal text-secondary">
+                                {selectedProjectDetails.remark}
+                              </div>
+                            </CCol>
+                          )}
+                        </CRow>
+                      </div>
+                    </div>
+                  )}
                 </CCardBody>
               </CCard>
 

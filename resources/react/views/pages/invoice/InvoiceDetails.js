@@ -6,6 +6,7 @@ import { getAPICall, postFormData } from '../../../util/api'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getUserData } from '../../../util/session'
 import { useToast } from '../../common/toast/ToastContext'
+import { formatQty } from '../../../util/format'
 
 const InvoiceDetails = () => {
   const ci = getUserData()?.company_info
@@ -483,7 +484,7 @@ Thank you!`)
 </td>
 
                           <td>{item?.uom}</td>
-                          <td>{item.qty}</td>
+                          <td>{formatQty(item.qty)}</td>
                           <td>₹{item?.price}</td>
                           {showRowGST && <td>₹{(item.qty * item.price).toFixed(2)}</td>}
                           {showRowGST && <td>{item.gst_percent ? `${item.gst_percent}%` : '-'}</td>}

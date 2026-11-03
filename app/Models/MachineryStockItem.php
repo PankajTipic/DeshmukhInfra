@@ -19,7 +19,9 @@ class MachineryStockItem extends Model
         'remarks',
         'category',
         'min_qty',
-        'unit'
+        'unit',
+        'price',
+        'total_price',
     ];
 
     // ── Relationships ──────────────────────────────────────

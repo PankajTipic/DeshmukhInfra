@@ -2305,6 +2305,7 @@ import { cilArrowLeft, cilPencil, cilSave, cilX, cilPlus } from '@coreui/icons'
 import { getAPICall, put } from '../../../util/api'
 import { useToast } from '../../common/toast/ToastContext'
 import { paymentTypes, receiver_bank } from '../../../util/Feilds'
+import { formatQty } from '../../../util/format'
 
 const EditProformaInvoice = () => {
   const { id } = useParams()
@@ -3083,17 +3084,17 @@ const EditProformaInvoice = () => {
                       <CFormLabel>
                          Qty <span className="text-danger fw-bold">*</span>
                          <small className="text-danger d-block mt-1" style={{ lineHeight: '1.3' }}>
-                           Total in Work Order: <strong>{Number(w.original_qty).toFixed(2)}</strong><br />
-                           Already billed: <strong>{w.used_qty.toFixed(2)}</strong><br />
+                           Total in Work Order: <strong>{formatQty(w.original_qty)}</strong><br />
+                           Already billed: <strong>{formatQty(w.used_qty)}</strong><br />
                            <strong style={{ fontSize: '1.05em' }}>
-                            Remaining allowed: {(w.original_qty - w.used_qty).toFixed(2)}
+                            Remaining allowed: {formatQty(w.original_qty - w.used_qty)}
                            </strong>
                          </small>
                       </CFormLabel>
 
                       <CFormInput
                         type="number"
-                        step="0.01"
+                        step="0.001"
                         min="0"
                         value={w.qty}
                         onChange={e => handleWorkChange(idx, 'qty', e.target.value)}
@@ -3299,16 +3300,16 @@ const EditProformaInvoice = () => {
         <CFormLabel>
           Qty <span className="text-danger fw-bold">*</span>
           <small className="text-danger d-block mt-1" style={{ lineHeight: '1.3' }}>
-            Total in Work Order: <strong>{Number(w.original_qty).toFixed(2)}</strong>, Already billed: <strong>{w.used_qty.toFixed(2)}</strong>, 
+            Total in Work Order: <strong>{formatQty(w.original_qty)}</strong>, Already billed: <strong>{formatQty(w.used_qty)}</strong>, 
             <strong style={{ fontSize: '1.05em' }}>
-              Remaining allowed: {(w.original_qty - w.used_qty).toFixed(2)}
+              Remaining allowed: {formatQty(w.original_qty - w.used_qty)}
             </strong>
           </small>
         </CFormLabel>
 
         <CFormInput
           type="number"
-          step="0.01"
+          step="0.001"
           min="0"
           value={w.qty}
           onChange={e => handleWorkChange(idx, 'qty', e.target.value)}

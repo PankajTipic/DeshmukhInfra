@@ -90,5 +90,10 @@ class MachineReading extends Model
     {
         return $this->belongsTo(Operator::class, 'oprator_id');
     }
+
+    public function machine()
+    {
+        return $this->belongsTo(Machinery::class, 'machine_id');
+    }
 }
 

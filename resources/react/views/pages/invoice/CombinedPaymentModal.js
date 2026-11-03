@@ -175,13 +175,36 @@ const CombinedPaymentModal = ({
   }
 
   const calculateWorkOrderSummary = () => {
-    const workOrderTotal = incomeData.workOrder?.finalAmount || 
-                          incomeData.workOrder?.totalAmount || 0
-    const projectValuation = incomeData.workOrder?.project?.project_cost || 0
+    const workOrderTotal = parseFloat(incomeData.workOrder?.finalAmount || 
+                                      incomeData.workOrder?.totalAmount || 0)
+    const projectValuation = parseFloat(incomeData.workOrder?.project?.project_cost || 0)
     const totalBilled = proformaInvoices.reduce((sum, pi) => sum + parseFloat(pi.final_amount || 0), 0)
     const totalReceived = proformaInvoices.reduce((sum, pi) => sum + parseFloat(pi.paid_amount || 0), 0)
     const totalPending = proformaInvoices.reduce((sum, pi) => sum + parseFloat(pi.pending_amount || 0), 0)
-    const remainingToBill = workOrderTotal - totalBilled
+    
+    // Check if all items from work order are fully billed
+    const workOrderItems = incomeData.workOrder?.items || []
+    const allItemsBilled = Array.isArray(workOrderItems) && workOrderItems.length > 0 && workOrderItems.every(woItem => {
+      const targetWorkType = (woItem.work_type || '').trim().toLowerCase()
+      const requiredQty = parseFloat(woItem.qty) || 0
+      if (requiredQty <= 0) return true
+
+      const billedQty = proformaInvoices.reduce((sum, pi) => {
+        const matchingDetails = (pi.details || []).filter(d => 
+          (d.work_type || '').trim().toLowerCase() === targetWorkType
+        )
+        return sum + matchingDetails.reduce((dSum, d) => dSum + (parseFloat(d.qty) || 0), 0)
+      }, 0)
+
+      return billedQty >= (requiredQty - 0.01) // 0.01 tolerance for floating point qty
+    })
+
+    let remainingToBill = workOrderTotal - totalBilled
+
+    // If all items are billed, or if the remaining amount is <= 0 or a minor rounding difference (less than ₹1 / paise)
+    if (allItemsBilled || remainingToBill <= 0 || (proformaInvoices.length > 0 && Math.abs(remainingToBill) < 1)) {
+      remainingToBill = 0
+    }
     
     return {
       workOrderTotal,
@@ -260,9 +283,11 @@ const CombinedPaymentModal = ({
                 </div>
               </CCol>
               <CCol lg={3} md={6} sm={6} xs={6} className="mb-2">
-                <div className="text-center p-2 bg-warning bg-opacity-10 rounded">
+                <div className={`text-center p-2 rounded ${summary.remainingToBill <= 0 ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'}`}>
                   <small className="text-muted d-block">Remaining to Bill</small>
-                  <div className="h6 text-warning mb-0">₹{formatIndianNumber(summary.remainingToBill)}</div>
+                  <div className={`h6 mb-0 ${summary.remainingToBill <= 0 ? 'text-success' : 'text-warning'}`}>
+                    ₹{formatIndianNumber(summary.remainingToBill)}
+                  </div>
                 </div>
               </CCol>
             </CRow>

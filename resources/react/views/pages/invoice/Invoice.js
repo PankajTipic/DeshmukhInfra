@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../common/toast/ToastContext';
 import { useTranslation } from 'react-i18next';
 import ProjectSelectionModal from '../../common/ProjectSelectionModal';
+import { formatQty } from '../../../util/format';
 
 const Invoice = ({ editMode = false, initialData = null, onSubmit = null }) => {
   const [validated, setValidated] = useState(false);
@@ -89,6 +90,7 @@ const Invoice = ({ editMode = false, initialData = null, onSubmit = null }) => {
   work_type: '',
   uom: '',
   qty: 0,
+  qtyDisplay: '',
   price: 0,
   total_price: 0,           // ← This will now be: (qty × price) + CGST + SGST
   gst_percent: 18,          // customizable per row
@@ -252,6 +254,7 @@ const [editingSubDescValue, setEditingSubDescValue] = useState('');
       work_type: '',
       uom: '',
       qty: 0,
+      qtyDisplay: '',
       price: 0,
       total_price: 0,
       gst_percent: 18,
@@ -271,7 +274,7 @@ const [editingSubDescValue, setEditingSubDescValue] = useState('');
     const processedWorks = (initialData.items || []).map(item => ({
   ...item,
   qty: Number(item.qty || 0),
-  qtyDisplay: item.qty != null ? String(item.qty) : '',   // ← important: string for input
+  qtyDisplay: item.qty != null ? formatQty(item.qty) : '',   // ← formatted string for input
   sub_descriptions: item.work_sub_description 
     ? item.work_sub_description.split('\n').filter(Boolean) 
     : (item.sub_descriptions || []),
@@ -556,6 +559,48 @@ if (field === 'qty') {
   calculateTotals(updated);
 };
 
+const handleQtyBlur = (index) => {
+  const updated = [...works];
+  const item = updated[index];
+
+  if (item.qtyDisplay !== undefined && item.qtyDisplay !== null && item.qtyDisplay !== '') {
+    const trimmed = String(item.qtyDisplay).trim();
+    if (trimmed !== '') {
+      const val = parseFloat(trimmed);
+      if (!isNaN(val)) {
+        const parts = trimmed.split('.');
+        if (parts.length > 1 && parts[1].length === 3) {
+          // Entered 3 decimal places -> show 3 decimals (do not round off)
+          updated[index].qtyDisplay = val.toFixed(3);
+        } else if (parts.length > 1 && parts[1].length === 2) {
+          // Entered 2 decimal places -> show 2 decimals
+          updated[index].qtyDisplay = val.toFixed(2);
+        } else {
+          // Default to 2 decimals
+          updated[index].qtyDisplay = val.toFixed(2);
+        }
+        updated[index].qty = val;
+      } else {
+        updated[index].qtyDisplay = '';
+        updated[index].qty = 0;
+      }
+    }
+  }
+
+  setWorks(updated);
+  calculateTotals(updated);
+
+  if (item.isWorkOrder && item.alreadyBilledQty > 0) {
+    const currentQty = parseFloat(item.qty ?? 0);
+    if (currentQty < item.alreadyBilledQty) {
+      showToast(
+        'danger',
+        `Quantity cannot be less than already billed (${formatQty(item.alreadyBilledQty)})`
+      );
+    }
+  }
+};
+
 
 
 
@@ -584,6 +629,7 @@ const addWorkRow = () => {
       work_type: '',
       uom: '',
       qty: 0,
+      qtyDisplay: '',
       price: 0,
       total_price: 0,
       gst_percent: 18,
@@ -716,6 +762,7 @@ if (invalidRows.length > 0) {
   .filter((w) => w.work_type && w.work_type.trim() !== '')   // Only require work_type
   .map(w => ({
     ...w,
+    qty: typeof w.qty === 'string' ? (parseFloat(w.qty) || 0) : (w.qty || 0),
     work_sub_description: w.sub_descriptions.join('\n'),
   })),
 
@@ -1284,63 +1331,27 @@ const saveNewProject = async () => {
             Qty *
             {isWorkOrder && alreadyBilled > 0 && (
               <small className="text-danger d-block mt-1">
-                Already billed: {alreadyBilled.toFixed(2)}
+                Already billed: {formatQty(alreadyBilled)}
               </small>
             )}
           </CFormLabel>
-          {/* <CFormInput
-            type="number"
-            step="0.01"
-            min="0"
-            value={w.qty === '' ? '' : w.qty}
-            onChange={(e) => handleWorkChange(idx, 'qty', e.target.value)}
+          <CFormInput
+            type="text"
+            placeholder="0.00"
+            value={w.qtyDisplay ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              // ✅ Allow only numbers with max 3 decimal places
+              if (/^\d*\.?\d{0,3}$/.test(value)) {
+                handleWorkChange(idx, 'qty', value);
+              }
+            }}
+            onBlur={() => {
+              handleQtyBlur(idx);
+            }}
             required
-          /> */}
-
-{/* <CFormInput
-  type="number"
-  step="0.01"
-  value={w.qtyDisplay ?? ''}                    // ← use string version
-  onChange={(e) => handleWorkChange(idx, 'qty', e.target.value)}
-  onBlur={() => {
-    if (!w.isWorkOrder || w.alreadyBilledQty <= 0) return;
-
-    const currentQty = w.qty ?? 0;
-    if (currentQty < w.alreadyBilledQty) {
-      showToast(
-        'danger',
-        `Quantity cannot be less than already billed (${w.alreadyBilledQty.toFixed(2)})`
-      );
-     
-    }
-  }}
-  required
-/> */}
-
-<CFormInput
-  type="text"   // ⚠️ use text, not number (number allows invalid typing)
-  value={w.qtyDisplay ?? ''}
-  onChange={(e) => {
-    const value = e.target.value;
-
-    // ✅ Allow only numbers with max 2 decimal places
-    if (/^\d*\.?\d{0,2}$/.test(value)) {
-      handleWorkChange(idx, 'qty', value);
-    }
-  }}
-  onBlur={() => {
-    if (!w.isWorkOrder || w.alreadyBilledQty <= 0) return;
-
-    const currentQty = parseFloat(w.qty ?? 0);
-    if (currentQty < w.alreadyBilledQty) {
-      showToast(
-        'danger',
-        `Quantity cannot be less than already billed (${w.alreadyBilledQty.toFixed(2)})`
-      );
-    }
-  }}
-  required
-/>
+          />
 
 
 

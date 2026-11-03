@@ -283,7 +283,7 @@ if (!empty($request->items)) {
             'order_id'             => $order->id,
             'work_type'            => $item['work_type'] ?? '',
             'uom'                  => $item['uom'] ?? '',
-            'qty'                  => round((float)($item['qty'] ?? 0), 2),           // ← Allow 0
+            'qty'                  => (float)($item['qty'] ?? 0),
             'price'                => round((float)($item['price'] ?? 0), 2),         // ← Allow 0
             'total_price'          => round((float)($item['total_price'] ?? 0), 2),
             'remark'               => $item['remark'] ?? null,
@@ -818,7 +818,7 @@ public function update(Request $request, $id)
                     'order_id'             => $order->id,
                     'work_type'            => $item['work_type'] ?? '',
                     'uom'                  => $item['uom'] ?? '',
-                    'qty'                  => round((float)($item['qty'] ?? 0), 2),
+                    'qty'                  => (float)($item['qty'] ?? 0),
                     'price'                => round((float)($item['price'] ?? 0), 2),
                     'total_price'          => round((float)($item['total_price'] ?? 0), 2),
                     'remark'               => $item['remark'] ?? null,

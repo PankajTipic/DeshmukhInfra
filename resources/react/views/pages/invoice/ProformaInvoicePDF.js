@@ -626,6 +626,15 @@ import { getUserData } from '../../../util/session';
 import { host } from '../../../util/constants';
 
 /* ---------------- HELPERS ---------------- */
+const formatQuantity = (value) => {
+  const num = Number(value || 0);
+  const hasThreeDecimals = (Math.round(Math.abs(num) * 1000) % 10 !== 0);
+  return num.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: hasThreeDecimals ? 3 : 2,
+  });
+};
+
 const formatCurrency = (value) => {
   const num = Number(value || 0);
   return num.toLocaleString('en-IN', {
@@ -1024,7 +1033,7 @@ export const generateProformaInvoicePDF = async (
         case 'type':   return item.work_type || '—';
         case 'scope':  return showScope ? scopeText : undefined;
         case 'uom':    return item.uom || '—';
-        case 'qty':    return formatCurrency(qty);
+        case 'qty':    return formatQuantity(qty);
         case 'price':  return formatCurrency(price);
         case 'base':   return showRowGST ? formatCurrency(base) : '';
         case 'gstp':   return gstPercent ? gstPercent.toFixed(2) + '%' : '—';
