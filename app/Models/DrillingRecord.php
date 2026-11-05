@@ -123,12 +123,13 @@ public function uses_raw_material()
     return $this->hasMany(UsesRawMaterial::class, 'drilling_record_id', 'id');
 }
 
+public function rotaryDetails()
+{
+    return $this->hasMany(RotaryDetail::class, 'drilling_record_id');
+}
 
-// public function usesRawMaterial()
-// {
-//     // drilling_record_id must exist in uses_raw_material table
-//     return $this->hasMany(UsesRawMaterial::class, 'drilling_record_id', 'id');
-// }
-
-
+public function rotary_details()
+{
+    return $this->hasMany(RotaryDetail::class, 'drilling_record_id');
+}
 }

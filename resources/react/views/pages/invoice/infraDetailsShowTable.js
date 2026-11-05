@@ -1227,6 +1227,60 @@ function InfraDetailsShowTable() {
           }] : []
         )
 
+        const rotDetails = rec.rotary_details || rec.rotaryDetails || []
+        if (rec.tab_type === 'rotary' || rotDetails.length > 0) {
+          const count = rotDetails.length > 0 ? rotDetails.length : 1
+          for (let i = 0; i < count; i++) {
+            const rot = rotDetails[i] || {}
+            flattened.push({
+              srNo: idx + 1,
+              date: rot.date || rec.date,
+              site: rec.project?.project_name || '',
+              supervisor: rot.site_engineer || rot.engineer?.name || rec.supervisor || rec.project?.supervisor?.name || '—',
+              operator: rot.operator_name || rot.operator?.name || rec.operator?.name || '',
+
+              machineName: rot.machine_no || rot.machine?.machine_name || (activeMachMap && activeMachMap[String(rot.machine_id)]) || '—',
+              machineStart: rot.open_reading_hr != null && rot.open_reading_hr !== '' ? rot.open_reading_hr : '',
+              machineEnd: rot.closing_reading_hr != null && rot.closing_reading_hr !== '' ? rot.closing_reading_hr : '',
+              machineHr: rot.total_hours != null && rot.total_hours !== '' ? rot.total_hours : '',
+              machineDieselFilled: '',
+              machineDieselUsed: rot.diesel_lit ?? '',
+              machineDieselBalance: '',
+              machineDieselAvg: '',
+
+              compressorMachineName: '—',
+              compressorStart: '',
+              compressorEnd: '',
+              compressorHr: '',
+              compressorDieselFilled: '',
+              compressorDieselUsed: '',
+              compressorDieselBalance: '',
+              compressorDieselAvg: '',
+
+              workType: 'Rotary Work',
+              drillingType: rot.pile_no ? `Pile ${rot.pile_no}` : '',
+              workPoint: rot.today_miter != null ? `${rot.today_miter} m` : '',
+              rate: '',
+              workTotal: 0,
+              workHrs: rot.total_hours || '',
+              workDiesel: rot.diesel_lit || '',
+
+              surveyType: '',
+              surveyPoint: '',
+              surveyRate: '',
+              surveyTotal: 0,
+              surveyHrs: '',
+              surveyDiesel: '',
+
+              grandTotal: 0,
+              id: rec.id,
+              rowSpan: count,
+              isFirstRow: i === 0,
+            })
+          }
+          return
+        }
+
         const workLen = workDetails.length
         const surveyLen = surveyDetails.length
         const machineLen = effectiveMachine.length
@@ -1602,11 +1656,17 @@ function InfraDetailsShowTable() {
                               <div className="d-flex justify-content-center gap-2">
                                 <CButton
                                   color="primary"
-                                  onClick={() =>
-                                    navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
-                                      state: { drillingRecordId: row.drillingRecordId },
-                                    })
-                                  }
+                                  onClick={() => {
+                                    if (row.workType === 'Rotary Work') {
+                                      navigate(`/worklog?id=${row.drillingRecordId}&tab=rotary`, {
+                                        state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'rotary' },
+                                      });
+                                    } else {
+                                      navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
+                                        state: { drillingRecordId: row.drillingRecordId },
+                                      });
+                                    }
+                                  }}
                                 >
                                   <CIcon icon={cilPencil} />
                                 </CButton>

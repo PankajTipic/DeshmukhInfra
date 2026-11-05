@@ -10,8 +10,11 @@ use App\Models\Project;
 use App\Models\Machinery;
 use App\Models\Operator; // Supervisors are Operators of type '0'
 use App\Models\User;
+use App\Models\CompanyInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 /**
  * MachineryStockUpdateController
@@ -22,8 +25,70 @@ use Illuminate\Support\Facades\Auth;
 class MachineryStockUpdateController extends Controller
 {
     // ──────────────────────────────────────────────────────────
-    // HELPERS — guess category and format responses
+    // HELPERS — schema resilience, company resolution, formatting
     // ──────────────────────────────────────────────────────────
+
+    private function ensureStockColumnsExist(): void
+    {
+        try {
+            if (Schema::hasTable('machinery_stock_updates')) {
+                if (!Schema::hasColumn('machinery_stock_updates', 'company_id')) {
+                    Schema::table('machinery_stock_updates', function (Blueprint $table) {
+                        $table->unsignedBigInteger('company_id')->nullable()->after('id');
+                    });
+                }
+            }
+            if (Schema::hasTable('machinery_stock_items')) {
+                Schema::table('machinery_stock_items', function (Blueprint $table) {
+                    if (!Schema::hasColumn('machinery_stock_items', 'category')) {
+                        $table->string('category')->nullable()->after('stock_name');
+                    }
+                    if (!Schema::hasColumn('machinery_stock_items', 'unit')) {
+                        $table->string('unit')->default('NOS')->after('stock_name');
+                    }
+                    if (!Schema::hasColumn('machinery_stock_items', 'min_qty')) {
+                        $table->decimal('min_qty', 10, 2)->default(0)->after('remaining_qty');
+                    }
+                    if (!Schema::hasColumn('machinery_stock_items', 'price')) {
+                        $table->decimal('price', 12, 2)->default(0)->after('min_qty');
+                    }
+                    if (!Schema::hasColumn('machinery_stock_items', 'total_price')) {
+                        $table->decimal('total_price', 15, 2)->default(0)->after('price');
+                    }
+                });
+            }
+            if (Schema::hasTable('machinery_stock_logs')) {
+                if (!Schema::hasColumn('machinery_stock_logs', 'remaining_after')) {
+                    Schema::table('machinery_stock_logs', function (Blueprint $table) {
+                        $table->decimal('remaining_after', 12, 2)->default(0)->after('quantity');
+                    });
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('ensureStockColumnsExist warning: ' . $e->getMessage());
+        }
+    }
+
+    private function resolveCompanyId(?Request $request = null)
+    {
+        $user = auth()->user();
+        if ($user && !empty($user->company_id)) {
+            return $user->company_id;
+        }
+        if ($request) {
+            if ($request->filled('project_id')) {
+                $c = Project::where('id', $request->project_id)->value('company_id');
+                if ($c) return $c;
+            }
+            if ($request->filled('machine_id')) {
+                $c = Machinery::where('id', $request->machine_id)->value('company_id');
+                if ($c) return $c;
+            }
+        }
+        $c = Project::whereNotNull('company_id')->value('company_id');
+        if ($c) return $c;
+        return CompanyInfo::value('id') ?: null;
+    }
 
     private function guessCategory($name): string
     {
@@ -104,38 +169,61 @@ class MachineryStockUpdateController extends Controller
 
     public function getMasters()
     {
-        $companyId = auth()->user()->company_id;
+        $user = auth()->user();
+        $companyId = $user ? $user->company_id : null;
 
-        $projects = Project::where('company_id', $companyId)
-            ->orderBy('project_name')
-            ->get()
-            ->map(fn($p) => [
-                'id'   => $p->id,
-                'name' => $p->project_name,
-            ]);
+        $projectsQuery = Project::query();
+        if ($companyId) {
+            $projectsQuery->where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)->orWhereNull('company_id');
+            });
+        }
+        $projects = $projectsQuery->orderBy('project_name')->get();
+        if ($projects->isEmpty()) {
+            $projects = Project::orderBy('project_name')->get();
+        }
+        $formattedProjects = $projects->map(fn($p) => [
+            'id'           => $p->id,
+            'name'         => $p->project_name ?? $p->name ?? "Project #{$p->id}",
+            'project_name' => $p->project_name ?? $p->name ?? "Project #{$p->id}",
+        ]);
 
-        $machines = Machinery::where('company_id', $companyId)
-            ->orderBy('machine_name')
-            ->get()
-            ->map(fn($m) => [
-                'id'   => $m->id,
-                'name' => $m->machine_name,
-                'type' => $m->machine_type ?? $m->type ?? '',
-            ]);
+        $machinesQuery = Machinery::query();
+        if ($companyId) {
+            $machinesQuery->where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)->orWhereNull('company_id');
+            });
+        }
+        $machines = $machinesQuery->orderBy('machine_name')->get();
+        if ($machines->isEmpty()) {
+            $machines = Machinery::orderBy('machine_name')->get();
+        }
+        $formattedMachines = $machines->map(fn($m) => [
+            'id'           => $m->id,
+            'name'         => $m->machine_name ?? $m->name ?? "Machine #{$m->id}",
+            'machine_name' => $m->machine_name ?? $m->name ?? "Machine #{$m->id}",
+            'type'         => $m->machine_type ?? $m->type ?? '',
+        ]);
 
-        $supervisors = Operator::where('company_id', $companyId)
-            ->where('type', '0') // '0' represents supervisor in database
-            ->orderBy('name')
-            ->get()
-            ->map(fn($s) => [
-                'id'   => $s->id,
-                'name' => $s->name,
-            ]);
+        $supervisorsQuery = Operator::where('type', '0');
+        if ($companyId) {
+            $supervisorsQuery->where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)->orWhereNull('company_id');
+            });
+        }
+        $supervisors = $supervisorsQuery->orderBy('name')->get();
+        if ($supervisors->isEmpty()) {
+            $supervisors = Operator::where('type', '0')->orderBy('name')->get();
+        }
+        $formattedSupervisors = $supervisors->map(fn($s) => [
+            'id'   => $s->id,
+            'name' => $s->name ?? "Supervisor #{$s->id}",
+        ]);
 
         return response()->json([
-            'projects'    => $projects,
-            'machines'    => $machines,
-            'supervisors' => $supervisors,
+            'projects'    => $formattedProjects,
+            'machines'    => $formattedMachines,
+            'supervisors' => $formattedSupervisors,
         ]);
     }
 
@@ -145,11 +233,17 @@ class MachineryStockUpdateController extends Controller
 
     public function getStockMaster(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $this->ensureStockColumnsExist();
+        $companyId = $this->resolveCompanyId($request);
 
-        $query = MachineryStockItem::whereHas('stockUpdate', function($q) use ($companyId) {
-            $q->where('company_id', $companyId);
-        });
+        $query = MachineryStockItem::query();
+        if ($companyId && Schema::hasColumn('machinery_stock_updates', 'company_id')) {
+            $query->whereHas('stockUpdate', function($q) use ($companyId) {
+                $q->where(function ($sub) use ($companyId) {
+                    $sub->where('company_id', $companyId)->orWhereNull('company_id');
+                });
+            });
+        }
 
         if ($request->project_id) {
             $query->whereHas('stockUpdate', fn($q) => $q->where('project_id', $request->project_id));
@@ -175,131 +269,196 @@ class MachineryStockUpdateController extends Controller
 
     public function storeStockMaster(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $this->ensureStockColumnsExist();
+        $companyId = $this->resolveCompanyId($request);
 
         // Support batch stock items array if submitted from MachineryStockUpdation form
         if ($request->has('stock_items') && is_array($request->stock_items)) {
             $request->validate([
                 'project_id'  => 'required|exists:projects,id',
-                'machine_id'  => 'nullable|exists:machineries,id',
+                'machine_id'  => 'required|exists:machineries,id',
+            ], [
+                'project_id.required' => 'Please select a Project.',
+                'project_id.exists'   => 'Selected Project is invalid.',
+                'machine_id.required' => 'Please select a Machine.',
+                'machine_id.exists'   => 'Selected Machine is invalid.',
             ]);
 
-            $update = MachineryStockUpdate::create([
-                'company_id'       => $companyId,
-                'project_id'       => $request->project_id,
-                'machine_id'       => $request->machine_id,
-                'supervisor_id'    => $request->supervisor_id,
-                'update_date'      => $request->update_date ?? now()->toDateString(),
-                'maintenance_date' => $request->maintenance_date,
-                'hrs'              => $request->hrs,
-                'oil_bal'          => $request->oil_bal,
-                'hammer'           => $request->hammer,
-                'tamplet'          => $request->tamplet,
-                'capping'          => $request->capping,
-                'damage_part'      => $request->damage_part,
-                'bit'              => $request->bit,
-                'used_bit'         => $request->used_bit,
-                'remarks'          => $request->remarks ?? 'Added via Stock Inventory',
-                'created_by'       => auth()->id(),
-            ]);
+            try {
+                $updateData = [
+                    'project_id'       => $request->project_id,
+                    'machine_id'       => $request->machine_id,
+                    'supervisor_id'    => $request->supervisor_id,
+                    'update_date'      => $request->update_date ?? now()->toDateString(),
+                    'maintenance_date' => $request->maintenance_date,
+                    'hrs'              => $request->hrs ?? 0,
+                    'oil_bal'          => $request->oil_bal ?? 0,
+                    'hammer'           => $request->hammer,
+                    'tamplet'          => $request->tamplet,
+                    'capping'          => $request->capping,
+                    'damage_part'      => $request->damage_part,
+                    'bit'              => $request->bit,
+                    'used_bit'         => $request->used_bit,
+                    'remarks'          => $request->remarks ?? 'Added via Stock Inventory',
+                    'created_by'       => auth()->id(),
+                ];
+                if (Schema::hasColumn('machinery_stock_updates', 'company_id') && $companyId) {
+                    $updateData['company_id'] = $companyId;
+                }
 
-            $createdItems = [];
-            foreach ($request->stock_items as $item) {
-                if (empty($item['stock_name'])) continue;
-                $iPrice = (float) ($item['price'] ?? 0);
-                $iIssued = (float) ($item['issued_qty'] ?? 0);
-                $iUsed = (float) ($item['used_qty'] ?? 0);
-                $iRemaining = $iIssued - $iUsed;
-                $iTotalPrice = $iRemaining * $iPrice;
+                $update = MachineryStockUpdate::create($updateData);
 
-                $sItem = MachineryStockItem::create([
-                    'machinery_stock_update_id' => $update->id,
-                    'stock_name'                => $item['stock_name'],
-                    'issued_qty'                => $iIssued,
-                    'used_qty'                  => $iUsed,
-                    'remaining_qty'             => $iRemaining,
-                    'min_qty'                   => $item['min_qty'] ?? ($iIssued * 0.2),
-                    'category'                  => $item['category'] ?? $this->guessCategory($item['stock_name']),
-                    'remarks'                   => $item['remarks'] ?? 'Stock added',
-                    'unit'                      => $item['unit'] ?? 'NOS',
-                    'price'                     => $iPrice,
-                    'total_price'               => $iTotalPrice,
-                ]);
+                $createdItems = [];
+                $hasPrice = Schema::hasColumn('machinery_stock_items', 'price');
+                $hasTotalPrice = Schema::hasColumn('machinery_stock_items', 'total_price');
+                $hasMinQty = Schema::hasColumn('machinery_stock_items', 'min_qty');
+                $hasCategory = Schema::hasColumn('machinery_stock_items', 'category');
+                $hasUnit = Schema::hasColumn('machinery_stock_items', 'unit');
+                $hasRemAfter = Schema::hasColumn('machinery_stock_logs', 'remaining_after');
 
-                MachineryStockLog::create([
-                    'machinery_stock_item_id' => $sItem->id,
-                    'type'                    => 'issued',
-                    'quantity'                => $iIssued,
-                    'remaining_after'         => $iRemaining,
-                    'remarks'                 => 'Initial stock added',
-                    'created_by'              => auth()->id(),
-                    'log_date'                => now()->toDateString(),
-                ]);
+                foreach ($request->stock_items as $item) {
+                    if (empty($item['stock_name'])) continue;
+                    $iPrice = (float) ($item['price'] ?? 0);
+                    $iIssued = (float) ($item['issued_qty'] ?? 0);
+                    $iUsed = (float) ($item['used_qty'] ?? 0);
+                    $iRemaining = $iIssued - $iUsed;
+                    $iTotalPrice = $iRemaining * $iPrice;
 
-                $createdItems[] = $this->formatStockItem($sItem);
+                    $itemData = [
+                        'machinery_stock_update_id' => $update->id,
+                        'stock_name'                => $item['stock_name'],
+                        'issued_qty'                => $iIssued,
+                        'used_qty'                  => $iUsed,
+                        'remaining_qty'             => $iRemaining,
+                        'remarks'                   => $item['remarks'] ?? 'Stock added',
+                    ];
+                    if ($hasMinQty) $itemData['min_qty'] = $item['min_qty'] ?? ($iIssued * 0.2);
+                    if ($hasCategory) $itemData['category'] = $item['category'] ?? $this->guessCategory($item['stock_name']);
+                    if ($hasUnit) $itemData['unit'] = $item['unit'] ?? 'NOS';
+                    if ($hasPrice) $itemData['price'] = $iPrice;
+                    if ($hasTotalPrice) $itemData['total_price'] = $iTotalPrice;
+
+                    $sItem = MachineryStockItem::create($itemData);
+
+                    $logData = [
+                        'machinery_stock_item_id' => $sItem->id,
+                        'type'                    => 'issued',
+                        'quantity'                => $iIssued,
+                        'remarks'                 => 'Initial stock added',
+                        'created_by'              => auth()->id(),
+                        'log_date'                => now()->toDateString(),
+                    ];
+                    if ($hasRemAfter) $logData['remaining_after'] = $iRemaining;
+
+                    MachineryStockLog::create($logData);
+
+                    $createdItems[] = $this->formatStockItem($sItem);
+                }
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Stock items added successfully',
+                    'data'    => $createdItems,
+                ], 201);
+            } catch (\Exception $e) {
+                \Log::error('Stock items batch error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to save stock items: ' . $e->getMessage(),
+                ], 422);
             }
-
-            return response()->json([
-                'status'  => true,
-                'message' => 'Stock items added successfully',
-                'data'    => $createdItems,
-            ], 201);
         }
 
         $request->validate([
             'project_id'  => 'required|exists:projects,id',
-            'machine_id'  => 'nullable|exists:machineries,id',
+            'machine_id'  => 'required|exists:machineries,id',
             'item_name'   => 'required|string|max:255',
             'unit'        => 'required|string|max:50',
             'initial_qty' => 'required|numeric|min:0',
             'min_qty'     => 'required|numeric|min:0',
             'price'       => 'nullable|numeric|min:0',
             'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool,Spare',
+        ], [
+            'project_id.required'  => 'Please select a Project.',
+            'project_id.exists'    => 'Selected Project is invalid.',
+            'machine_id.required'  => 'Please select a Machine.',
+            'machine_id.exists'    => 'Selected Machine is invalid.',
+            'item_name.required'   => 'Please enter the Item Name.',
+            'unit.required'        => 'Please select a Unit.',
+            'initial_qty.required' => 'Please enter Initial Quantity.',
+            'category.required'    => 'Please select a Category.',
         ]);
 
-        $update = MachineryStockUpdate::create([
-            'company_id'  => $companyId,
-            'project_id'  => $request->project_id,
-            'machine_id'  => $request->machine_id,
-            'update_date' => now()->toDateString(),
-            'remarks'     => 'Added via Stock Inventory',
-            'created_by'  => auth()->id(),
-        ]);
+        try {
+            $updateData = [
+                'project_id'  => $request->project_id,
+                'machine_id'  => $request->machine_id,
+                'update_date' => now()->toDateString(),
+                'remarks'     => 'Added via Stock Inventory',
+                'created_by'  => auth()->id(),
+            ];
+            if (Schema::hasColumn('machinery_stock_updates', 'company_id') && $companyId) {
+                $updateData['company_id'] = $companyId;
+            }
 
-        $price = (float) ($request->price ?? 0);
-        $initialQty = (float) $request->initial_qty;
-        $totalPrice = $initialQty * $price;
+            $update = MachineryStockUpdate::create($updateData);
 
-        $stockItem = MachineryStockItem::create([
-            'machinery_stock_update_id' => $update->id,
-            'stock_name'                => $request->item_name,
-            'issued_qty'                => $initialQty,
-            'used_qty'                  => 0,
-            'remaining_qty'             => $initialQty,
-            'min_qty'                   => $request->min_qty ?? ($initialQty * 0.2),
-            'price'                     => $price,
-            'total_price'               => $totalPrice,
-            'category'                  => $request->category,
-            'remarks'                   => 'Initial stock added',
-            'unit'                      => $request->unit ?? 'NOS',
-        ]);
+            $price = (float) ($request->price ?? 0);
+            $initialQty = (float) $request->initial_qty;
+            $totalPrice = $initialQty * $price;
 
-        // Record the initial "issued" log entry
-        MachineryStockLog::create([
-            'machinery_stock_item_id' => $stockItem->id,
-            'type'                    => 'issued',
-            'quantity'                => $initialQty,
-            'remaining_after'         => $initialQty,
-            'remarks'                 => 'Initial stock added',
-            'created_by'              => auth()->id(),
-            'log_date'                => now()->toDateString(),
-        ]);
+            $itemData = [
+                'machinery_stock_update_id' => $update->id,
+                'stock_name'                => $request->item_name,
+                'issued_qty'                => $initialQty,
+                'used_qty'                  => 0,
+                'remaining_qty'             => $initialQty,
+                'remarks'                   => 'Initial stock added',
+            ];
+            if (Schema::hasColumn('machinery_stock_items', 'min_qty')) {
+                $itemData['min_qty'] = $request->min_qty ?? ($initialQty * 0.2);
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'price')) {
+                $itemData['price'] = $price;
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'total_price')) {
+                $itemData['total_price'] = $totalPrice;
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'category')) {
+                $itemData['category'] = $request->category;
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'unit')) {
+                $itemData['unit'] = $request->unit ?? 'NOS';
+            }
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Stock item added successfully',
-            'data'    => $this->formatStockItem($stockItem),
-        ], 201);
+            $stockItem = MachineryStockItem::create($itemData);
+
+            // Record the initial "issued" log entry
+            $logData = [
+                'machinery_stock_item_id' => $stockItem->id,
+                'type'                    => 'issued',
+                'quantity'                => $initialQty,
+                'remarks'                 => 'Initial stock added',
+                'created_by'              => auth()->id(),
+                'log_date'                => now()->toDateString(),
+            ];
+            if (Schema::hasColumn('machinery_stock_logs', 'remaining_after')) {
+                $logData['remaining_after'] = $initialQty;
+            }
+            MachineryStockLog::create($logData);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Stock item added successfully',
+                'data'    => $this->formatStockItem($stockItem),
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Stock store error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to save stock item: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -373,9 +532,16 @@ class MachineryStockUpdateController extends Controller
         $request->validate([
             'stock_item_id' => 'required|exists:machinery_stock_items,id',
             'to_project_id' => 'required|exists:projects,id',
-            'to_machine_id' => 'nullable|exists:machineries,id',
+            'to_machine_id' => 'required|exists:machineries,id',
             'qty'           => 'required|numeric|min:0.01',
             'note'          => 'nullable|string|max:500',
+        ], [
+            'stock_item_id.required' => 'Stock item is required.',
+            'to_project_id.required' => 'Please select a destination Project.',
+            'to_project_id.exists'   => 'Selected destination Project is invalid.',
+            'to_machine_id.required' => 'Please select a destination Machine.',
+            'to_machine_id.exists'   => 'Selected destination Machine is invalid.',
+            'qty.required'           => 'Please enter a valid transfer quantity.',
         ]);
 
         $stock = MachineryStockItem::findOrFail($request->stock_item_id);
@@ -394,98 +560,106 @@ class MachineryStockUpdateController extends Controller
             ], 422);
         }
 
-        $newRemaining = $stock->remaining_qty - $request->qty;
-        $newTransferred = ($stock->transferred_qty ?? 0) + $request->qty;
-        $stock->update([
-            'transferred_qty' => $newTransferred,
-            'remaining_qty'   => $newRemaining,
-        ]);
-
-        // Movement record (transfer log)
-        $movement = MachineryStockMovement::create([
-            'machinery_stock_update_id' => $parent->id,
-            'from_project_id'           => $parent->project_id,
-            'from_machine_id'           => $parent->machine_id,
-            'to_project_id'             => $request->to_project_id,
-            'to_machine_id'             => $request->to_machine_id,
-            'stock_name'                => $stock->stock_name,
-            'quantity'                  => $request->qty,
-            'reason'                    => $request->note,
-            'moved_by'                  => auth()->id(),
-        ]);
-
-        // Log entry (type = 'transfer-out')
-        $log = MachineryStockLog::create([
-            'machinery_stock_item_id' => $stock->id,
-            'type'                    => 'transfer-out',
-            'quantity'                => $request->qty,
-            'remaining_after'         => $newRemaining,
-            'remarks'                 => $request->note,
-            'created_by'              => auth()->id(),
-            'log_date'                => now()->toDateString(),
-        ]);
-
-        // Create/Update arrival item at destination
-        $targetUpdate = MachineryStockUpdate::where('company_id', $companyId)
-            ->where('project_id', $request->to_project_id)
-            ->where('machine_id', $request->to_machine_id)
-            ->where('update_date', now()->toDateString())
-            ->first();
-
-        if (!$targetUpdate) {
-            $targetUpdate = MachineryStockUpdate::create([
-                'company_id'  => $companyId,
-                'project_id'  => $request->to_project_id,
-                'machine_id'  => $request->to_machine_id,
-                'update_date' => now()->toDateString(),
-                'remarks'     => 'Transferred stock arrival',
-                'created_by'  => auth()->id(),
+        try {
+            $newRemaining = $stock->remaining_qty - $request->qty;
+            $newTransferred = ($stock->transferred_qty ?? 0) + $request->qty;
+            $stock->update([
+                'transferred_qty' => $newTransferred,
+                'remaining_qty'   => $newRemaining,
             ]);
-        }
 
-        $targetItem = MachineryStockItem::where('machinery_stock_update_id', $targetUpdate->id)
-            ->where('stock_name', $stock->stock_name)
-            ->first();
-
-        if ($targetItem) {
-            $targetRemaining = $targetItem->remaining_qty + $request->qty;
-            $targetIssued = $targetItem->issued_qty + $request->qty;
-            $targetItem->update([
-                'issued_qty'    => $targetIssued,
-                'remaining_qty' => $targetRemaining,
-            ]);
-        } else {
-            $targetItem = MachineryStockItem::create([
-                'machinery_stock_update_id' => $targetUpdate->id,
+            // Movement record (transfer log)
+            $movement = MachineryStockMovement::create([
+                'machinery_stock_update_id' => $parent->id,
+                'from_project_id'           => $parent->project_id,
+                'from_machine_id'           => $parent->machine_id,
+                'to_project_id'             => $request->to_project_id,
+                'to_machine_id'             => $request->to_machine_id,
                 'stock_name'                => $stock->stock_name,
-                'issued_qty'                => $request->qty,
-                'used_qty'                  => 0,
-                'remaining_qty'             => $request->qty,
-                'remarks'                   => 'Received from project ' . ($parent->project->project_name ?? $parent->project_id),
+                'quantity'                  => $request->qty,
+                'reason'                    => $request->note,
+                'moved_by'                  => auth()->id(),
             ]);
+
+            // Log entry (type = 'transfer-out')
+            $log = MachineryStockLog::create([
+                'machinery_stock_item_id' => $stock->id,
+                'type'                    => 'transfer-out',
+                'quantity'                => $request->qty,
+                'remaining_after'         => $newRemaining,
+                'remarks'                 => $request->note,
+                'created_by'              => auth()->id(),
+                'log_date'                => now()->toDateString(),
+            ]);
+
+            // Create/Update arrival item at destination
+            $targetUpdate = MachineryStockUpdate::where('company_id', $companyId)
+                ->where('project_id', $request->to_project_id)
+                ->where('machine_id', $request->to_machine_id)
+                ->where('update_date', now()->toDateString())
+                ->first();
+
+            if (!$targetUpdate) {
+                $targetUpdate = MachineryStockUpdate::create([
+                    'company_id'  => $companyId,
+                    'project_id'  => $request->to_project_id,
+                    'machine_id'  => $request->to_machine_id,
+                    'update_date' => now()->toDateString(),
+                    'remarks'     => 'Transferred stock arrival',
+                    'created_by'  => auth()->id(),
+                ]);
+            }
+
+            $targetItem = MachineryStockItem::where('machinery_stock_update_id', $targetUpdate->id)
+                ->where('stock_name', $stock->stock_name)
+                ->first();
+
+            if ($targetItem) {
+                $targetRemaining = $targetItem->remaining_qty + $request->qty;
+                $targetIssued = $targetItem->issued_qty + $request->qty;
+                $targetItem->update([
+                    'issued_qty'    => $targetIssued,
+                    'remaining_qty' => $targetRemaining,
+                ]);
+            } else {
+                $targetItem = MachineryStockItem::create([
+                    'machinery_stock_update_id' => $targetUpdate->id,
+                    'stock_name'                => $stock->stock_name,
+                    'issued_qty'                => $request->qty,
+                    'used_qty'                  => 0,
+                    'remaining_qty'             => $request->qty,
+                    'remarks'                   => 'Received from project ' . ($parent->project->project_name ?? $parent->project_id),
+                ]);
+            }
+
+            // Log the transfer-in on the destination stock item
+            MachineryStockLog::create([
+                'machinery_stock_item_id' => $targetItem->id,
+                'type'                    => 'issued',
+                'quantity'                => $request->qty,
+                'remaining_after'         => $targetItem->remaining_qty,
+                'remarks'                 => 'Transferred from ' . ($parent->project->project_name ?? $parent->project_id),
+                'created_by'              => auth()->id(),
+                'log_date'                => now()->toDateString(),
+            ]);
+
+            $movement->load('movedBy');
+
+            return response()->json([
+                'status'    => true,
+                'message'   => 'Stock transferred successfully',
+                'data'      => [
+                    'stock'    => $this->formatStockItem($stock),
+                    'transfer' => $this->formatTransfer($movement),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Stock transfer error: ' . $e->getMessage());
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to transfer stock. Please ensure valid Destination Project and Machine are selected.',
+            ], 422);
         }
-
-        // Log the transfer-in on the destination stock item
-        MachineryStockLog::create([
-            'machinery_stock_item_id' => $targetItem->id,
-            'type'                    => 'issued',
-            'quantity'                => $request->qty,
-            'remaining_after'         => $targetItem->remaining_qty,
-            'remarks'                 => 'Transferred from ' . ($parent->project->project_name ?? $parent->project_id),
-            'created_by'              => auth()->id(),
-            'log_date'                => now()->toDateString(),
-        ]);
-
-        $movement->load('movedBy');
-
-        return response()->json([
-            'status'    => true,
-            'message'   => 'Stock transferred successfully',
-            'data'      => [
-                'stock'    => $this->formatStockItem($stock),
-                'transfer' => $this->formatTransfer($movement),
-            ],
-        ]);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -494,11 +668,12 @@ class MachineryStockUpdateController extends Controller
 
     public function getStockHistory($id)
     {
-        $companyId = auth()->user()->company_id;
+        $this->ensureStockColumnsExist();
+        $companyId = $this->resolveCompanyId();
 
-        $stock = MachineryStockItem::findOrFail($id);
+        $stock = MachineryStockItem::with(['stockUpdate', 'logs.createdBy'])->findOrFail($id);
 
-        if ($stock->stockUpdate->company_id !== $companyId) {
+        if ($companyId && $stock->stockUpdate && $stock->stockUpdate->company_id && $stock->stockUpdate->company_id !== $companyId) {
             return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -720,12 +895,20 @@ class MachineryStockUpdateController extends Controller
 
     public function getDashboard()
     {
-        $companyId = auth()->user()->company_id;
+        $this->ensureStockColumnsExist();
+        $companyId = $this->resolveCompanyId();
         $today     = now()->toDateString();
+        $hasCompanyIdCol = Schema::hasColumn('machinery_stock_updates', 'company_id');
 
-        $stockItems = MachineryStockItem::whereHas('stockUpdate', function($q) use ($companyId) {
-            $q->where('company_id', $companyId);
-        })->get();
+        $stockItemsQuery = MachineryStockItem::query();
+        if ($companyId && $hasCompanyIdCol) {
+            $stockItemsQuery->whereHas('stockUpdate', function($q) use ($companyId) {
+                $q->where(function ($sub) use ($companyId) {
+                    $sub->where('company_id', $companyId)->orWhereNull('company_id');
+                });
+            });
+        }
+        $stockItems = $stockItemsQuery->get();
 
         $critical = $stockItems->filter(fn($s) => $s->remaining_qty <= ($s->issued_qty * 0.2))->count();
         
@@ -735,21 +918,27 @@ class MachineryStockUpdateController extends Controller
             return $pct <= 30 && $s->remaining_qty > ($s->issued_qty * 0.2);
         })->count();
 
-        $dailyLogsCount = MachineryStockUpdate::where('company_id', $companyId)
-            ->where('hrs', '>', 0)
-            ->whereDate('update_date', $today)
-            ->count();
-
-        $hoursToday = MachineryStockUpdate::where('company_id', $companyId)
-            ->where('hrs', '>', 0)
-            ->whereDate('update_date', $today)
-            ->sum('hrs');
+        $dailyLogsQuery = MachineryStockUpdate::where('hrs', '>', 0)
+            ->whereDate('update_date', $today);
+        if ($companyId && $hasCompanyIdCol) {
+            $dailyLogsQuery->where(function ($sub) use ($companyId) {
+                $sub->where('company_id', $companyId)->orWhereNull('company_id');
+            });
+        }
+        $dailyLogsCount = $dailyLogsQuery->count();
+        $hoursToday = $dailyLogsQuery->sum('hrs');
 
         $overdueM = 0;
 
-        $transfers = MachineryStockMovement::whereHas('stockUpdate', function($q) use ($companyId) {
-            $q->where('company_id', $companyId);
-        })->count();
+        $transfersQuery = MachineryStockMovement::query();
+        if ($companyId && $hasCompanyIdCol) {
+            $transfersQuery->whereHas('stockUpdate', function($q) use ($companyId) {
+                $q->where(function ($sub) use ($companyId) {
+                    $sub->where('company_id', $companyId)->orWhereNull('company_id');
+                });
+            });
+        }
+        $transfers = $transfersQuery->count();
 
         $totalStockValue = $stockItems->sum(fn($s) => (float)($s->remaining_qty * ($s->price ?? 0)));
         $totalInitialStockValue = $stockItems->sum(fn($s) => (float)($s->issued_qty * ($s->price ?? 0)));
@@ -773,57 +962,89 @@ class MachineryStockUpdateController extends Controller
 
     public function updateStockMaster(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $this->ensureStockColumnsExist();
+        $companyId = $this->resolveCompanyId($request);
         $stockItem = MachineryStockItem::findOrFail($id);
         
-        if ($stockItem->stockUpdate->company_id !== $companyId) {
+        if ($companyId && $stockItem->stockUpdate && $stockItem->stockUpdate->company_id && $stockItem->stockUpdate->company_id !== $companyId) {
             return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $request->validate([
             'project_id'  => 'required|exists:projects,id',
-            'machine_id'  => 'nullable|exists:machineries,id',
+            'machine_id'  => 'required|exists:machineries,id',
             'item_name'   => 'required|string|max:255',
             'unit'        => 'required|string|max:50',
             'initial_qty' => 'required|numeric|min:0',
             'min_qty'     => 'required|numeric|min:0',
             'price'       => 'nullable|numeric|min:0',
             'category'    => 'required|in:Consumable,Fuel,Lubricant,Spare Part,Tool,Spare',
+        ], [
+            'project_id.required'  => 'Please select a Project.',
+            'project_id.exists'    => 'Selected Project is invalid.',
+            'machine_id.required'  => 'Please select a Machine.',
+            'machine_id.exists'    => 'Selected Machine is invalid.',
+            'item_name.required'   => 'Please enter the Item Name.',
+            'initial_qty.required' => 'Please enter Initial Quantity.',
+            'unit.required'        => 'Please select a Unit.',
+            'category.required'    => 'Please select a Category.',
         ]);
 
-        $stockItem->stockUpdate->update([
-            'project_id' => $request->project_id,
-            'machine_id' => $request->machine_id,
-        ]);
+        try {
+            if ($stockItem->stockUpdate) {
+                $stockItem->stockUpdate->update([
+                    'project_id' => $request->project_id,
+                    'machine_id' => $request->machine_id,
+                ]);
+            }
 
-        $price = $request->has('price') ? (float) $request->price : (float) ($stockItem->price ?? 0);
-        $newRemaining = $request->initial_qty - $stockItem->used_qty;
-        $totalPrice = $newRemaining * $price;
+            $price = $request->has('price') ? (float) $request->price : (float) ($stockItem->price ?? 0);
+            $newRemaining = $request->initial_qty - ($stockItem->used_qty ?? 0);
+            $totalPrice = $newRemaining * $price;
 
-        $stockItem->update([
-            'stock_name'    => $request->item_name,
-            'unit'          => $request->unit ?? $stockItem->unit ?? 'NOS',
-            'price'         => $price,
-            'total_price'   => $totalPrice,
-            'issued_qty'    => $request->initial_qty,
-            'remaining_qty' => $newRemaining,
-            'min_qty'       => $request->min_qty ?? ($request->initial_qty * 0.2),
-            'category'      => $request->category,
-        ]);
+            $updateFields = [
+                'stock_name'    => $request->item_name,
+                'issued_qty'    => $request->initial_qty,
+                'remaining_qty' => $newRemaining,
+            ];
+            if (Schema::hasColumn('machinery_stock_items', 'unit')) {
+                $updateFields['unit'] = $request->unit ?? $stockItem->unit ?? 'NOS';
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'price')) {
+                $updateFields['price'] = $price;
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'total_price')) {
+                $updateFields['total_price'] = $totalPrice;
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'min_qty')) {
+                $updateFields['min_qty'] = $request->min_qty ?? ($request->initial_qty * 0.2);
+            }
+            if (Schema::hasColumn('machinery_stock_items', 'category')) {
+                $updateFields['category'] = $request->category;
+            }
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Stock item updated successfully',
-            'data'    => $this->formatStockItem($stockItem),
-        ]);
+            $stockItem->update($updateFields);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Stock item updated successfully',
+                'data'    => $this->formatStockItem($stockItem),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Stock update error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to update stock item: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 
     public function deleteStockMaster($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = $this->resolveCompanyId();
         $stockItem = MachineryStockItem::findOrFail($id);
 
-        if ($stockItem->stockUpdate->company_id !== $companyId) {
+        if ($companyId && $stockItem->stockUpdate && $stockItem->stockUpdate->company_id && $stockItem->stockUpdate->company_id !== $companyId) {
             return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
         }
 

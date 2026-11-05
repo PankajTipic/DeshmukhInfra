@@ -20,6 +20,7 @@ use App\Models\RawMaterialLog;
 use App\Models\UsesRawMaterial;
 use App\Models\RawMaterial;
 use App\Models\Machinery;
+use App\Models\RotaryDetail;
 
 use Carbon\Carbon;
 use App\Models\Order;
@@ -246,6 +247,65 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
     }
 }
 
+    // ✅ Step 2.3: Create Rotary Details entries
+    $rotaryDetails = [];
+    if ($request->has('rotary_details') && is_array($request->rotary_details)) {
+        $posVal = fn($val, $default = null) => (isset($val) && $val !== '' && $val !== null) ? max(0, floatval($val)) : $default;
+        foreach ($request->rotary_details as $row) {
+            $openReading = $posVal($row['open_reading_hr'] ?? null);
+            $closingReading = $posVal($row['closing_reading_hr'] ?? null);
+            $totalHours = ($closingReading !== null && $openReading !== null) ? max(0, $closingReading - $openReading) : $posVal($row['total_hours'] ?? null);
+
+            $softSoil = $posVal($row['soft_soil'] ?? null);
+            $hardRock = $posVal($row['hard_rock'] ?? null);
+            $todayMiter = ($softSoil !== null || $hardRock !== null) ? (floatval($softSoil ?? 0) + floatval($hardRock ?? 0)) : $posVal($row['today_miter'] ?? null);
+
+            $created = RotaryDetail::create([
+                'company_id'             => $companyId,
+                'drilling_record_id'     => $drillingRecord->id,
+                'project_id'             => $request->project_id ?? null,
+                'date'                   => $request->date ?? now()->toDateString(),
+                'machine_id'             => $row['machine_id'] ?? null,
+                'machine_no'             => $row['machine_no'] ?? null,
+                'group_no'               => $row['group_no'] ?? null,
+                'site_engineer_id'       => $row['site_engineer_id'] ?? $request->supervisor_id ?? null,
+                'site_engineer'          => $row['site_engineer'] ?? null,
+                'operator_id'            => $row['operator_id'] ?? null,
+                'operator_name'          => $row['operator_name'] ?? null,
+                'helper_id'              => $row['helper_id'] ?? null,
+                'helper_name'            => $row['helper_name'] ?? null,
+                'shift_time'             => $row['shift_time'] ?? null,
+                'open_reading_hr'        => $openReading,
+                'closing_reading_hr'     => $closingReading,
+                'total_hours'            => $totalHours,
+                'dia'                    => $posVal($row['dia'] ?? null),
+                'pile_no'                => $row['pile_no'] ?? null,
+                'soft_soil'              => $softSoil,
+                'hard_rock'              => $hardRock,
+                'today_miter'            => $todayMiter,
+                'total_miter'            => $posVal($row['total_miter'] ?? null),
+                'today_pile'             => $posVal($row['today_pile'] ?? null, 1),
+                'total_pile'             => $posVal($row['total_pile'] ?? null),
+                'diesel_lit'             => $posVal($row['diesel_lit'] ?? null),
+                'diesel_start_percent'   => $posVal($row['diesel_start_percent'] ?? null),
+                'diesel_closing_percent' => $posVal($row['diesel_closing_percent'] ?? null),
+                'diesel_use_percent'     => $posVal($row['diesel_use_percent'] ?? null),
+                'bullet_use'             => $posVal($row['bullet_use'] ?? null),
+                'stock_bullet'           => $posVal($row['stock_bullet'] ?? null),
+            ]);
+
+            $dieselLit = floatval($row['diesel_lit'] ?? 0);
+            $machineId = $row['machine_id'] ?? null;
+            if ($machineId && $dieselLit > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselLit);
+            }
+
+            $rotaryDetails[] = $created;
+        }
+    }
+
 
 
     // Initialize totals for WorkLogSummary
@@ -315,8 +375,9 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
         'message' => 'Drilling record, machine reading, work points and survey details stored successfully!',
         'data'    => [
             // 'drilling_record' => $drillingRecord->load('workPoints', 'surveys','machine_reading'),
-            'drilling_record' => $drillingRecord->load('workPoints', 'surveys','compressorRpm','machineReading'),
+            'drilling_record' => $drillingRecord->load('workPoints', 'surveys','compressorRpm','machineReading','rotaryDetails'),
             'uses_raw_material' => $usedRawMaterials,
+            'rotary_details' => $rotaryDetails,
             // 'machine_reading' => $machineReading,
         ],
         'summary' => $summary
@@ -345,7 +406,11 @@ public function index(Request $request)
             'project.supervisor:id,name',
             'operator:id,name',
             'helper:id,name',
-            'uses_raw_material.material:id,name'
+            'uses_raw_material.material:id,name',
+            'rotaryDetails.operator:id,name',
+            'rotaryDetails.helper:id,name',
+            'rotaryDetails.machine:id,machine_name',
+            'rotaryDetails.engineer:id,name'
         ])
         ->where('company_id', $companyId)
 
@@ -433,7 +498,9 @@ public function index(Request $request)
                   ->orWhereColumn('uses_raw_material.drilling_record_id', 'drilling_records.id');
             })
             ->orWhereNotNull('casting_team_name')
-            ->orWhereNotNull('helper_id');
+            ->orWhereNotNull('helper_id')
+            ->orWhereHas('rotaryDetails')
+            ->orWhere('tab_type', 'rotary');
         })
         ->orderBy('id', 'desc')
         ->get();
@@ -474,7 +541,11 @@ public function getDataByUserId(Request $request)
             'project.supervisor:id,name',
             'operator:id,name',
             'helper:id,name',
-            'uses_raw_material.material:id,name'
+            'uses_raw_material.material:id,name',
+            'rotaryDetails.operator:id,name',
+            'rotaryDetails.helper:id,name',
+            'rotaryDetails.machine:id,machine_name',
+            'rotaryDetails.engineer:id,name'
         ])
         ->where('company_id', $companyId)
         ->whereIn('project_id', $projectIds) // <-- Filter by supervised projects
@@ -563,7 +634,9 @@ public function getDataByUserId(Request $request)
                   ->orWhereColumn('uses_raw_material.drilling_record_id', 'drilling_records.id');
             })
             ->orWhereNotNull('casting_team_name')
-            ->orWhereNotNull('helper_id');
+            ->orWhereNotNull('helper_id')
+            ->orWhereHas('rotaryDetails')
+            ->orWhere('tab_type', 'rotary');
         })
 
         ->orderBy('id', 'desc')
@@ -860,7 +933,9 @@ public function update(Request $request, $id)
     // ✅ Step 3: Update drilling record
     $drillingRecord->update([
         'project_id'           => $request->project_id ?? $drillingRecord->project_id,
+        'supervisor_id'        => $request->supervisor_id ?? $drillingRecord->supervisor_id,
         'date'                 => $request->date ?? $drillingRecord->date,
+        'tab_type'             => $request->tab_type ?? $drillingRecord->tab_type,
         'oprator_helper'       => $request->oprator_helper ?? $drillingRecord->oprator_helper,
         'start_time'           => $request->has('start_time') ? $request->start_time : $drillingRecord->start_time,
         'end_time'             => $request->has('end_time') ? $request->end_time : $drillingRecord->end_time,
@@ -873,6 +948,86 @@ public function update(Request $request, $id)
         'capping_available'    => $request->has('capping_available') ? $request->capping_available : $drillingRecord->capping_available,
         'total_casting_points' => $request->has('total_casting_points') ? $request->total_casting_points : $drillingRecord->total_casting_points,
     ]);
+
+    // Optional: assign supervisor to project if selected/changed
+    if ($request->filled('supervisor_id') && $request->filled('project_id')) {
+        \App\Models\Project::where('id', $request->project_id)
+            ->where('company_id', $companyId)
+            ->update(['supervisor_id' => $request->supervisor_id]);
+    }
+
+    // ✅ Step 3.5: Handle Rotary Details update
+    $oldRotaryDetails = RotaryDetail::where('drilling_record_id', $drillingRecord->id)->get();
+    foreach ($oldRotaryDetails as $oldRot) {
+        $oldLit = floatval($oldRot->diesel_lit ?? 0);
+        if ($oldRot->machine_id && $oldLit > 0) {
+            Machinery::where('id', $oldRot->machine_id)
+                ->where('company_id', $companyId)
+                ->increment('diesel_balance', $oldLit);
+        }
+    }
+    RotaryDetail::where('drilling_record_id', $drillingRecord->id)->delete();
+
+    if ($request->has('rotary_details') && is_array($request->rotary_details)) {
+        $posVal = fn($val, $default = null) => (isset($val) && $val !== '' && $val !== null) ? max(0, floatval($val)) : $default;
+        foreach ($request->rotary_details as $row) {
+            $openReading    = $posVal($row['open_reading_hr'] ?? null);
+            $closingReading = $posVal($row['closing_reading_hr'] ?? null);
+            $totalHours     = $posVal($row['total_hours'] ?? null);
+            if ($openReading !== null && $closingReading !== null && $totalHours === null) {
+                $totalHours = max(0, $closingReading - $openReading);
+            }
+
+            $softSoil   = $posVal($row['soft_soil'] ?? null);
+            $hardRock   = $posVal($row['hard_rock'] ?? null);
+            $todayMiter = $posVal($row['today_miter'] ?? null);
+            if (($softSoil !== null || $hardRock !== null) && $todayMiter === null) {
+                $todayMiter = floatval(($softSoil ?? 0) + ($hardRock ?? 0));
+            }
+
+            RotaryDetail::create([
+                'company_id'             => $companyId,
+                'drilling_record_id'     => $drillingRecord->id,
+                'project_id'             => $row['project_id'] ?? $request->project_id ?? null,
+                'date'                   => $row['date'] ?? $request->date ?? null,
+                'machine_id'             => $row['machine_id'] ?? null,
+                'machine_no'             => $row['machine_no'] ?? null,
+                'group_no'               => $row['group_no'] ?? null,
+                'site_engineer_id'       => $row['site_engineer_id'] ?? $request->supervisor_id ?? null,
+                'site_engineer'          => $row['site_engineer'] ?? null,
+                'operator_id'            => $row['operator_id'] ?? null,
+                'operator_name'          => $row['operator_name'] ?? null,
+                'helper_id'              => $row['helper_id'] ?? null,
+                'helper_name'            => $row['helper_name'] ?? null,
+                'shift_time'             => $row['shift_time'] ?? null,
+                'open_reading_hr'        => $openReading,
+                'closing_reading_hr'     => $closingReading,
+                'total_hours'            => $totalHours,
+                'dia'                    => $posVal($row['dia'] ?? null),
+                'pile_no'                => $row['pile_no'] ?? null,
+                'soft_soil'              => $softSoil,
+                'hard_rock'              => $hardRock,
+                'today_miter'            => $todayMiter,
+                'total_miter'            => $posVal($row['total_miter'] ?? null),
+                'today_pile'             => $posVal($row['today_pile'] ?? null, 1),
+                'total_pile'             => $posVal($row['total_pile'] ?? null),
+                'diesel_lit'             => $posVal($row['diesel_lit'] ?? null),
+                'diesel_start_percent'   => $posVal($row['diesel_start_percent'] ?? null),
+                'diesel_closing_percent' => $posVal($row['diesel_closing_percent'] ?? null),
+                'diesel_use_percent'     => $posVal($row['diesel_use_percent'] ?? null),
+                'bullet_use'             => $posVal($row['bullet_use'] ?? null),
+                'stock_bullet'           => $posVal($row['stock_bullet'] ?? null),
+            ]);
+
+            $dieselLit = floatval($row['diesel_lit'] ?? 0);
+            $machineId = $row['machine_id'] ?? null;
+            if ($machineId && $dieselLit > 0) {
+                Machinery::where('id', $machineId)
+                    ->where('company_id', $companyId)
+                    ->decrement('diesel_balance', $dieselLit);
+            }
+        }
+    }
 
     // ✅ Step 4: Restore old diesel to Machinery before deleting old readings
     $oldMachineReadings = MachineReading::where('drilling_record_id', $drillingRecord->id)->get();
@@ -1075,7 +1230,7 @@ public function update(Request $request, $id)
 
 public function getById($id)
 {
-    $record = DrillingRecord::with(['machineReading', 'workPoints', 'surveys', 'project','compressorRpm', 'uses_raw_material.material:id,name'])
+    $record = DrillingRecord::with(['machineReading', 'workPoints', 'surveys', 'project.supervisor:id,name', 'compressorRpm', 'uses_raw_material.material:id,name', 'rotaryDetails.operator:id,name', 'rotaryDetails.helper:id,name', 'rotaryDetails.machine:id,machine_name', 'rotaryDetails.engineer:id,name'])
                 ->where('company_id', auth()->user()->company_id) // optional filter
                 ->findOrFail($id);
 
@@ -1110,6 +1265,9 @@ public function destroy($id)
     DB::beginTransaction();
 
     try {
+        // 0️⃣ Delete Rotary Details
+        RotaryDetail::where('drilling_record_id', $record->id)->delete();
+
         // 1️⃣ Delete Machine Readings
         MachineReading::where('drilling_record_id', $record->id)->delete();
 

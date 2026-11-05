@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   CCard, CCardBody, CCardHeader, CRow, CCol, CForm, CFormLabel, CFormInput,
   CFormSelect, CButton, CContainer, CAlert,
@@ -7,8 +7,8 @@ import {
 } from '@coreui/react';
 import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilSearch, cilPeople, cilInfo } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
-import { getAPICall, post } from '../../../util/api';
-import { useNavigate } from 'react-router-dom';
+import { getAPICall, post, put } from '../../../util/api';
+import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import Select from "react-select";
 import { useToast } from '../../common/toast/ToastContext';
 import ProjectSelectionModal from '../../common/ProjectSelectionModal';
@@ -46,7 +46,46 @@ const createInitialSectionState = () => ({
   totalBill: 0,
 });
 
+const createInitialRotaryRow = (defaultDate = '', defaultSupervisorId = '', defaultSupervisorName = '') => ({
+  date: defaultDate,
+  machine_id: '',
+  machine_no: '',
+  group_no: '',
+  site_engineer_id: defaultSupervisorId,
+  site_engineer: defaultSupervisorName,
+  operator_id: '',
+  operator_name: '',
+  helper_id: '',
+  helper_name: '',
+  shift_time: 'Day',
+  open_reading_hr: '',
+  closing_reading_hr: '',
+  total_hours: 0,
+  dia: '',
+  pile_no: '',
+  soft_soil: '',
+  hard_rock: '',
+  today_miter: 0,
+  total_miter: '',
+  today_pile: 1,
+  total_pile: '',
+  diesel_lit: '',
+  diesel_start_percent: '',
+  diesel_closing_percent: '',
+  diesel_use_percent: '',
+  bullet_use: '',
+  stock_bullet: '',
+});
+
 const MachineUsageForm = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { id: paramId } = useParams();
+
+  const editId = paramId || location.state?.id || location.state?.editId || searchParams.get('id') || searchParams.get('editId');
+  const targetTab = location.state?.tab || searchParams.get('tab');
+
   // Shared top-level project & date
   const [projectInfo, setProjectInfo] = useState({
     project_id: '',
@@ -58,13 +97,16 @@ const MachineUsageForm = () => {
   const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
   const [supervisors, setSupervisors] = useState([]);
 
-  // Tab State: 'drilling' | 'casting'
-  const [activeTab, setActiveTab] = useState('drilling');
+  // Tab State: 'drilling' | 'casting' | 'rotary'
+  const [activeTab, setActiveTab] = useState(
+    targetTab && ['drilling', 'casting', 'rotary'].includes(targetTab) ? targetTab : 'drilling'
+  );
 
   // Independent form data per tab
   const [tabData, setTabData] = useState({
     drilling: createInitialSectionState(),
     casting: createInitialSectionState(),
+    rotary: [createInitialRotaryRow()],
   });
 
   const { showToast } = useToast();
@@ -84,8 +126,6 @@ const MachineUsageForm = () => {
   const [uoms, setUoms] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customBreak, setCustomBreak] = useState({ drilling: false, casting: false });
-
-  const navigate = useNavigate();
 
   // Fetch projects
   const fetchProjects = useCallback(async (query) => {
@@ -267,6 +307,84 @@ const MachineUsageForm = () => {
     };
     fetchMaterials();
   }, [projectInfo.project_id]);
+
+  // Fetch existing record data if editing
+  useEffect(() => {
+    if (!editId) return;
+
+    const fetchEditRecord = async () => {
+      try {
+        const res = await getAPICall(`/api/drilling/${editId}`);
+        const data = res?.data || res;
+        if (!data) return;
+
+        setProjectInfo({
+          project_id: data.project_id || '',
+          project_name: data.project?.project_name || data.site_name || '',
+          supervisor_id: data.supervisor_id || data.project?.supervisor_id || '',
+          date: data.date || '',
+        });
+
+        if (data.project) {
+          setSelectedProjectDetails(data.project);
+          setSearchQuery(data.project.project_name || '');
+        }
+
+        const rotDetails = data.rotary_details || data.rotaryDetails || [];
+        const isRot = data.tab_type === 'rotary' || rotDetails.length > 0;
+        const finalTab = isRot ? 'rotary' : (data.tab_type === 'casting' ? 'casting' : (targetTab || 'drilling'));
+        setActiveTab(finalTab);
+
+        if (isRot && rotDetails.length > 0) {
+          const mappedRotary = rotDetails.map(r => ({
+            id: r.id,
+            date: r.date || data.date || '',
+            machine_id: r.machine_id != null ? Number(r.machine_id) : '',
+            machine_no: r.machine_no || r.machine?.machine_name || '',
+            group_no: r.group_no || '',
+            site_engineer_id: r.site_engineer_id != null ? Number(r.site_engineer_id) : (data.supervisor_id ? Number(data.supervisor_id) : ''),
+            site_engineer: r.site_engineer || r.engineer?.name || '',
+            operator_id: r.operator_id != null ? Number(r.operator_id) : '',
+            operator_name: r.operator_name || r.operator?.name || '',
+            helper_id: r.helper_id != null ? Number(r.helper_id) : '',
+            helper_name: r.helper_name || r.helper?.name || '',
+            shift_time: r.shift_time || 'Day',
+            open_reading_hr: r.open_reading_hr != null ? r.open_reading_hr : '',
+            closing_reading_hr: r.closing_reading_hr != null ? r.closing_reading_hr : '',
+            total_hours: r.total_hours != null ? parseFloat(r.total_hours) : 0,
+            dia: r.dia != null ? r.dia : '',
+            pile_no: r.pile_no || '',
+            soft_soil: r.soft_soil != null ? r.soft_soil : '',
+            hard_rock: r.hard_rock != null ? r.hard_rock : '',
+            today_miter: r.today_miter != null ? parseFloat(r.today_miter) : 0,
+            total_miter: r.total_miter != null ? r.total_miter : '',
+            today_pile: r.today_pile != null ? r.today_pile : 1,
+            total_pile: r.total_pile != null ? r.total_pile : '',
+            diesel_lit: r.diesel_lit != null ? r.diesel_lit : '',
+            diesel_start_percent: r.diesel_start_percent != null ? r.diesel_start_percent : '',
+            diesel_closing_percent: r.diesel_closing_percent != null ? r.diesel_closing_percent : '',
+            diesel_use_percent: r.diesel_use_percent != null ? r.diesel_use_percent : '',
+            bullet_use: r.bullet_use != null ? r.bullet_use : '',
+            stock_bullet: r.stock_bullet != null ? r.stock_bullet : '',
+          }));
+
+          setTabData(prev => ({
+            ...prev,
+            rotary: mappedRotary,
+          }));
+        } else if (finalTab === 'rotary') {
+          setTabData(prev => ({
+            ...prev,
+            rotary: [createInitialRotaryRow(data.date || '', data.supervisor_id || '', '')],
+          }));
+        }
+      } catch (err) {
+        console.error("Error fetching record for editing:", err);
+      }
+    };
+
+    fetchEditRecord();
+  }, [editId]);
 
   // Debounced project search
   useEffect(() => {
@@ -798,11 +916,140 @@ const MachineUsageForm = () => {
     setShowDropdown(false);
   };
 
+  // Block negative symbol and scientific 'e' from numeric inputs
+  const blockNegativeKey = (e) => {
+    if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+      e.preventDefault();
+    }
+  };
+
+  // Rotary Row Handlers - strictly positive values only
+  const handleRotaryChange = (index, field, value) => {
+    const positiveOnlyFields = [
+      'dia', 'total_miter', 'today_pile', 'total_pile',
+      'diesel_lit', 'diesel_use_percent', 'bullet_use', 'stock_bullet'
+    ];
+    if (positiveOnlyFields.includes(field)) {
+      if (value !== '' && value != null) {
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          value = Math.max(0, num);
+        }
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.rotary || [createInitialRotaryRow()])];
+      rows[index] = { ...rows[index], [field]: value };
+      return { ...prev, rotary: rows };
+    });
+  };
+
+  const handleRotaryNumberChange = (index, field, value) => {
+    if (value !== '' && value != null) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        value = Math.max(0, num);
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.rotary || [createInitialRotaryRow()])];
+      const updated = { ...rows[index], [field]: value };
+
+      if (field === 'open_reading_hr' || field === 'closing_reading_hr') {
+        const open = Math.max(0, parseFloat(field === 'open_reading_hr' ? value : updated.open_reading_hr) || 0);
+        const close = Math.max(0, parseFloat(field === 'closing_reading_hr' ? value : updated.closing_reading_hr) || 0);
+        if (close >= open) {
+          updated.total_hours = parseFloat((close - open).toFixed(2));
+        } else {
+          updated.total_hours = 0;
+        }
+      }
+
+      if (field === 'soft_soil' || field === 'hard_rock') {
+        const soil = Math.max(0, parseFloat(field === 'soft_soil' ? value : updated.soft_soil) || 0);
+        const rock = Math.max(0, parseFloat(field === 'hard_rock' ? value : updated.hard_rock) || 0);
+        updated.today_miter = parseFloat((soil + rock).toFixed(2));
+      }
+
+      rows[index] = updated;
+      return { ...prev, rotary: rows };
+    });
+  };
+
+  const handleRotaryPercentChange = (index, field, value) => {
+    if (value !== '' && value != null) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        value = Math.max(0, Math.min(100, num));
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.rotary || [createInitialRotaryRow()])];
+      const updated = { ...rows[index], [field]: value };
+
+      const start = parseFloat(field === 'diesel_start_percent' ? value : updated.diesel_start_percent);
+      const close = parseFloat(field === 'diesel_closing_percent' ? value : updated.diesel_closing_percent);
+      if (!isNaN(start) && !isNaN(close) && start >= close) {
+        updated.diesel_use_percent = parseFloat(Math.max(0, start - close).toFixed(2));
+      } else {
+        updated.diesel_use_percent = 0;
+      }
+
+      rows[index] = updated;
+      return { ...prev, rotary: rows };
+    });
+  };
+
+  const addRotaryRow = () => {
+    setTabData(prev => ({
+      ...prev,
+      rotary: [
+        ...(prev.rotary || []),
+        createInitialRotaryRow(
+          projectInfo.date || '',
+          projectInfo.supervisor_id || '',
+          supervisors.find(s => String(s.value) === String(projectInfo.supervisor_id))?.label || ''
+        )
+      ]
+    }));
+  };
+
+  const removeRotaryRow = (index) => {
+    setTabData(prev => {
+      const rows = [...(prev.rotary || [])];
+      if (rows.length > 1) {
+        rows.splice(index, 1);
+        return { ...prev, rotary: rows };
+      }
+      return prev;
+    });
+  };
+
+  const rotaryTotals = useMemo(() => {
+    const rows = tabData.rotary || [];
+    let totalHours = 0;
+    let totalMiter = 0;
+    let totalPiles = 0;
+    let totalDiesel = 0;
+    let totalBullet = 0;
+    rows.forEach(r => {
+      totalHours += parseFloat(r.total_hours) || 0;
+      totalMiter += parseFloat(r.today_miter) || 0;
+      totalPiles += parseFloat(r.today_pile) || 0;
+      totalDiesel += parseFloat(r.diesel_lit) || 0;
+      totalBullet += parseFloat(r.bullet_use) || 0;
+    });
+    return {
+      totalHours: parseFloat(totalHours.toFixed(2)),
+      totalMiter: parseFloat(totalMiter.toFixed(2)),
+      totalPiles,
+      totalDiesel: parseFloat(totalDiesel.toFixed(2)),
+      totalBullet: parseFloat(totalBullet.toFixed(2)),
+    };
+  }, [tabData.rotary]);
+
   // Helper to validate & submit a single tab
   const validateAndSubmitTab = async (tabKey) => {
-    const currentTab = tabData[tabKey];
-    const tabTitle = tabKey === 'drilling' ? 'Drilling' : 'Casting';
-
     // Section 1 Validation
     if (!projectInfo.project_id) {
       showToast("danger", "Please select a Project.");
@@ -812,6 +1059,119 @@ const MachineUsageForm = () => {
       showToast("danger", "Please select a Date.");
       return false;
     }
+
+    if (tabKey === 'rotary') {
+      const rows = tabData.rotary || [];
+      if (rows.length === 0) {
+        showToast("danger", "Please add at least one Rotary row.");
+        return false;
+      }
+
+      const validRows = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const hasSome = r.machine_id || r.operator_id || r.group_no || r.pile_no || r.open_reading_hr || r.closing_reading_hr || r.soft_soil || r.hard_rock || r.diesel_lit || r.site_engineer_id || r.dia;
+        if (!hasSome && rows.length > 1) {
+          continue;
+        }
+        if (!r.operator_id && !r.operator_name) {
+          showToast("danger", `Rotary Row ${i + 1}: Please select an Operator.`);
+          return false;
+        }
+
+        // Validate strictly positive values only
+        const checkFields = [
+          { key: 'open_reading_hr', label: 'Open Reading Hr' },
+          { key: 'closing_reading_hr', label: 'Closing Reading Hr' },
+          { key: 'dia', label: 'Dia' },
+          { key: 'soft_soil', label: 'Soft Soil' },
+          { key: 'hard_rock', label: 'Hard Rock' },
+          { key: 'total_miter', label: 'Total Miter' },
+          { key: 'today_pile', label: 'Today Pile' },
+          { key: 'total_pile', label: 'Total Pile' },
+          { key: 'diesel_lit', label: 'Diesel Lit' },
+          { key: 'diesel_start_percent', label: 'Diesel Start %' },
+          { key: 'diesel_closing_percent', label: 'Diesel Closing %' },
+          { key: 'diesel_use_percent', label: 'Diesel Use %' },
+          { key: 'bullet_use', label: 'Bullet Use' },
+          { key: 'stock_bullet', label: 'Stock Bullet' },
+        ];
+
+        for (const cf of checkFields) {
+          const val = r[cf.key];
+          if (val !== '' && val != null && parseFloat(val) < 0) {
+            showToast("danger", `Rotary Row ${i + 1}: ${cf.label} cannot be negative. Only positive values are allowed.`);
+            return false;
+          }
+        }
+
+        const openHr = r.open_reading_hr !== '' && r.open_reading_hr != null ? Math.max(0, parseFloat(r.open_reading_hr)) : null;
+        const closeHr = r.closing_reading_hr !== '' && r.closing_reading_hr != null ? Math.max(0, parseFloat(r.closing_reading_hr)) : null;
+        const totHr = (openHr != null && closeHr != null && closeHr >= openHr)
+          ? parseFloat((closeHr - openHr).toFixed(2))
+          : (r.total_hours !== '' && r.total_hours != null ? Math.max(0, parseFloat(r.total_hours)) : null);
+
+        const softSoil = r.soft_soil !== '' && r.soft_soil != null ? Math.max(0, parseFloat(r.soft_soil)) : null;
+        const hardRock = r.hard_rock !== '' && r.hard_rock != null ? Math.max(0, parseFloat(r.hard_rock)) : null;
+        const todayMit = (softSoil != null || hardRock != null)
+          ? parseFloat(((softSoil || 0) + (hardRock || 0)).toFixed(2))
+          : (r.today_miter !== '' && r.today_miter != null ? Math.max(0, parseFloat(r.today_miter)) : null);
+
+        validRows.push({
+          date: r.date || projectInfo.date,
+          machine_id: r.machine_id || null,
+          machine_no: r.machine_no || (machineries.find(m => String(m.value) === String(r.machine_id))?.label || ''),
+          group_no: r.group_no || null,
+          site_engineer_id: r.site_engineer_id || projectInfo.supervisor_id || null,
+          site_engineer: r.site_engineer || (supervisors.find(s => String(s.value) === String(r.site_engineer_id || projectInfo.supervisor_id))?.label || ''),
+          operator_id: r.operator_id || null,
+          operator_name: r.operator_name || (operators.find(o => String(o.value) === String(r.operator_id))?.label || ''),
+          helper_id: r.helper_id || null,
+          helper_name: r.helper_name || (helpers.find(h => String(h.value) === String(r.helper_id))?.label || ''),
+          shift_time: r.shift_time || 'Day',
+          open_reading_hr: openHr,
+          closing_reading_hr: closeHr,
+          total_hours: totHr,
+          dia: r.dia !== '' && r.dia != null ? Math.max(0, parseFloat(r.dia)) : null,
+          pile_no: r.pile_no || null,
+          soft_soil: softSoil,
+          hard_rock: hardRock,
+          today_miter: todayMit,
+          total_miter: r.total_miter !== '' && r.total_miter != null ? Math.max(0, parseFloat(r.total_miter)) : null,
+          today_pile: r.today_pile !== '' && r.today_pile != null ? Math.max(0, parseFloat(r.today_pile)) : 1,
+          total_pile: r.total_pile !== '' && r.total_pile != null ? Math.max(0, parseFloat(r.total_pile)) : null,
+          diesel_lit: r.diesel_lit !== '' && r.diesel_lit != null ? Math.max(0, parseFloat(r.diesel_lit)) : null,
+          diesel_start_percent: r.diesel_start_percent !== '' && r.diesel_start_percent != null ? Math.max(0, parseFloat(r.diesel_start_percent)) : null,
+          diesel_closing_percent: r.diesel_closing_percent !== '' && r.diesel_closing_percent != null ? Math.max(0, parseFloat(r.diesel_closing_percent)) : null,
+          diesel_use_percent: r.diesel_use_percent !== '' && r.diesel_use_percent != null ? Math.max(0, parseFloat(r.diesel_use_percent)) : null,
+          bullet_use: r.bullet_use !== '' && r.bullet_use != null ? Math.max(0, parseFloat(r.bullet_use)) : null,
+          stock_bullet: r.stock_bullet !== '' && r.stock_bullet != null ? Math.max(0, parseFloat(r.stock_bullet)) : null,
+        });
+      }
+
+      if (validRows.length === 0) {
+        showToast("danger", "Please fill in Rotary details.");
+        return false;
+      }
+
+      const payload = {
+        project_id: projectInfo.project_id,
+        supervisor_id: projectInfo.supervisor_id || null,
+        date: projectInfo.date,
+        tab_type: 'rotary',
+        rotary_details: validRows,
+      };
+
+      if (editId) {
+        await put(`/api/drilling/${editId}`, payload);
+      } else {
+        await post("/api/drilling", payload);
+      }
+      return true;
+    }
+
+    const currentTab = tabData[tabKey];
+    const tabTitle = tabKey === 'drilling' ? 'Drilling' : 'Casting';
 
     // Machine Reading Validation
     for (let i = 0; i < currentTab.machineReading.length; i++) {
@@ -990,7 +1350,11 @@ const MachineUsageForm = () => {
       raw_material_usage: validRawMaterials,
     };
 
-    await post("/api/drilling", payload);
+    if (editId) {
+      await put(`/api/drilling/${editId}`, payload);
+    } else {
+      await post("/api/drilling", payload);
+    }
     return true;
   };
 
@@ -999,11 +1363,11 @@ const MachineUsageForm = () => {
     try {
       const ok = await validateAndSubmitTab(activeTab);
       if (ok) {
-        const title = activeTab === 'drilling' ? 'Drilling' : 'Casting';
-        setSuccessMessage(`${title} work log submitted successfully!`);
+        const title = activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : 'Rotary';
+        setSuccessMessage(`${title} work log ${editId ? 'updated' : 'submitted'} successfully!`);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
-        navigate('/infraDetailsShowTable');
+        navigate(activeTab === 'rotary' ? '/separateWorkLogReport' : '/infraDetailsShowTable');
       }
     } catch (error) {
       console.error("Error saving data", error);
@@ -1015,6 +1379,10 @@ const MachineUsageForm = () => {
 
   // Check if a tab has user-entered content
   const tabHasData = (tabKey) => {
+    if (tabKey === 'rotary') {
+      const rows = tabData.rotary || [];
+      return rows.some(r => r.machine_id || r.operator_id || r.group_no || r.pile_no || r.open_reading_hr || r.closing_reading_hr || r.soft_soil || r.hard_rock || r.diesel_lit);
+    }
     const tab = tabData[tabKey];
     if (!tab) return false;
     const hasMR = tab.machineReading.some(r => r.machine_id || r.machine_start || r.machine_end || r.diesel_used || r.diesel_filled);
@@ -1319,19 +1687,45 @@ const MachineUsageForm = () => {
                       )}
                     </CNavLink>
                   </CNavItem>
+
+                  <CNavItem>
+                    <CNavLink
+                      active={activeTab === 'rotary'}
+                      onClick={() => setActiveTab('rotary')}
+                      style={{
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '15px',
+                        padding: '9px 26px',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                      }}
+                      className={activeTab === 'rotary' ? 'bg-primary text-white shadow-sm' : 'text-secondary bg-white border'}
+                    >
+                      <CIcon icon={cilSettings} className="me-2" />
+                      Rotary
+                      {tabHasData('rotary') && (
+                        <span className={`ms-2 badge rounded-pill ${activeTab === 'rotary' ? 'bg-light text-primary' : 'bg-primary text-white'}`} style={{ fontSize: '10px' }}>
+                          ●
+                        </span>
+                      )}
+                    </CNavLink>
+                  </CNavItem>
                 </CNav>
               </div>
 
               {/* Tab Header Badge */}
               <div className="mb-3 d-flex align-items-center justify-content-between">
                 <span className="badge bg-dark px-3 py-2 fs-6 text-uppercase" style={{ letterSpacing: '0.5px' }}>
-                  Current Section: {activeTab === 'drilling' ? 'Drilling Log' : 'Casting Log'}
+                  Current Section: {activeTab === 'drilling' ? 'Drilling Log' : activeTab === 'casting' ? 'Casting Log' : 'Rotary Log'}
                 </span>
                 <span className="text-muted small">
                   Diesel Avg formula: <strong>Diesel Used / Machine HR</strong>
                 </span>
               </div>
 
+              {activeTab !== 'rotary' && (
+                <>
               {/* Work Timing - Red/Pink Card matching uploaded design */}
               <div
                 className="mb-4 rounded-3 p-3 p-md-4"
@@ -1361,11 +1755,13 @@ const MachineUsageForm = () => {
                   </h5>
                 </div>
 
-                <CRow className="g-3 align-items-end">
+                <CRow className="g-3 align-items-start">
                   <CCol xs={12} sm={6} md={3}>
-                    <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
-                      Start Time <span className="text-danger">*</span>
-                    </CFormLabel>
+                    <div className="d-flex align-items-center mb-1" style={{ height: '22px' }}>
+                      <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                        Start Time <span className="text-danger">*</span>
+                      </CFormLabel>
+                    </div>
                     <CFormInput
                       type="time"
                       value={currentTab.start_time || ''}
@@ -1381,9 +1777,11 @@ const MachineUsageForm = () => {
                   </CCol>
 
                   <CCol xs={12} sm={6} md={3}>
-                    <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
-                      End Time <span className="text-danger">*</span>
-                    </CFormLabel>
+                    <div className="d-flex align-items-center mb-1" style={{ height: '22px' }}>
+                      <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                        End Time <span className="text-danger">*</span>
+                      </CFormLabel>
+                    </div>
                     <CFormInput
                       type="time"
                       value={currentTab.end_time || ''}
@@ -1399,7 +1797,7 @@ const MachineUsageForm = () => {
                   </CCol>
 
                   <CCol xs={12} sm={6} md={3}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
+                    <div className="d-flex justify-content-between align-items-center mb-1" style={{ height: '22px' }}>
                       <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
                         Break / Lunch
                       </CFormLabel>
@@ -1468,9 +1866,9 @@ const MachineUsageForm = () => {
                       </div>
                     )}
 
-                    {/* Quick Selection Chips */}
-                    <div className="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                      <span className="text-muted" style={{ fontSize: '11px' }}>Quick:</span>
+                    {/* Quick Selection Chips in a single clean line */}
+                    <div className="d-flex gap-1 mt-1 align-items-center" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+                      <span className="text-muted" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Quick:</span>
                       {[
                         { label: '0m', val: '00:00' },
                         { label: '30m', val: '00:30' },
@@ -1491,7 +1889,7 @@ const MachineUsageForm = () => {
                                 ? 'btn-danger text-white shadow-sm'
                                 : 'btn-outline-secondary'
                             }`}
-                            style={{ fontSize: '11px', fontWeight: 600, height: '22px', lineHeight: '20px' }}
+                            style={{ fontSize: '11px', fontWeight: 600, height: '22px', lineHeight: '20px', whiteSpace: 'nowrap' }}
                           >
                             {chip.label}
                           </button>
@@ -1501,32 +1899,31 @@ const MachineUsageForm = () => {
                   </CCol>
 
                   <CCol xs={12} sm={6} md={3}>
+                    <div className="d-flex justify-content-between align-items-center mb-1" style={{ height: '22px' }}>
+                      <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                        Net Working Hours
+                      </CFormLabel>
+                      {formatNetHoursDuration(currentTab.net_hours) && (
+                        <span className="badge bg-warning-subtle text-dark" style={{ fontSize: '11px' }}>
+                          {formatNetHoursDuration(currentTab.net_hours)}
+                        </span>
+                      )}
+                    </div>
                     <div
-                      className="rounded-3 px-3 py-2 h-100 d-flex flex-column justify-content-between"
+                      className="rounded-3 px-3 d-flex justify-content-between align-items-center"
                       style={{
                         backgroundColor: '#fef9c3',
                         border: '1px solid #fef08a',
-                        minHeight: '72px',
+                        height: '44px',
+                        borderRadius: '8px',
                       }}
                     >
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span className="fw-semibold" style={{ fontSize: '13px', color: '#4b5563' }}>
-                          Net Working Hours
-                        </span>
-                        {formatNetHoursDuration(currentTab.net_hours) && (
-                          <span className="fw-semibold text-secondary" style={{ fontSize: '12px' }}>
-                            {formatNetHoursDuration(currentTab.net_hours)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="d-flex justify-content-between align-items-baseline mt-1">
-                        <span className="fw-bold" style={{ fontSize: '26px', color: '#111827', lineHeight: '1' }}>
-                          {Number(currentTab.net_hours || 0).toFixed(2)}
-                        </span>
-                        <span className="fw-semibold text-dark" style={{ fontSize: '15px' }}>
-                          hrs
-                        </span>
-                      </div>
+                      <span className="fw-bold" style={{ fontSize: '22px', color: '#111827', lineHeight: '1' }}>
+                        {Number(currentTab.net_hours || 0).toFixed(2)}
+                      </span>
+                      <span className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                        hrs
+                      </span>
                     </div>
                   </CCol>
                 </CRow>
@@ -2399,18 +2796,513 @@ const MachineUsageForm = () => {
                   </table>
                 </div>
               </div>
+                </>
+              )}
+
+              {/* Rotary Section */}
+              {activeTab === 'rotary' && (
+                <div>
+                  {/* KPI Summary Cards */}
+                  <CRow className="g-3 mb-4">
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #1F3864' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Total Rows</div>
+                        <div className="fs-4 fw-bold text-dark">{tabData.rotary?.length || 0}</div>
+                        <div className="text-secondary small">Rotary Entries</div>
+                      </div>
+                    </CCol>
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #0284c7' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Total Hours</div>
+                        <div className="fs-4 fw-bold text-primary">{rotaryTotals.totalHours} h</div>
+                        <div className="text-secondary small">Machine Run</div>
+                      </div>
+                    </CCol>
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #059669' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Today Miter</div>
+                        <div className="fs-4 fw-bold text-success">{rotaryTotals.totalMiter} m</div>
+                        <div className="text-secondary small">Soil + Rock</div>
+                      </div>
+                    </CCol>
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #7c3aed' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Today Piles</div>
+                        <div className="fs-4 fw-bold" style={{ color: '#7c3aed' }}>{rotaryTotals.totalPiles}</div>
+                        <div className="text-secondary small">Piles Completed</div>
+                      </div>
+                    </CCol>
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #dc2626' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Diesel (Lit.)</div>
+                        <div className="fs-4 fw-bold text-danger">{rotaryTotals.totalDiesel} L</div>
+                        <div className="text-secondary small">Total Consumed</div>
+                      </div>
+                    </CCol>
+                    <CCol md={2} sm={4} xs={6}>
+                      <div className="p-3 bg-white rounded-3 border text-center shadow-sm" style={{ borderTop: '4px solid #d97706' }}>
+                        <div className="text-muted small fw-semibold text-uppercase">Bullets Used</div>
+                        <div className="fs-4 fw-bold text-warning">{rotaryTotals.totalBullet}</div>
+                        <div className="text-secondary small">Bits / Bullets</div>
+                      </div>
+                    </CCol>
+                  </CRow>
+
+                  {/* Rotary Form Card */}
+                  <div
+                    className="mb-4 rounded-3 p-3 p-md-4 bg-white border shadow-sm"
+                    style={{ borderColor: '#cbd5e1' }}
+                  >
+                    <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                      <div className="d-flex align-items-center gap-2">
+                        <CIcon icon={cilSettings} className="text-primary" size="lg" />
+                        <h5 className="mb-0 fw-bold text-dark">
+                          Rotary Operation Records
+                        </h5>
+                        <CBadge color="primary" className="ms-2">
+                          Standard 26-Field Report
+                        </CBadge>
+                      </div>
+                      <CButton
+                        color="primary"
+                        size="sm"
+                        className="d-flex align-items-center fw-semibold px-3"
+                        onClick={addRotaryRow}
+                        style={{ borderRadius: '6px' }}
+                      >
+                        <CIcon icon={cilSettings} className="me-1" /> + Add Rotary Row
+                      </CButton>
+                    </div>
+
+                    <div className="table-responsive bg-white rounded-3 border shadow-sm" style={{ maxHeight: '72vh' }}>
+                      <table className="table table-bordered table-hover align-middle mb-0 text-center" style={{ fontSize: '13px' }}>
+                        <thead className="table-light sticky-top shadow-sm" style={{ zIndex: 10 }}>
+                          {/* Top group header */}
+                          <tr style={{ backgroundColor: '#1F3864', color: '#ffffff', borderBottom: '2px solid #0f172a' }}>
+                            <th colSpan={8} style={{ backgroundColor: '#1F3864', color: '#ffffff', borderRight: '2px solid #ffffff' }} className="py-2">
+                              1. General Entry Details
+                            </th>
+                            <th colSpan={3} style={{ backgroundColor: '#2C4C7E', color: '#ffffff', borderRight: '2px solid #ffffff' }} className="py-2">
+                              2. Machine Reading
+                            </th>
+                            <th colSpan={8} style={{ backgroundColor: '#1F3864', color: '#ffffff', borderRight: '2px solid #ffffff' }} className="py-2">
+                              3. Boring & Pile Progress
+                            </th>
+                            <th colSpan={4} style={{ backgroundColor: '#2C4C7E', color: '#ffffff', borderRight: '2px solid #ffffff' }} className="py-2">
+                              4. Diesel Tracking
+                            </th>
+                            <th colSpan={2} style={{ backgroundColor: '#1F3864', color: '#ffffff', borderRight: '2px solid #ffffff' }} className="py-2">
+                              5. Bullet Inventory
+                            </th>
+                            <th style={{ backgroundColor: '#1F3864', color: '#ffffff' }} className="py-2">
+                              Action
+                            </th>
+                          </tr>
+                          {/* Column labels */}
+                          <tr style={{ backgroundColor: '#f1f5f9', color: '#1e293b' }}>
+                            <th style={{ width: '40px' }}>#</th>
+                            <th style={{ minWidth: '130px' }}>Date *</th>
+                            <th style={{ minWidth: '160px' }}>Machine No. *</th>
+                            <th style={{ minWidth: '100px' }}>Group No.</th>
+                            <th style={{ minWidth: '180px' }}>Site Engineer *</th>
+                            <th style={{ minWidth: '180px' }}>Operator Name *</th>
+                            <th style={{ minWidth: '180px' }}>Helper Name</th>
+                            <th style={{ minWidth: '120px' }}>Shift Time</th>
+
+                            <th style={{ minWidth: '100px' }}>Open Reading</th>
+                            <th style={{ minWidth: '100px' }}>Closing Reading</th>
+                            <th style={{ minWidth: '100px' }} className="bg-primary-subtle text-primary">Total Hours</th>
+
+                            <th style={{ minWidth: '90px' }}>Dia (mm)</th>
+                            <th style={{ minWidth: '85px' }}>Pile No.</th>
+                            <th style={{ minWidth: '95px' }}>Soft Soil (m)</th>
+                            <th style={{ minWidth: '95px' }}>Hard Rock (m)</th>
+                            <th style={{ minWidth: '100px' }} className="bg-success-subtle text-success">Today Miter</th>
+                            <th style={{ minWidth: '100px' }}>Total Miter</th>
+                            <th style={{ minWidth: '80px' }}>Today Pile</th>
+                            <th style={{ minWidth: '80px' }}>Total Pile</th>
+
+                            <th style={{ minWidth: '100px' }}>Diesel (Lit.)</th>
+                            <th style={{ minWidth: '90px' }}>Start %</th>
+                            <th style={{ minWidth: '90px' }}>Closing %</th>
+                            <th style={{ minWidth: '90px' }}>Use %</th>
+
+                            <th style={{ minWidth: '90px' }}>Bullet Use</th>
+                            <th style={{ minWidth: '95px' }}>Stock Bullet</th>
+
+                            <th style={{ width: '45px' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(tabData.rotary || []).map((row, index) => (
+                            <tr key={index}>
+                              <td className="fw-bold text-secondary">{index + 1}</td>
+                              <td>
+                                <CFormInput
+                                  type="date"
+                                  value={row.date || projectInfo.date || ''}
+                                  onChange={(e) => handleRotaryChange(index, 'date', e.target.value)}
+                                  style={{ minWidth: '125px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '150px', textAlign: 'left' }}>
+                                  <Select
+                                    options={machineries}
+                                    value={machineries.find(m => String(m.value) === String(row.machine_id)) || (row.machine_no ? { value: row.machine_id, label: row.machine_no } : null)}
+                                    onChange={(opt) => {
+                                      handleRotaryChange(index, 'machine_id', opt ? opt.value : '');
+                                      handleRotaryChange(index, 'machine_no', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Machine..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="text"
+                                  value={row.group_no || ''}
+                                  onChange={(e) => handleRotaryChange(index, 'group_no', e.target.value)}
+                                  placeholder="RP20"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '170px', textAlign: 'left' }}>
+                                  <Select
+                                    options={supervisors}
+                                    value={supervisors.find(s => String(s.value) === String(row.site_engineer_id)) || (row.site_engineer ? { value: row.site_engineer_id, label: row.site_engineer } : null)}
+                                    onChange={(opt) => {
+                                      handleRotaryChange(index, 'site_engineer_id', opt ? opt.value : '');
+                                      handleRotaryChange(index, 'site_engineer', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Supervisor/Eng..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '170px', textAlign: 'left' }}>
+                                  <Select
+                                    options={operators}
+                                    value={operators.find(o => String(o.value) === String(row.operator_id)) || (row.operator_name ? { value: row.operator_id, label: row.operator_name } : null)}
+                                    onChange={(opt) => {
+                                      handleRotaryChange(index, 'operator_id', opt ? opt.value : '');
+                                      handleRotaryChange(index, 'operator_name', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Operator..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '170px', textAlign: 'left' }}>
+                                  <Select
+                                    options={helpers}
+                                    value={helpers.find(h => String(h.value) === String(row.helper_id)) || (row.helper_name ? { value: row.helper_id, label: row.helper_name } : null)}
+                                    onChange={(opt) => {
+                                      handleRotaryChange(index, 'helper_id', opt ? opt.value : '');
+                                      handleRotaryChange(index, 'helper_name', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Helper..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <CFormSelect
+                                  value={row.shift_time || 'Day'}
+                                  onChange={(e) => handleRotaryChange(index, 'shift_time', e.target.value)}
+                                  style={{ minWidth: '115px', height: '36px', fontSize: '13px' }}
+                                >
+                                  <option value="Day">Day</option>
+                                  <option value="Night">Night</option>
+                                  <option value="Day & Night">Day & Night</option>
+                                </CFormSelect>
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.open_reading_hr ?? ''}
+                                  onChange={(e) => handleRotaryNumberChange(index, 'open_reading_hr', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '90px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.closing_reading_hr ?? ''}
+                                  onChange={(e) => handleRotaryNumberChange(index, 'closing_reading_hr', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '90px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td className="bg-primary-subtle">
+                                <div className="fw-bold text-primary" style={{ fontSize: '14px' }}>
+                                  {row.total_hours != null && row.total_hours !== '' ? row.total_hours : 0}
+                                </div>
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.dia ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'dia', e.target.value)}
+                                  placeholder="1200"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="text"
+                                  value={row.pile_no || ''}
+                                  onChange={(e) => handleRotaryChange(index, 'pile_no', e.target.value)}
+                                  placeholder="B"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.soft_soil ?? ''}
+                                  onChange={(e) => handleRotaryNumberChange(index, 'soft_soil', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.hard_rock ?? ''}
+                                  onChange={(e) => handleRotaryNumberChange(index, 'hard_rock', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td className="bg-success-subtle">
+                                <div className="fw-bold text-success" style={{ fontSize: '14px' }}>
+                                  {row.today_miter != null && row.today_miter !== '' ? row.today_miter : 0}
+                                </div>
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.total_miter ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'total_miter', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '90px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.today_pile ?? 1}
+                                  onChange={(e) => handleRotaryChange(index, 'today_pile', e.target.value)}
+                                  placeholder="1"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.total_pile ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'total_pile', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.diesel_lit ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'diesel_lit', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  max="100"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.diesel_start_percent ?? ''}
+                                  onChange={(e) => handleRotaryPercentChange(index, 'diesel_start_percent', e.target.value)}
+                                  placeholder="%"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  max="100"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.diesel_closing_percent ?? ''}
+                                  onChange={(e) => handleRotaryPercentChange(index, 'diesel_closing_percent', e.target.value)}
+                                  placeholder="%"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  max="100"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.diesel_use_percent ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'diesel_use_percent', e.target.value)}
+                                  placeholder="%"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.bullet_use ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'bullet_use', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.stock_bullet ?? ''}
+                                  onChange={(e) => handleRotaryChange(index, 'stock_bullet', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '75px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+
+                              <td>
+                                {tabData.rotary?.length > 1 && (
+                                  <CButton
+                                    color="danger"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeRotaryRow(index)}
+                                    title="Remove Row"
+                                  >
+                                    <CIcon icon={cilX} />
+                                  </CButton>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="table-light fw-bold" style={{ borderTop: '2px solid #cbd5e1' }}>
+                          <tr>
+                            <td colSpan={10} className="text-end pe-3 text-uppercase text-secondary">
+                              Totals:
+                            </td>
+                            <td className="bg-primary-subtle text-primary">
+                              {rotaryTotals.totalHours} h
+                            </td>
+                            <td colSpan={4} className="text-end pe-3"></td>
+                            <td className="bg-success-subtle text-success">
+                              {rotaryTotals.totalMiter} m
+                            </td>
+                            <td></td>
+                            <td style={{ color: '#7c3aed' }}>
+                              {rotaryTotals.totalPiles}
+                            </td>
+                            <td></td>
+                            <td className="bg-danger-subtle text-danger">
+                              {rotaryTotals.totalDiesel} L
+                            </td>
+                            <td colSpan={3}></td>
+                            <td className="bg-warning-subtle text-warning">
+                              {rotaryTotals.totalBullet}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <div className="mt-3 d-flex justify-content-end">
+                      <CButton
+                        color="primary"
+                        variant="outline"
+                        size="sm"
+                        className="d-flex align-items-center fw-semibold px-3"
+                        onClick={addRotaryRow}
+                        style={{ borderRadius: '6px' }}
+                      >
+                        <CIcon icon={cilSettings} className="me-1" /> + Add Another Rotary Row
+                      </CButton>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Submit Section */}
               <div className="d-flex justify-content-center gap-3">
                 <CButton
-                  color="danger"
+                  color={activeTab === 'rotary' ? 'primary' : 'danger'}
                   size="lg"
                   className="px-5 d-flex align-items-center shadow-sm"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                 >
                   <CIcon icon={cilFile} className="me-2" />
-                  {isSubmitting ? 'Submitting...' : `Submit ${activeTab === 'drilling' ? 'Drilling' : 'Casting'} Work Log`}
+                  {isSubmitting
+                    ? (editId ? 'Updating...' : 'Submitting...')
+                    : `${editId ? 'Update' : 'Submit'} ${activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : 'Rotary'} Work Log`}
                 </CButton>
               </div>
             </CForm>

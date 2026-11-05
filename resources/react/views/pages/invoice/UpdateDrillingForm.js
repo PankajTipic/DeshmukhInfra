@@ -828,6 +828,15 @@ const UpdateDrillingForm = () => {
         // if API returns { message, data } pattern, unwrap
         if (data?.data) data = data.data;
 
+        // If this is a Rotary record, redirect to WorkLog Rotary edit tab
+        if (data.tab_type === 'rotary' || (data.rotary_details && data.rotary_details.length > 0) || (data.rotaryDetails && data.rotaryDetails.length > 0)) {
+          navigate(`/worklog?id=${drillingRecordId}&tab=rotary`, {
+            state: { id: drillingRecordId, editId: drillingRecordId, tab: 'rotary' },
+            replace: true,
+          });
+          return;
+        }
+
         // map machine readings
         const machineReading = (data.machine_reading || data.machine_readings || []).map((m) => ({
           oprator_id: m.oprator_id != null ? Number(m.oprator_id) : '',
@@ -1536,11 +1545,13 @@ const UpdateDrillingForm = () => {
                 </h5>
               </div>
 
-              <CRow className="g-3 align-items-end">
+              <CRow className="g-3 align-items-start">
                 <CCol xs={12} sm={6} md={3}>
-                  <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
-                    Start Time <span className="text-danger">*</span>
-                  </CFormLabel>
+                  <div className="d-flex align-items-center mb-1" style={{ height: '22px' }}>
+                    <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                      Start Time <span className="text-danger">*</span>
+                    </CFormLabel>
+                  </div>
                   <CFormInput
                     type="time"
                     value={formData.start_time || ''}
@@ -1556,9 +1567,11 @@ const UpdateDrillingForm = () => {
                 </CCol>
 
                 <CCol xs={12} sm={6} md={3}>
-                  <CFormLabel className="fw-semibold text-dark mb-1" style={{ fontSize: '14px' }}>
-                    End Time <span className="text-danger">*</span>
-                  </CFormLabel>
+                  <div className="d-flex align-items-center mb-1" style={{ height: '22px' }}>
+                    <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                      End Time <span className="text-danger">*</span>
+                    </CFormLabel>
+                  </div>
                   <CFormInput
                     type="time"
                     value={formData.end_time || ''}
@@ -1574,7 +1587,7 @@ const UpdateDrillingForm = () => {
                 </CCol>
 
                 <CCol xs={12} sm={6} md={3}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
+                  <div className="d-flex justify-content-between align-items-center mb-1" style={{ height: '22px' }}>
                     <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
                       Break / Lunch
                     </CFormLabel>
@@ -1644,8 +1657,8 @@ const UpdateDrillingForm = () => {
                   )}
 
                   {/* Quick Selection Chips */}
-                  <div className="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                    <span className="text-muted" style={{ fontSize: '11px' }}>Quick:</span>
+                  <div className="d-flex gap-1 mt-1 align-items-center" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+                    <span className="text-muted" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Quick:</span>
                     {[
                       { label: '0m', val: '00:00' },
                       { label: '30m', val: '00:30' },
@@ -1666,7 +1679,7 @@ const UpdateDrillingForm = () => {
                               ? 'btn-danger text-white shadow-sm'
                               : 'btn-outline-secondary'
                           }`}
-                          style={{ fontSize: '11px', fontWeight: 600, height: '22px', lineHeight: '20px' }}
+                          style={{ fontSize: '11px', fontWeight: 600, height: '22px', lineHeight: '20px', whiteSpace: 'nowrap' }}
                         >
                           {chip.label}
                         </button>
@@ -1676,32 +1689,31 @@ const UpdateDrillingForm = () => {
                 </CCol>
 
                 <CCol xs={12} sm={6} md={3}>
+                  <div className="d-flex justify-content-between align-items-center mb-1" style={{ height: '22px' }}>
+                    <CFormLabel className="fw-semibold text-dark mb-0" style={{ fontSize: '14px' }}>
+                      Net Working Hours
+                    </CFormLabel>
+                    {formatNetHoursDuration(formData.net_hours) && (
+                      <span className="badge bg-warning-subtle text-dark" style={{ fontSize: '11px' }}>
+                        {formatNetHoursDuration(formData.net_hours)}
+                      </span>
+                    )}
+                  </div>
                   <div
-                    className="rounded-3 px-3 py-2 h-100 d-flex flex-column justify-content-between"
+                    className="rounded-3 px-3 d-flex justify-content-between align-items-center"
                     style={{
                       backgroundColor: '#fef9c3',
                       border: '1px solid #fef08a',
-                      minHeight: '72px',
+                      height: '44px',
+                      borderRadius: '8px',
                     }}
                   >
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="fw-semibold" style={{ fontSize: '13px', color: '#4b5563' }}>
-                        Net Working Hours
-                      </span>
-                      {formatNetHoursDuration(formData.net_hours) && (
-                        <span className="fw-semibold text-secondary" style={{ fontSize: '12px' }}>
-                          {formatNetHoursDuration(formData.net_hours)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="d-flex justify-content-between align-items-baseline mt-1">
-                      <span className="fw-bold" style={{ fontSize: '26px', color: '#111827', lineHeight: '1' }}>
-                        {Number(formData.net_hours || 0).toFixed(2)}
-                      </span>
-                      <span className="fw-semibold text-dark" style={{ fontSize: '15px' }}>
-                        hrs
-                      </span>
-                    </div>
+                    <span className="fw-bold" style={{ fontSize: '22px', color: '#111827', lineHeight: '1' }}>
+                      {Number(formData.net_hours || 0).toFixed(2)}
+                    </span>
+                    <span className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                      hrs
+                    </span>
                   </div>
                 </CCol>
               </CRow>
