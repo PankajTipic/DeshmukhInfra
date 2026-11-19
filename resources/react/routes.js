@@ -33,6 +33,7 @@ const InternalMoneyTransfer = React.lazy(() => import('./views/pages/invoice/Int
 
 const infraDetailsShowTable = React.lazy(() => import('./views/pages/invoice/infraDetailsShowTable'))
 const SeparateWorkLogReport = React.lazy(() => import('./views/pages/invoice/SeparateWorkLogReport'))
+const MachineReport = React.lazy(() => import('./views/pages/report/MachineReport.js'))
 
 //infra page by samir 
 const OperatorReport = React.lazy(() => import('./views/pages/infraPages/OperatorReport'))
@@ -242,6 +243,7 @@ export default function fetchRoutes() {
       { path: '/machineryStockUpdate', name: 'Machinery Stock Update', element: machineryStockUpdate },
       { path: '/machineryStockTable', name: 'Machinery Stock Table', element: machineryStockTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
 
 
 
@@ -292,6 +294,7 @@ export default function fetchRoutes() {
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/worklog/:id', name: 'Edit Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
@@ -408,6 +411,7 @@ export default function fetchRoutes() {
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/worklog/:id', name: 'Edit Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
@@ -501,6 +505,7 @@ export default function fetchRoutes() {
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/worklog/:id', name: 'Edit Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
@@ -601,6 +606,7 @@ export default function fetchRoutes() {
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/worklog/:id', name: 'Edit Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },
@@ -699,6 +705,7 @@ export default function fetchRoutes() {
 
       { path: '/infraDetailsShowTable', name: 'Infra Details Show Table', element: infraDetailsShowTable },
       { path: '/separateWorkLogReport', name: 'Separate Work Log Report', element: SeparateWorkLogReport },
+      { path: '/machineReport', name: 'Machine Report', element: MachineReport },
       { path: '/worklog', name: 'Work Log', element: workLog },
       { path: '/worklog/:id', name: 'Edit Work Log', element: workLog },
       { path: '/oprator', name: 'All Oprators', element: oprator },

@@ -78,6 +78,7 @@ const ALL_PAGES = [
       { label: 'New Expense Entry', path: '/expense/new' },
       { label: 'Work Log Report Table', path: '/infraDetailsShowTable' },
       { label: 'Separate Work Log Report (Drilling & Casting)', path: '/separateWorkLogReport' },
+      { label: 'Machine Report', path: '/machineReport' },
       { label: 'Expense Report Page', path: '/expense/expenseReport' },
       { label: 'Separate All Data Tool', path: '/seprateAllData' },
       { label: 'General Reports options', path: 'Reports/Reports' }

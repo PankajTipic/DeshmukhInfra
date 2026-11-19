@@ -1647,7 +1647,7 @@ const EditExpense = ({ visible, onClose, expense, onExpenseUpdated }) => {
           </div>
 
           {/* Bank Transfer Fields */}
-          {(state.payment_type === "imps" || state.payment_type === "rtgs" || state.payment_type === "neft") && (
+          {(['imps', 'rtgs', 'neft'].includes((state.payment_type || '').toLowerCase())) && (
             <div className="row">
               <div className="col-sm-3 mb-3">
                 <CFormLabel><b>Bank Name</b></CFormLabel>

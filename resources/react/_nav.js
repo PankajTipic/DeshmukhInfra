@@ -271,6 +271,12 @@ export default function fetchNavItems(t1) {
             to: '/seprateAllData',
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: "Machine Report",
+            to: '/machineReport',
+            className: 'ms-2',
+          },
 
 
           //   {
@@ -512,6 +518,12 @@ export default function fetchNavItems(t1) {
             to: '/expense/expenseReport',
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: "Machine Report",
+            to: '/machineReport',
+            className: 'ms-2',
+          },
         ],
       },
 
@@ -618,6 +630,12 @@ export default function fetchNavItems(t1) {
             component: CNavItem,
             name: t("LABELS.expense_report"),
             to: '/expense/expenseReport',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Machine Report",
+            to: '/machineReport',
             className: 'ms-2',
           },
         ],
@@ -854,6 +872,12 @@ export default function fetchNavItems(t1) {
             to: '/expense/expenseReport',
             className: 'ms-2',
           },
+          {
+            component: CNavItem,
+            name: "Machine Report",
+            to: '/machineReport',
+            className: 'ms-2',
+          },
         ],
       },
 
@@ -1034,6 +1058,12 @@ export default function fetchNavItems(t1) {
             component: CNavItem,
             name: t("LABELS.expense_report"),
             to: '/expense/expenseReport',
+            className: 'ms-2',
+          },
+          {
+            component: CNavItem,
+            name: "Machine Report",
+            to: '/machineReport',
             className: 'ms-2',
           },
         ],

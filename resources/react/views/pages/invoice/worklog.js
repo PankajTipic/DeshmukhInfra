@@ -77,6 +77,48 @@ const createInitialRotaryRow = (defaultDate = '', defaultSupervisorId = '', defa
   stock_bullet: '',
 });
 
+const parseHoleSizeString = (str) => {
+  if (!str || typeof str !== 'string') return [{ hole_nos: '', hole_depth: '' }];
+  const parts = str.split('|').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 0) return [{ hole_nos: '', hole_depth: '' }];
+
+  const parsed = parts.map(part => {
+    const match = part.match(/([0-9]+(?:\.[0-9]+)?)\s*[xX*]\s*([0-9]+(?:\.[0-9]+)?)/);
+    if (match) {
+      return { hole_nos: match[1], hole_depth: match[2] };
+    }
+    return { hole_nos: '', hole_depth: '', raw: part };
+  });
+
+  return parsed.length > 0 ? parsed : [{ hole_nos: '', hole_depth: '' }];
+};
+
+const createInitialTataRow = (defaultDate = '', defaultSiteLocation = '') => ({
+  date: defaultDate,
+  shift: 'Day Shift',
+  site_location: defaultSiteLocation || '',
+  hole_type: '',
+  machine_id: '',
+  machine_no: '',
+  open_reading: '',
+  closing_reading: '',
+  today_hours: 0,
+  hole_nos: '',
+  hole_depth: '',
+  hole_size: '',
+  extra_sizes: [],
+  today_mtr: '',
+  total_mtr: '',
+  operator_id: '',
+  operator_name: '',
+  helper_id: '',
+  helper_name: '',
+  today_diesel_used: '',
+  total_diesel_taken: '',
+  today_holes: '',
+  total_holes: '',
+});
+
 const MachineUsageForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,9 +139,9 @@ const MachineUsageForm = () => {
   const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
   const [supervisors, setSupervisors] = useState([]);
 
-  // Tab State: 'drilling' | 'casting' | 'rotary'
+  // Tab State: 'drilling' | 'casting' | 'rotary' | 'tata'
   const [activeTab, setActiveTab] = useState(
-    targetTab && ['drilling', 'casting', 'rotary'].includes(targetTab) ? targetTab : 'drilling'
+    targetTab && ['drilling', 'casting', 'rotary', 'tata'].includes(targetTab) ? targetTab : 'drilling'
   );
 
   // Independent form data per tab
@@ -107,6 +149,7 @@ const MachineUsageForm = () => {
     drilling: createInitialSectionState(),
     casting: createInitialSectionState(),
     rotary: [createInitialRotaryRow()],
+    tata: [createInitialTataRow()],
   });
 
   const { showToast } = useToast();
@@ -332,10 +375,54 @@ const MachineUsageForm = () => {
 
         const rotDetails = data.rotary_details || data.rotaryDetails || [];
         const isRot = data.tab_type === 'rotary' || rotDetails.length > 0;
-        const finalTab = isRot ? 'rotary' : (data.tab_type === 'casting' ? 'casting' : (targetTab || 'drilling'));
+        const tataDetails = data.tata_details || data.tataDetails || [];
+        const isTata = data.tab_type === 'tata' || tataDetails.length > 0;
+        const finalTab = isTata ? 'tata' : (isRot ? 'rotary' : (data.tab_type === 'casting' ? 'casting' : (targetTab || 'drilling')));
         setActiveTab(finalTab);
 
-        if (isRot && rotDetails.length > 0) {
+        if (isTata && tataDetails.length > 0) {
+          const mappedTata = tataDetails.map(t => {
+            const parsedSizes = parseHoleSizeString(t.hole_size);
+            const primary = parsedSizes[0] || { hole_nos: '', hole_depth: '' };
+            const extra = parsedSizes.slice(1);
+            return {
+              id: t.id,
+              date: t.date || data.date || '',
+              shift: t.shift || 'Day Shift',
+              site_location: t.site_location || '',
+              hole_type: t.hole_type || '',
+              machine_id: t.machine_id != null ? Number(t.machine_id) : '',
+              machine_no: t.machine_no || t.machine?.machine_name || '',
+              open_reading: t.open_reading != null ? t.open_reading : '',
+              closing_reading: t.closing_reading != null ? t.closing_reading : '',
+              today_hours: t.today_hours != null ? parseFloat(t.today_hours) : 0,
+              hole_nos: primary.hole_nos || '',
+              hole_depth: primary.hole_depth || '',
+              hole_size: t.hole_size || '',
+              extra_sizes: extra,
+              today_mtr: t.today_mtr != null ? t.today_mtr : '',
+              total_mtr: t.total_mtr != null ? t.total_mtr : '',
+              operator_id: t.operator_id != null ? Number(t.operator_id) : '',
+              operator_name: t.operator_name || t.operator?.name || '',
+              helper_id: t.helper_id != null ? Number(t.helper_id) : '',
+              helper_name: t.helper_name || t.helper?.name || '',
+              today_diesel_used: t.today_diesel_used != null ? t.today_diesel_used : '',
+              total_diesel_taken: t.total_diesel_taken != null ? t.total_diesel_taken : '',
+              today_holes: t.today_holes != null ? t.today_holes : '',
+              total_holes: t.total_holes != null ? t.total_holes : '',
+            };
+          });
+
+          setTabData(prev => ({
+            ...prev,
+            tata: mappedTata,
+          }));
+        } else if (finalTab === 'tata') {
+          setTabData(prev => ({
+            ...prev,
+            tata: [createInitialTataRow(data.date || '', data.project?.project_name || '')],
+          }));
+        } else if (isRot && rotDetails.length > 0) {
           const mappedRotary = rotDetails.map(r => ({
             id: r.id,
             date: r.date || data.date || '',
@@ -513,35 +600,56 @@ const MachineUsageForm = () => {
 
   /**
    * CENTRAL RECALCULATION:
-   * Cascades diesel filled, used, balance and avg sequentially across ALL readings
-   * in both Machine Usage and Compressor Usage (and across tabs).
-   * Solves the bug where using the same machine in machine and compressor shows duplicate un-deducted balance!
+   * Calculates diesel filled, used, balance and avg across ALL readings
+   * in both Machine Usage and Compressor Usage.
+   * If the same machinery is used in Machine Usage and Compressor Usage,
+   * its total filled and used diesel are combined so that the diesel balance
+   * matches properly across all sections.
    */
   const recalculateAllReadings = (tabs, machineriesList) => {
     if (!tabs) return tabs;
-    const machineBalances = {};
-    (machineriesList || []).forEach(m => {
-      machineBalances[String(m.value)] = parseFloat(m.diesel_balance) || 0;
+
+    // Collect all rows across all sections to calculate unified totals per machine
+    const allRows = [
+      ...(tabs.drilling?.machineReading || []),
+      ...(tabs.drilling?.compressorReading || []),
+      ...(tabs.casting?.machineReading || []),
+      ...(tabs.casting?.compressorReading || []),
+    ];
+
+    const totalsPerMachine = {};
+    allRows.forEach(row => {
+      const mId = row.machine_id ? String(row.machine_id) : '';
+      if (!mId) return;
+      if (!totalsPerMachine[mId]) {
+        const found = (machineriesList || []).find(m => String(m.value) === mId);
+        totalsPerMachine[mId] = {
+          baseBalance: found ? (parseFloat(found.diesel_balance) || 0) : 0,
+          totalFilled: 0,
+          totalUsed: 0,
+        };
+      }
+      totalsPerMachine[mId].totalFilled += parseFloat(row.diesel_filled) || 0;
+      totalsPerMachine[mId].totalUsed += parseFloat(row.diesel_used) || 0;
     });
 
     const processRow = (row, hrField) => {
       const mId = row.machine_id ? String(row.machine_id) : '';
-      const filled = parseFloat(row.diesel_filled) || 0;
       const used = parseFloat(row.diesel_used) || 0;
       const hrs = parseFloat(row[hrField]) || 0;
 
-      // Formula: used disel / Machine HR
+      // Formula: used diesel / Machine HR
       const avg = (hrs > 0 && used > 0) ? parseFloat((used / hrs).toFixed(2)) : 0;
 
       let bal = 0;
       if (mId) {
-        if (!(mId in machineBalances)) {
+        if (totalsPerMachine[mId]) {
+          const { baseBalance, totalFilled, totalUsed } = totalsPerMachine[mId];
+          bal = parseFloat((baseBalance + totalFilled - totalUsed).toFixed(2));
+        } else {
           const found = (machineriesList || []).find(m => String(m.value) === mId);
-          machineBalances[mId] = found ? parseFloat(found.diesel_balance) || 0 : 0;
+          bal = found ? (parseFloat(found.diesel_balance) || 0) : 0;
         }
-        // Sequential cascading: running balance = previous balance + filled - used
-        machineBalances[mId] = machineBalances[mId] + filled - used;
-        bal = parseFloat(machineBalances[mId].toFixed(2));
       }
 
       return {
@@ -551,7 +659,6 @@ const MachineUsageForm = () => {
       };
     };
 
-    // Sequential order: Drilling Machine Reading -> Drilling Compressor -> Casting Machine Reading -> Casting Compressor
     const newDrillingMR = (tabs.drilling?.machineReading || []).map(r => processRow(r, 'actual_machine_hr'));
     const newDrillingCR = (tabs.drilling?.compressorReading || []).map(r => processRow(r, 'com_actul_hr'));
     const newCastingMR = (tabs.casting?.machineReading || []).map(r => processRow(r, 'actual_machine_hr'));
@@ -572,15 +679,125 @@ const MachineUsageForm = () => {
     };
   };
 
+  // Calculate available diesel for a machine excluding current row's diesel_used
+  const getAvailableDiesel = (machineId, excludeIndex, excludeSection, tabs) => {
+    if (!machineId) return 0;
+    const mId = String(machineId);
+    const found = machineries.find(m => String(m.value) === mId);
+    const baseBalance = found ? (parseFloat(found.diesel_balance) || 0) : 0;
+
+    let totalFilled = 0;
+    let otherUsed = 0;
+
+    const allTabs = ['drilling', 'casting'];
+    allTabs.forEach(tabKey => {
+      const tab = tabs[tabKey];
+      if (!tab) return;
+
+      (tab.machineReading || []).forEach((r, idx) => {
+        if (String(r.machine_id) === mId) {
+          totalFilled += parseFloat(r.diesel_filled) || 0;
+          if (!(tabKey === activeTab && excludeSection === 'machine' && idx === excludeIndex)) {
+            otherUsed += parseFloat(r.diesel_used) || 0;
+          }
+        }
+      });
+
+      (tab.compressorReading || []).forEach((r, idx) => {
+        if (String(r.machine_id) === mId) {
+          totalFilled += parseFloat(r.diesel_filled) || 0;
+          if (!(tabKey === activeTab && excludeSection === 'compressor' && idx === excludeIndex)) {
+            otherUsed += parseFloat(r.diesel_used) || 0;
+          }
+        }
+      });
+    });
+
+    return Math.max(0, parseFloat((baseBalance + totalFilled - otherUsed).toFixed(2)));
+  };
+
+  // Calculate minimum filled diesel needed so balance never becomes negative
+  const getMinRequiredFilled = (machineId, excludeIndex, excludeSection, tabs) => {
+    if (!machineId) return 0;
+    const mId = String(machineId);
+    const found = machineries.find(m => String(m.value) === mId);
+    const baseBalance = found ? (parseFloat(found.diesel_balance) || 0) : 0;
+
+    let totalUsed = 0;
+    let otherFilled = 0;
+
+    const allTabs = ['drilling', 'casting'];
+    allTabs.forEach(tabKey => {
+      const tab = tabs[tabKey];
+      if (!tab) return;
+
+      (tab.machineReading || []).forEach((r, idx) => {
+        if (String(r.machine_id) === mId) {
+          totalUsed += parseFloat(r.diesel_used) || 0;
+          if (!(tabKey === activeTab && excludeSection === 'machine' && idx === excludeIndex)) {
+            otherFilled += parseFloat(r.diesel_filled) || 0;
+          }
+        }
+      });
+
+      (tab.compressorReading || []).forEach((r, idx) => {
+        if (String(r.machine_id) === mId) {
+          totalUsed += parseFloat(r.diesel_used) || 0;
+          if (!(tabKey === activeTab && excludeSection === 'compressor' && idx === excludeIndex)) {
+            otherFilled += parseFloat(r.diesel_filled) || 0;
+          }
+        }
+      });
+    });
+
+    return Math.max(0, parseFloat((totalUsed - baseBalance - otherFilled).toFixed(2)));
+  };
+
   // Handle Machine Reading Changes
   const handleMachineReadingChange = (index, field, value) => {
     setTabData(prev => {
       const currentTab = prev[activeTab];
+      const targetRow = currentTab.machineReading[index];
+      const mId = targetRow?.machine_id ? String(targetRow.machine_id) : '';
+      const mObj = machineries.find(m => String(m.value) === mId);
+      const mName = mObj?.label || 'Selected Machine';
+
+      let finalValue = value;
+
+      if (field === 'diesel_used' && mId && value !== '') {
+        const numUsed = parseFloat(value);
+        if (!isNaN(numUsed)) {
+          const maxAvailable = getAvailableDiesel(mId, index, 'machine', prev);
+          if (numUsed > maxAvailable) {
+            showToast("danger", `Diesel balance cannot be negative! Maximum available diesel for "${mName}" is ${maxAvailable} L.`);
+            finalValue = maxAvailable > 0 ? String(maxAvailable) : '';
+          }
+        }
+      } else if (field === 'diesel_filled' && mId && value !== '') {
+        const numFilled = parseFloat(value);
+        if (!isNaN(numFilled)) {
+          const minRequired = getMinRequiredFilled(mId, index, 'machine', prev);
+          if (numFilled < minRequired) {
+            showToast("danger", `Cannot reduce diesel filled below ${minRequired} L because diesel is already used. Diesel balance cannot be negative.`);
+            finalValue = String(minRequired);
+          }
+        }
+      }
+
       const updatedMR = currentTab.machineReading.map((r, i) => {
         if (i !== index) return r;
-        const next = { ...r, [field]: value };
+        const next = { ...r, [field]: finalValue };
         if (field === 'machine_start' || field === 'machine_end') {
           next.actual_machine_hr = calculateMachineHours(next.machine_start, next.machine_end);
+        }
+        if (field === 'machine_id' && next.diesel_used && next.machine_id) {
+          const newMId = String(next.machine_id);
+          const newMObj = machineries.find(m => String(m.value) === newMId);
+          const maxAvail = getAvailableDiesel(newMId, index, 'machine', prev);
+          if (parseFloat(next.diesel_used) > maxAvail) {
+            showToast("danger", `Diesel balance cannot be negative! "${newMObj?.label || 'Machine'}" only has ${maxAvail} L available. Diesel used adjusted.`);
+            next.diesel_used = maxAvail > 0 ? String(maxAvail) : '';
+          }
         }
         return next;
       });
@@ -633,11 +850,47 @@ const MachineUsageForm = () => {
   const handleCompressorChange = (index, field, value) => {
     setTabData(prev => {
       const currentTab = prev[activeTab];
+      const targetRow = currentTab.compressorReading[index];
+      const mId = targetRow?.machine_id ? String(targetRow.machine_id) : '';
+      const mObj = machineries.find(m => String(m.value) === mId);
+      const mName = mObj?.label || 'Selected Machine';
+
+      let finalValue = value;
+
+      if (field === 'diesel_used' && mId && value !== '') {
+        const numUsed = parseFloat(value);
+        if (!isNaN(numUsed)) {
+          const maxAvailable = getAvailableDiesel(mId, index, 'compressor', prev);
+          if (numUsed > maxAvailable) {
+            showToast("danger", `Diesel balance cannot be negative! Maximum available diesel for "${mName}" is ${maxAvailable} L.`);
+            finalValue = maxAvailable > 0 ? String(maxAvailable) : '';
+          }
+        }
+      } else if (field === 'diesel_filled' && mId && value !== '') {
+        const numFilled = parseFloat(value);
+        if (!isNaN(numFilled)) {
+          const minRequired = getMinRequiredFilled(mId, index, 'compressor', prev);
+          if (numFilled < minRequired) {
+            showToast("danger", `Cannot reduce diesel filled below ${minRequired} L because diesel is already used. Diesel balance cannot be negative.`);
+            finalValue = String(minRequired);
+          }
+        }
+      }
+
       const updatedCR = currentTab.compressorReading.map((r, i) => {
         if (i !== index) return r;
-        const next = { ...r, [field]: value };
+        const next = { ...r, [field]: finalValue };
         if (field === 'comp_rpm_start' || field === 'comp_rpm_end') {
           next.com_actul_hr = calculateMachineHours(next.comp_rpm_start, next.comp_rpm_end);
+        }
+        if (field === 'machine_id' && next.diesel_used && next.machine_id) {
+          const newMId = String(next.machine_id);
+          const newMObj = machineries.find(m => String(m.value) === newMId);
+          const maxAvail = getAvailableDiesel(newMId, index, 'compressor', prev);
+          if (parseFloat(next.diesel_used) > maxAvail) {
+            showToast("danger", `Diesel balance cannot be negative! "${newMObj?.label || 'Machine'}" only has ${maxAvail} L available. Diesel used adjusted.`);
+            next.diesel_used = maxAvail > 0 ? String(maxAvail) : '';
+          }
         }
         return next;
       });
@@ -1048,6 +1301,277 @@ const MachineUsageForm = () => {
     };
   }, [tabData.rotary]);
 
+  // TATA Row Handlers
+  const handleTataChange = (index, field, value) => {
+    const positiveOnlyFields = [
+      'today_mtr', 'total_mtr', 'today_diesel_used', 'total_diesel_taken', 'today_holes', 'total_holes'
+    ];
+    if (positiveOnlyFields.includes(field)) {
+      if (value !== '' && value != null) {
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          value = Math.max(0, num);
+        }
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      rows[index] = { ...rows[index], [field]: value };
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const handleTataNumberChange = (index, field, value) => {
+    if (value !== '' && value != null) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        value = Math.max(0, num);
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      const updated = { ...rows[index], [field]: value };
+
+      if (field === 'open_reading' || field === 'closing_reading') {
+        const open = Math.max(0, parseFloat(field === 'open_reading' ? value : updated.open_reading) || 0);
+        const close = Math.max(0, parseFloat(field === 'closing_reading' ? value : updated.closing_reading) || 0);
+        if (close >= open) {
+          updated.today_hours = parseFloat((close - open).toFixed(2));
+        } else {
+          updated.today_hours = 0;
+        }
+      }
+
+      rows[index] = updated;
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const handleTataHoleSizeChange = (index, field, value) => {
+    if (value !== '' && value != null) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        value = Math.max(0, num);
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      const row = { ...rows[index], [field]: value };
+
+      const nos = row.hole_nos !== '' && row.hole_nos != null ? parseFloat(row.hole_nos) : null;
+      const depth = row.hole_depth !== '' && row.hole_depth != null ? parseFloat(row.hole_depth) : null;
+
+      let totalMtr = 0;
+      let totalHoles = 0;
+      let parts = [];
+
+      if (nos != null && nos > 0) {
+        totalHoles += nos;
+        if (depth != null && depth > 0) {
+          totalMtr += nos * depth;
+          parts.push(`${nos}X${depth}`);
+        } else {
+          parts.push(`${nos}`);
+        }
+      }
+
+      if (Array.isArray(row.extra_sizes)) {
+        row.extra_sizes.forEach(ex => {
+          const en = ex.hole_nos !== '' && ex.hole_nos != null ? parseFloat(ex.hole_nos) : null;
+          const ed = ex.hole_depth !== '' && ex.hole_depth != null ? parseFloat(ex.hole_depth) : null;
+          if (en != null && en > 0) {
+            totalHoles += en;
+            if (ed != null && ed > 0) {
+              totalMtr += en * ed;
+              parts.push(`${en}X${ed}`);
+            } else {
+              parts.push(`${en}`);
+            }
+          }
+        });
+      }
+
+      if (totalMtr > 0) {
+        row.today_mtr = parseFloat(totalMtr.toFixed(2));
+      } else if (nos == null && depth == null) {
+        row.today_mtr = '';
+      }
+
+      if (totalHoles > 0) {
+        row.today_holes = totalHoles;
+      } else if (nos == null) {
+        row.today_holes = '';
+      }
+
+      row.hole_size = parts.join(' | ');
+
+      rows[index] = row;
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const addTataExtraSize = (rowIndex) => {
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      const row = { ...rows[rowIndex] };
+      const extra_sizes = Array.isArray(row.extra_sizes) ? [...row.extra_sizes] : [];
+      extra_sizes.push({ hole_nos: '', hole_depth: '' });
+      row.extra_sizes = extra_sizes;
+      rows[rowIndex] = row;
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const removeTataExtraSize = (rowIndex, extraIndex) => {
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      const row = { ...rows[rowIndex] };
+      const extra_sizes = (row.extra_sizes || []).filter((_, idx) => idx !== extraIndex);
+      row.extra_sizes = extra_sizes;
+
+      const nos = row.hole_nos !== '' && row.hole_nos != null ? parseFloat(row.hole_nos) : null;
+      const depth = row.hole_depth !== '' && row.hole_depth != null ? parseFloat(row.hole_depth) : null;
+      let totalMtr = 0;
+      let totalHoles = 0;
+      let parts = [];
+      if (nos != null && nos > 0) {
+        totalHoles += nos;
+        if (depth != null && depth > 0) {
+          totalMtr += nos * depth;
+          parts.push(`${nos}X${depth}`);
+        } else {
+          parts.push(`${nos}`);
+        }
+      }
+      extra_sizes.forEach(ex => {
+        const en = ex.hole_nos !== '' && ex.hole_nos != null ? parseFloat(ex.hole_nos) : null;
+        const ed = ex.hole_depth !== '' && ex.hole_depth != null ? parseFloat(ex.hole_depth) : null;
+        if (en != null && en > 0) {
+          totalHoles += en;
+          if (ed != null && ed > 0) {
+            totalMtr += en * ed;
+            parts.push(`${en}X${ed}`);
+          }
+        }
+      });
+      row.today_mtr = totalMtr > 0 ? parseFloat(totalMtr.toFixed(2)) : (row.today_mtr || '');
+      row.today_holes = totalHoles > 0 ? totalHoles : (row.today_holes || '');
+      row.hole_size = parts.join(' | ');
+
+      rows[rowIndex] = row;
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const handleTataExtraSizeChange = (rowIndex, extraIndex, field, value) => {
+    if (value !== '' && value != null) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        value = Math.max(0, num);
+      }
+    }
+    setTabData(prev => {
+      const rows = [...(prev.tata || [createInitialTataRow()])];
+      const row = { ...rows[rowIndex] };
+      const extra_sizes = Array.isArray(row.extra_sizes) ? [...row.extra_sizes] : [];
+      extra_sizes[extraIndex] = { ...extra_sizes[extraIndex], [field]: value };
+      row.extra_sizes = extra_sizes;
+
+      const nos = row.hole_nos !== '' && row.hole_nos != null ? parseFloat(row.hole_nos) : null;
+      const depth = row.hole_depth !== '' && row.hole_depth != null ? parseFloat(row.hole_depth) : null;
+      let totalMtr = 0;
+      let totalHoles = 0;
+      let parts = [];
+      if (nos != null && nos > 0) {
+        totalHoles += nos;
+        if (depth != null && depth > 0) {
+          totalMtr += nos * depth;
+          parts.push(`${nos}X${depth}`);
+        } else {
+          parts.push(`${nos}`);
+        }
+      }
+      extra_sizes.forEach(ex => {
+        const en = ex.hole_nos !== '' && ex.hole_nos != null ? parseFloat(ex.hole_nos) : null;
+        const ed = ex.hole_depth !== '' && ex.hole_depth != null ? parseFloat(ex.hole_depth) : null;
+        if (en != null && en > 0) {
+          totalHoles += en;
+          if (ed != null && ed > 0) {
+            totalMtr += en * ed;
+            parts.push(`${en}X${ed}`);
+          } else {
+            parts.push(`${en}`);
+          }
+        }
+      });
+      if (totalMtr > 0) {
+        row.today_mtr = parseFloat(totalMtr.toFixed(2));
+      }
+      if (totalHoles > 0) {
+        row.today_holes = totalHoles;
+      }
+      row.hole_size = parts.join(' | ');
+
+      rows[rowIndex] = row;
+      return { ...prev, tata: rows };
+    });
+  };
+
+  const addTataRow = () => {
+    setTabData(prev => ({
+      ...prev,
+      tata: [
+        ...(prev.tata || []),
+        createInitialTataRow(
+          projectInfo.date || '',
+          projectInfo.project_name || ''
+        )
+      ]
+    }));
+  };
+
+  const removeTataRow = (index) => {
+    setTabData(prev => {
+      const rows = [...(prev.tata || [])];
+      if (rows.length > 1) {
+        rows.splice(index, 1);
+        return { ...prev, tata: rows };
+      }
+      return prev;
+    });
+  };
+
+  const tataTotals = useMemo(() => {
+    const rows = tabData.tata || [];
+    let totalHours = 0;
+    let totalMtr = 0;
+    let totalHoles = 0;
+    let totalDieselUsed = 0;
+    let totalDieselTaken = 0;
+    let latestTotalMtr = 0;
+    let latestTotalHoles = 0;
+
+    rows.forEach(r => {
+      totalHours += parseFloat(r.today_hours) || 0;
+      totalMtr += parseFloat(r.today_mtr) || 0;
+      totalHoles += parseFloat(r.today_holes) || 0;
+      totalDieselUsed += parseFloat(r.today_diesel_used) || 0;
+      totalDieselTaken += parseFloat(r.total_diesel_taken) || 0;
+      if (r.total_mtr !== '' && r.total_mtr != null) latestTotalMtr = parseFloat(r.total_mtr) || 0;
+      if (r.total_holes !== '' && r.total_holes != null) latestTotalHoles = parseFloat(r.total_holes) || 0;
+    });
+
+    return {
+      totalHours: parseFloat(totalHours.toFixed(2)),
+      totalMtr: parseFloat(totalMtr.toFixed(2)),
+      totalHoles: parseFloat(totalHoles.toFixed(2)),
+      totalDieselUsed: parseFloat(totalDieselUsed.toFixed(2)),
+      totalDieselTaken: parseFloat(totalDieselTaken.toFixed(2)),
+      latestTotalMtr,
+      latestTotalHoles,
+    };
+  }, [tabData.tata]);
+
   // Helper to validate & submit a single tab
   const validateAndSubmitTab = async (tabKey) => {
     // Section 1 Validation
@@ -1170,35 +1694,139 @@ const MachineUsageForm = () => {
       return true;
     }
 
+    if (tabKey === 'tata') {
+      const rows = tabData.tata || [];
+      if (rows.length === 0) {
+        showToast("danger", "Please add at least one TATA Work row.");
+        return false;
+      }
+
+      const validRows = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const hasSome = r.machine_id || r.operator_id || r.site_location || r.hole_type || r.open_reading || r.closing_reading || r.today_mtr || r.today_diesel_used || r.today_holes;
+        if (!hasSome && rows.length > 1) {
+          continue;
+        }
+        if (!r.operator_id && !r.operator_name) {
+          showToast("danger", `TATA Work Row ${i + 1}: Please select an Operator.`);
+          return false;
+        }
+
+        const checkFields = [
+          { key: 'open_reading', label: 'Open Reading' },
+          { key: 'closing_reading', label: 'Closing Reading' },
+          { key: 'today_mtr', label: 'Today Mtr' },
+          { key: 'total_mtr', label: 'Total Mtr' },
+          { key: 'today_diesel_used', label: 'Today Diesel Used' },
+          { key: 'total_diesel_taken', label: 'Total Diesel Taken' },
+          { key: 'today_holes', label: 'Today Holes' },
+          { key: 'total_holes', label: 'Total Holes' },
+        ];
+
+        for (const cf of checkFields) {
+          const val = r[cf.key];
+          if (val !== '' && val != null && parseFloat(val) < 0) {
+            showToast("danger", `TATA Work Row ${i + 1}: ${cf.label} cannot be negative. Only positive values are allowed.`);
+            return false;
+          }
+        }
+
+        const openReading = r.open_reading !== '' && r.open_reading != null ? Math.max(0, parseFloat(r.open_reading)) : null;
+        const closingReading = r.closing_reading !== '' && r.closing_reading != null ? Math.max(0, parseFloat(r.closing_reading)) : null;
+        const totHr = (openReading != null && closingReading != null && closingReading >= openReading)
+          ? parseFloat((closingReading - openReading).toFixed(2))
+          : (r.today_hours !== '' && r.today_hours != null ? Math.max(0, parseFloat(r.today_hours)) : null);
+
+        let holeSizeStr = r.hole_size || '';
+        if (!holeSizeStr && r.hole_nos && r.hole_depth) {
+          holeSizeStr = `${r.hole_nos}X${r.hole_depth}`;
+        }
+        let calcTodayMtr = r.today_mtr !== '' && r.today_mtr != null ? Math.max(0, parseFloat(r.today_mtr)) : null;
+        if (calcTodayMtr == null && r.hole_nos && r.hole_depth) {
+          calcTodayMtr = parseFloat((parseFloat(r.hole_nos) * parseFloat(r.hole_depth)).toFixed(2));
+        }
+        let calcTodayHoles = r.today_holes !== '' && r.today_holes != null ? Math.max(0, parseFloat(r.today_holes)) : null;
+        if (calcTodayHoles == null && r.hole_nos) {
+          calcTodayHoles = parseFloat(r.hole_nos);
+        }
+
+        validRows.push({
+          date: r.date || projectInfo.date,
+          shift: r.shift || 'Day Shift',
+          site_location: r.site_location || projectInfo.project_name || '',
+          hole_type: r.hole_type || '',
+          machine_id: r.machine_id || null,
+          machine_no: r.machine_no || (machineries.find(m => String(m.value) === String(r.machine_id))?.label || ''),
+          open_reading: openReading,
+          closing_reading: closingReading,
+          today_hours: totHr,
+          hole_size: holeSizeStr,
+          today_mtr: calcTodayMtr,
+          total_mtr: r.total_mtr !== '' && r.total_mtr != null ? Math.max(0, parseFloat(r.total_mtr)) : null,
+          operator_id: r.operator_id || null,
+          operator_name: r.operator_name || (operators.find(o => String(o.value) === String(r.operator_id))?.label || ''),
+          helper_id: r.helper_id || null,
+          helper_name: r.helper_name || (helpers.find(h => String(h.value) === String(r.helper_id))?.label || ''),
+          today_diesel_used: r.today_diesel_used !== '' && r.today_diesel_used != null ? Math.max(0, parseFloat(r.today_diesel_used)) : null,
+          total_diesel_taken: r.total_diesel_taken !== '' && r.total_diesel_taken != null ? Math.max(0, parseFloat(r.total_diesel_taken)) : null,
+          today_holes: calcTodayHoles,
+          total_holes: r.total_holes !== '' && r.total_holes != null ? Math.max(0, parseFloat(r.total_holes)) : null,
+        });
+      }
+
+      if (validRows.length === 0) {
+        showToast("danger", "Please fill in TATA Work details.");
+        return false;
+      }
+
+      const payload = {
+        project_id: projectInfo.project_id,
+        supervisor_id: projectInfo.supervisor_id || null,
+        date: projectInfo.date,
+        tab_type: 'tata',
+        tata_details: validRows,
+      };
+
+      if (editId) {
+        await put(`/api/drilling/${editId}`, payload);
+      } else {
+        await post("/api/drilling", payload);
+      }
+      return true;
+    }
+
     const currentTab = tabData[tabKey];
     const tabTitle = tabKey === 'drilling' ? 'Drilling' : 'Casting';
 
-    // Machine Reading Validation
-    for (let i = 0; i < currentTab.machineReading.length; i++) {
-      const reading = currentTab.machineReading[i];
-      if (reading.machine_start || reading.machine_end || reading.diesel_used || reading.diesel_filled) {
-        if (!reading.oprator_id) {
-          showToast("danger", `${tabTitle} Row ${i + 1} (Machine Usage): Please select an Operator.`);
-          return false;
-        }
-        if (!reading.machine_id) {
-          showToast("danger", `${tabTitle} Row ${i + 1} (Machine Usage): Please select a Machinery.`);
-          return false;
+    // Machine Reading Validation (Skipped for Casting tab)
+    if (tabKey !== 'casting') {
+      for (let i = 0; i < currentTab.machineReading.length; i++) {
+        const reading = currentTab.machineReading[i];
+        if (reading.machine_start || reading.machine_end || reading.diesel_used || reading.diesel_filled) {
+          if (!reading.oprator_id) {
+            showToast("danger", `${tabTitle} Row ${i + 1} (Machine Usage): Please select an Operator.`);
+            return false;
+          }
+          if (!reading.machine_id) {
+            showToast("danger", `${tabTitle} Row ${i + 1} (Machine Usage): Please select a Machinery.`);
+            return false;
+          }
         }
       }
-    }
 
-    // Compressor Reading Validation
-    for (let i = 0; i < currentTab.compressorReading.length; i++) {
-      const reading = currentTab.compressorReading[i];
-      if (reading.comp_rpm_start || reading.comp_rpm_end || reading.diesel_used || reading.diesel_filled) {
-        if (!reading.oprator_id) {
-          showToast("danger", `${tabTitle} Row ${i + 1} (Compressor Usage): Please select an Operator.`);
-          return false;
-        }
-        if (!reading.machine_id) {
-          showToast("danger", `${tabTitle} Row ${i + 1} (Compressor Usage): Please select a Machinery.`);
-          return false;
+      // Compressor Reading Validation
+      for (let i = 0; i < currentTab.compressorReading.length; i++) {
+        const reading = currentTab.compressorReading[i];
+        if (reading.comp_rpm_start || reading.comp_rpm_end || reading.diesel_used || reading.diesel_filled) {
+          if (!reading.oprator_id) {
+            showToast("danger", `${tabTitle} Row ${i + 1} (Compressor Usage): Please select an Operator.`);
+            return false;
+          }
+          if (!reading.machine_id) {
+            showToast("danger", `${tabTitle} Row ${i + 1} (Compressor Usage): Please select a Machinery.`);
+            return false;
+          }
         }
       }
     }
@@ -1244,21 +1872,23 @@ const MachineUsageForm = () => {
       }
     }
 
-    // Negative Balance Check
-    for (let i = 0; i < currentTab.machineReading.length; i++) {
-      const r = currentTab.machineReading[i];
-      if (r.machine_id && r.diesel_balance < 0) {
-        const m = machineries.find(item => String(item.value) === String(r.machine_id));
-        showToast("danger", `Diesel balance cannot be negative for machine "${m?.label || 'Machine'}" in ${tabTitle} Machine Usage.`);
-        return false;
+    // Negative Balance Check (Skipped for Casting tab)
+    if (tabKey !== 'casting') {
+      for (let i = 0; i < currentTab.machineReading.length; i++) {
+        const r = currentTab.machineReading[i];
+        if (r.machine_id && r.diesel_balance < 0) {
+          const m = machineries.find(item => String(item.value) === String(r.machine_id));
+          showToast("danger", `Diesel balance cannot be negative for machine "${m?.label || 'Machine'}" in ${tabTitle} Machine Usage.`);
+          return false;
+        }
       }
-    }
-    for (let i = 0; i < currentTab.compressorReading.length; i++) {
-      const r = currentTab.compressorReading[i];
-      if (r.machine_id && r.diesel_balance < 0) {
-        const m = machineries.find(item => String(item.value) === String(r.machine_id));
-        showToast("danger", `Diesel balance cannot be negative for machine "${m?.label || 'Machine'}" in ${tabTitle} Compressor Usage.`);
-        return false;
+      for (let i = 0; i < currentTab.compressorReading.length; i++) {
+        const r = currentTab.compressorReading[i];
+        if (r.machine_id && r.diesel_balance < 0) {
+          const m = machineries.find(item => String(item.value) === String(r.machine_id));
+          showToast("danger", `Diesel balance cannot be negative for machine "${m?.label || 'Machine'}" in ${tabTitle} Compressor Usage.`);
+          return false;
+        }
       }
     }
 
@@ -1340,13 +1970,13 @@ const MachineUsageForm = () => {
       end_time: currentTab.end_time || null,
       break_time: currentTab.break_time || null,
       net_hours: currentTab.net_hours != null ? currentTab.net_hours : null,
-      helper_id: tabKey === 'casting' ? (currentTab.helper_id || null) : null,
-      casting_team_name: tabKey === 'casting' ? (currentTab.casting_team_name || null) : null,
-      casting_team_no: tabKey === 'casting' ? (currentTab.casting_team_no || null) : null,
+      helper_id: (tabKey === 'drilling' || tabKey === 'casting') ? (currentTab.helper_id || null) : null,
+      casting_team_name: (tabKey === 'drilling' || tabKey === 'casting') ? (currentTab.casting_team_name || null) : null,
+      casting_team_no: (tabKey === 'drilling' || tabKey === 'casting') ? (currentTab.casting_team_no || null) : null,
       work_points: validWorkPoints,
       surveys: validSurveys,
-      machineReading: validMachineReadings,
-      compressor_rpm: validCompressorReadings,
+      machineReading: tabKey === 'casting' ? [] : validMachineReadings,
+      compressor_rpm: tabKey === 'casting' ? [] : validCompressorReadings,
       raw_material_usage: validRawMaterials,
     };
 
@@ -1363,11 +1993,11 @@ const MachineUsageForm = () => {
     try {
       const ok = await validateAndSubmitTab(activeTab);
       if (ok) {
-        const title = activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : 'Rotary';
+        const title = activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : activeTab === 'rotary' ? 'Rotary' : 'TATA';
         setSuccessMessage(`${title} work log ${editId ? 'updated' : 'submitted'} successfully!`);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
-        navigate(activeTab === 'rotary' ? '/separateWorkLogReport' : '/infraDetailsShowTable');
+        navigate((activeTab === 'rotary' || activeTab === 'tata') ? '/separateWorkLogReport' : '/infraDetailsShowTable');
       }
     } catch (error) {
       console.error("Error saving data", error);
@@ -1379,18 +2009,23 @@ const MachineUsageForm = () => {
 
   // Check if a tab has user-entered content
   const tabHasData = (tabKey) => {
+    if (tabKey === 'tata') {
+      const rows = tabData.tata || [];
+      return rows.some(r => r.machine_id || r.operator_id || r.site_location || r.hole_type || r.open_reading || r.closing_reading || r.today_mtr || r.today_diesel_used || r.today_holes);
+    }
     if (tabKey === 'rotary') {
       const rows = tabData.rotary || [];
       return rows.some(r => r.machine_id || r.operator_id || r.group_no || r.pile_no || r.open_reading_hr || r.closing_reading_hr || r.soft_soil || r.hard_rock || r.diesel_lit);
     }
     const tab = tabData[tabKey];
     if (!tab) return false;
-    const hasMR = tab.machineReading.some(r => r.machine_id || r.machine_start || r.machine_end || r.diesel_used || r.diesel_filled);
-    const hasCR = tab.compressorReading.some(r => r.machine_id || r.comp_rpm_start || r.comp_rpm_end || r.diesel_used || r.diesel_filled);
+    const hasMR = tabKey !== 'casting' && tab.machineReading.some(r => r.machine_id || r.machine_start || r.machine_end || r.diesel_used || r.diesel_filled);
+    const hasCR = tabKey !== 'casting' && tab.compressorReading.some(r => r.machine_id || r.comp_rpm_start || r.comp_rpm_end || r.diesel_used || r.diesel_filled);
     const hasWD = tab.workDetails.some(w => w.workType || w.workPoints || w.rate);
     const hasSD = tab.surveys.some(s => s.survey_type || s.survey_point || s.rate);
     const hasRM = tab.rawMaterials.some(m => m.material_type || m.qty_used);
-    return hasMR || hasCR || hasWD || hasSD || hasRM;
+    const hasCastingTeam = (tabKey === 'drilling' || tabKey === 'casting') && (tab.casting_team_name || tab.casting_team_no || tab.helper_id);
+    return hasMR || hasCR || hasWD || hasSD || hasRM || hasCastingTeam;
   };
 
   const handleClearProject = () => {
@@ -1711,20 +2346,61 @@ const MachineUsageForm = () => {
                       )}
                     </CNavLink>
                   </CNavItem>
+
+                  <CNavItem>
+                    <CNavLink
+                      active={activeTab === 'tata'}
+                      onClick={() => setActiveTab('tata')}
+                      style={{
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '15px',
+                        padding: '9px 26px',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: activeTab === 'tata' ? '#0d9488' : undefined,
+                        borderColor: activeTab === 'tata' ? '#0d9488' : undefined,
+                        color: activeTab === 'tata' ? '#ffffff' : undefined,
+                      }}
+                      className={activeTab === 'tata' ? 'text-white shadow-sm' : 'text-secondary bg-white border'}
+                    >
+                      <CIcon icon={cilFile} className="me-2" />
+                      TATA Work
+                      {tabHasData('tata') && (
+                        <span
+                          className="ms-2 badge rounded-pill"
+                          style={{
+                            fontSize: '10px',
+                            backgroundColor: activeTab === 'tata' ? '#ffffff' : '#0d9488',
+                            color: activeTab === 'tata' ? '#0f766e' : '#ffffff',
+                          }}
+                        >
+                          ●
+                        </span>
+                      )}
+                    </CNavLink>
+                  </CNavItem>
                 </CNav>
               </div>
 
               {/* Tab Header Badge */}
               <div className="mb-3 d-flex align-items-center justify-content-between">
-                <span className="badge bg-dark px-3 py-2 fs-6 text-uppercase" style={{ letterSpacing: '0.5px' }}>
-                  Current Section: {activeTab === 'drilling' ? 'Drilling Log' : activeTab === 'casting' ? 'Casting Log' : 'Rotary Log'}
+                <span
+                  className="badge px-3 py-2 fs-6 text-uppercase"
+                  style={{
+                    letterSpacing: '0.5px',
+                    backgroundColor: activeTab === 'tata' ? '#0f766e' : '#212529',
+                    color: '#ffffff',
+                  }}
+                >
+                  Current Section: {activeTab === 'drilling' ? 'Drilling Log' : activeTab === 'casting' ? 'Casting Log' : activeTab === 'rotary' ? 'Rotary Log' : 'TATA Work Log'}
                 </span>
                 <span className="text-muted small">
                   Diesel Avg formula: <strong>Diesel Used / Machine HR</strong>
                 </span>
               </div>
 
-              {activeTab !== 'rotary' && (
+              {(activeTab === 'drilling' || activeTab === 'casting') && (
                 <>
               {/* Work Timing - Red/Pink Card matching uploaded design */}
               <div
@@ -1929,8 +2605,8 @@ const MachineUsageForm = () => {
                 </CRow>
               </div>
 
-              {/* Casting Team Section (Casting Tab Only) */}
-              {activeTab === 'casting' && (
+              {/* Casting Team Section (Drilling & Casting Tabs) */}
+              {(activeTab === 'drilling' || activeTab === 'casting') && (
                 <div
                   className="mb-4 rounded-3 p-3 p-md-4"
                   style={{
@@ -2002,6 +2678,7 @@ const MachineUsageForm = () => {
               )}
 
               {/* Machine Usage */}
+              {activeTab !== 'casting' && (
               <CCard className="mb-4 border-0" color="success" textColor="dark">
                 <CCardBody className="bg-success-subtle rounded rounded-lg">
                   <div className="d-flex justify-content-between align-items-center mb-3">
@@ -2127,7 +2804,7 @@ const MachineUsageForm = () => {
                             type="text"
                             value={reading.diesel_balance}
                             readOnly
-                            className="bg-light fw-bold text-success"
+                            className={`bg-light fw-bold ${parseFloat(reading.diesel_balance) < 0 ? 'text-danger' : 'text-success'}`}
                           />
                         </CCol>
 
@@ -2161,8 +2838,10 @@ const MachineUsageForm = () => {
                   </CRow>
                 </CCardBody>
               </CCard>
+              )}
 
               {/* Compressor RPM */}
+              {activeTab !== 'casting' && (
               <CCard className="mb-4 border-0" color="primary" textColor="dark">
                 <CCardBody className="bg-primary-subtle rounded rounded-lg">
                   <div className="d-flex justify-content-between align-items-center mb-3">
@@ -2291,7 +2970,7 @@ const MachineUsageForm = () => {
                           type="text"
                           value={rpmReading.diesel_balance}
                           readOnly
-                          className="bg-light fw-bold text-success"
+                          className={`bg-light fw-bold ${parseFloat(rpmReading.diesel_balance) < 0 ? 'text-danger' : 'text-success'}`}
                         />
                       </CCol>
 
@@ -2324,6 +3003,7 @@ const MachineUsageForm = () => {
                   ))}
                 </CCardBody>
               </CCard>
+              )}
 
               {/* Work Details */}
               <CCard className="mb-4 border-0" color="warning" textColor="dark">
@@ -2379,6 +3059,7 @@ const MachineUsageForm = () => {
                         >
                           <option value="">Select Drilling Type</option>
                           <option value="Hard">Hard</option>
+                          <option value="Very Hard">Very Hard</option>
                           <option value="Medium">Medium</option>
                           <option value="Soft">Soft</option>
                         </CFormSelect>
@@ -3290,10 +3971,454 @@ const MachineUsageForm = () => {
                 </div>
               )}
 
+              {/* 3.3 TATA Work Tab Content */}
+              {activeTab === 'tata' && (
+                <div className="mb-4">
+                  <div
+                    className="p-3 p-md-4 rounded-3"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    {/* Header Banner */}
+                    <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                      <div>
+                        <h5 className="fw-bold mb-1" style={{ color: '#0f766e', letterSpacing: '-0.3px' }}>
+                          DESHMUKH INFRA SOLUTION LLP — DAILY DRILLING PROGRESS REPORT
+                        </h5>
+                        <div className="text-muted small">
+                          Site: <strong>{projectInfo.project_name || 'All Sites'}</strong> | Shift Progress Log (TATA Work)
+                        </div>
+                      </div>
+                      <CButton
+                        style={{ borderColor: '#0d9488', color: '#0f766e', borderRadius: '6px' }}
+                        variant="outline"
+                        size="sm"
+                        className="d-flex align-items-center fw-semibold px-3"
+                        onClick={addTataRow}
+                      >
+                        <CIcon icon={cilSettings} className="me-1" /> + Add Another Row
+                      </CButton>
+                    </div>
+
+                    {/* KPI Summary Cards */}
+                    <CRow className="g-2 mb-3">
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Shift Entries</div>
+                          <div className="fs-5 fw-bold text-dark">{tabData.tata?.length || 0}</div>
+                        </div>
+                      </CCol>
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Today Hours</div>
+                          <div className="fs-5 fw-bold text-primary">{tataTotals.totalHours} hrs</div>
+                        </div>
+                      </CCol>
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Today Meters</div>
+                          <div className="fs-5 fw-bold text-success">{tataTotals.totalMtr} m</div>
+                        </div>
+                      </CCol>
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Today Holes</div>
+                          <div className="fs-5 fw-bold" style={{ color: '#7c3aed' }}>{tataTotals.totalHoles}</div>
+                        </div>
+                      </CCol>
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Diesel Used</div>
+                          <div className="fs-5 fw-bold text-danger">{tataTotals.totalDieselUsed} L</div>
+                        </div>
+                      </CCol>
+                      <CCol md={2} sm={4} xs={6}>
+                        <div className="bg-white p-2 rounded-2 border text-center shadow-xs">
+                          <div className="text-muted small text-uppercase" style={{ fontSize: '11px' }}>Diesel Taken</div>
+                          <div className="fs-5 fw-bold text-info">{tataTotals.totalDieselTaken} L</div>
+                        </div>
+                      </CCol>
+                    </CRow>
+
+                    {/* TATA Work Data Table */}
+                    <div className="table-responsive bg-white rounded-3 border shadow-sm" style={{ maxHeight: '72vh' }}>
+                      <table className="table table-bordered table-hover align-middle mb-0 text-center" style={{ fontSize: '13px' }}>
+                        <thead className="table-light sticky-top shadow-sm" style={{ zIndex: 10 }}>
+                          <tr style={{ backgroundColor: '#0f766e', color: '#ffffff' }}>
+                            <th style={{ width: '40px', backgroundColor: '#0f766e', color: '#fff' }}>S.No.</th>
+                            <th style={{ minWidth: '130px', backgroundColor: '#0f766e', color: '#fff' }}>Date *</th>
+                            <th style={{ minWidth: '120px', backgroundColor: '#0f766e', color: '#fff' }}>Shift</th>
+                            <th style={{ minWidth: '180px', backgroundColor: '#0f766e', color: '#fff' }}>Site / Location</th>
+                            <th style={{ minWidth: '140px', backgroundColor: '#0f766e', color: '#fff' }}>Hole Type</th>
+                            <th style={{ minWidth: '160px', backgroundColor: '#0f766e', color: '#fff' }}>Machine No. *</th>
+                            <th style={{ minWidth: '110px', backgroundColor: '#115e59', color: '#fff' }}>Open Reading (m)</th>
+                            <th style={{ minWidth: '110px', backgroundColor: '#115e59', color: '#fff' }}>Closing Reading (m)</th>
+                            <th style={{ minWidth: '110px', backgroundColor: '#115e59', color: '#fff' }}>Today Hours (hrs)</th>
+                            <th style={{ minWidth: '190px', backgroundColor: '#0f766e', color: '#fff' }}>Hole size (Nos × Depth m)</th>
+                            <th style={{ minWidth: '100px', backgroundColor: '#0f766e', color: '#fff' }}>Today Mtr (m)</th>
+                            <th style={{ minWidth: '110px', backgroundColor: '#0f766e', color: '#fff' }}>Total Mtr (Cum.)</th>
+                            <th style={{ minWidth: '170px', backgroundColor: '#0f766e', color: '#fff' }}>Operator Name *</th>
+                            <th style={{ minWidth: '170px', backgroundColor: '#0f766e', color: '#fff' }}>Helper Name</th>
+                            <th style={{ minWidth: '120px', backgroundColor: '#115e59', color: '#fff' }}>Today Diesel Used (ltr)</th>
+                            <th style={{ minWidth: '120px', backgroundColor: '#115e59', color: '#fff' }}>Total Diesel Taken (Cum.)</th>
+                            <th style={{ minWidth: '100px', backgroundColor: '#0f766e', color: '#fff' }}>Today Holes</th>
+                            <th style={{ minWidth: '110px', backgroundColor: '#0f766e', color: '#fff' }}>Total Holes (Cum.)</th>
+                            <th style={{ width: '45px', backgroundColor: '#0f766e', color: '#fff' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(tabData.tata || []).map((row, index) => (
+                            <tr key={index}>
+                              <td className="fw-bold text-secondary">{index + 1}</td>
+                              <td>
+                                <CFormInput
+                                  type="date"
+                                  value={row.date || projectInfo.date || ''}
+                                  onChange={(e) => handleTataChange(index, 'date', e.target.value)}
+                                  style={{ minWidth: '125px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormSelect
+                                  value={row.shift || 'Day Shift'}
+                                  onChange={(e) => handleTataChange(index, 'shift', e.target.value)}
+                                  style={{ minWidth: '115px', height: '36px', fontSize: '13px' }}
+                                >
+                                  <option value="Day Shift">Day Shift</option>
+                                  <option value="Night Shift">Night Shift</option>
+                                  <option value="Day & Night">Day & Night</option>
+                                </CFormSelect>
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="text"
+                                  value={row.site_location || ''}
+                                  onChange={(e) => handleTataChange(index, 'site_location', e.target.value)}
+                                  placeholder="Location / Area..."
+                                  style={{ minWidth: '160px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="text"
+                                  value={row.hole_type || ''}
+                                  onChange={(e) => handleTataChange(index, 'hole_type', e.target.value)}
+                                  placeholder="e.g. 90”degree hole"
+                                  style={{ minWidth: '130px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '150px', textAlign: 'left' }}>
+                                  <Select
+                                    options={machineries}
+                                    value={machineries.find(m => String(m.value) === String(row.machine_id)) || (row.machine_no ? { value: row.machine_id, label: row.machine_no } : null)}
+                                    onChange={(opt) => {
+                                      handleTataChange(index, 'machine_id', opt ? opt.value : '');
+                                      handleTataChange(index, 'machine_no', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Machine..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.open_reading ?? ''}
+                                  onChange={(e) => handleTataNumberChange(index, 'open_reading', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.closing_reading ?? ''}
+                                  onChange={(e) => handleTataNumberChange(index, 'closing_reading', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td className="bg-primary-subtle">
+                                <div className="fw-bold text-primary" style={{ fontSize: '14px' }}>
+                                  {row.today_hours != null && row.today_hours !== '' ? row.today_hours : 0}
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="d-flex flex-column gap-1" style={{ minWidth: '185px' }}>
+                                  <div className="d-flex align-items-center gap-1 justify-content-center">
+                                    <CFormInput
+                                      type="number"
+                                      step="any"
+                                      min="0"
+                                      onKeyDown={blockNegativeKey}
+                                      value={row.hole_nos ?? ''}
+                                      onChange={(e) => handleTataHoleSizeChange(index, 'hole_nos', e.target.value)}
+                                      placeholder="Nos"
+                                      title="Number of Holes (e.g. 5, 8, 4)"
+                                      style={{ width: '68px', height: '34px', fontSize: '13px', textAlign: 'center', padding: '2px 4px' }}
+                                    />
+                                    <span className="fw-bold text-muted" style={{ fontSize: '14px', userSelect: 'none' }}>×</span>
+                                    <CFormInput
+                                      type="number"
+                                      step="any"
+                                      min="0"
+                                      onKeyDown={blockNegativeKey}
+                                      value={row.hole_depth ?? ''}
+                                      onChange={(e) => handleTataHoleSizeChange(index, 'hole_depth', e.target.value)}
+                                      placeholder="Depth m"
+                                      title="Depth in meters (e.g. 8, 4.5)"
+                                      style={{ width: '75px', height: '34px', fontSize: '13px', textAlign: 'center', padding: '2px 4px' }}
+                                    />
+                                    <CButton
+                                      color="light"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="p-0 text-primary"
+                                      title="Add another hole size (e.g. 10X5 | 6X4)"
+                                      style={{ width: '24px', height: '24px', lineHeight: '22px', fontSize: '16px', fontWeight: 'bold' }}
+                                      onClick={() => addTataExtraSize(index)}
+                                    >
+                                      +
+                                    </CButton>
+                                  </div>
+
+                                  {/* Extra size pairs if any */}
+                                  {(row.extra_sizes || []).map((ex, exIdx) => (
+                                    <div key={exIdx} className="d-flex align-items-center gap-1 justify-content-center mt-1">
+                                      <span className="text-muted fw-bold" style={{ fontSize: '11px' }}>+</span>
+                                      <CFormInput
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        onKeyDown={blockNegativeKey}
+                                        value={ex.hole_nos ?? ''}
+                                        onChange={(e) => handleTataExtraSizeChange(index, exIdx, 'hole_nos', e.target.value)}
+                                        placeholder="Nos"
+                                        style={{ width: '60px', height: '30px', fontSize: '12px', textAlign: 'center', padding: '2px 4px' }}
+                                      />
+                                      <span className="fw-bold text-muted" style={{ fontSize: '13px', userSelect: 'none' }}>×</span>
+                                      <CFormInput
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        onKeyDown={blockNegativeKey}
+                                        value={ex.hole_depth ?? ''}
+                                        onChange={(e) => handleTataExtraSizeChange(index, exIdx, 'hole_depth', e.target.value)}
+                                        placeholder="Depth m"
+                                        style={{ width: '65px', height: '30px', fontSize: '12px', textAlign: 'center', padding: '2px 4px' }}
+                                      />
+                                      <CButton
+                                        color="light"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="p-0 text-danger"
+                                        title="Remove this size"
+                                        style={{ width: '20px', height: '20px', lineHeight: '18px', fontSize: '14px', fontWeight: 'bold' }}
+                                        onClick={() => removeTataExtraSize(index, exIdx)}
+                                      >
+                                        ×
+                                      </CButton>
+                                    </div>
+                                  ))}
+
+                                  {row.hole_size && (
+                                    <div className="text-muted" style={{ fontSize: '11px', textAlign: 'center' }}>
+                                      Size: <span className="fw-semibold text-dark">{row.hole_size}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.today_mtr ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'today_mtr', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px', fontWeight: 'bold', backgroundColor: '#f0fdf4' }}
+                                  title="Calculated: Hole Nos × Depth"
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.total_mtr ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'total_mtr', e.target.value)}
+                                  placeholder="0.0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+
+                              <td>
+                                <div style={{ minWidth: '160px', textAlign: 'left' }}>
+                                  <Select
+                                    options={operators}
+                                    value={operators.find(o => String(o.value) === String(row.operator_id)) || (row.operator_name ? { value: row.operator_id, label: row.operator_name } : null)}
+                                    onChange={(opt) => {
+                                      handleTataChange(index, 'operator_id', opt ? opt.value : '');
+                                      handleTataChange(index, 'operator_name', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Operator..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '160px', textAlign: 'left' }}>
+                                  <Select
+                                    options={helpers}
+                                    value={helpers.find(h => String(h.value) === String(row.helper_id)) || (row.helper_name ? { value: row.helper_id, label: row.helper_name } : null)}
+                                    onChange={(opt) => {
+                                      handleTataChange(index, 'helper_id', opt ? opt.value : '');
+                                      handleTataChange(index, 'helper_name', opt ? opt.label : '');
+                                    }}
+                                    placeholder="Helper..."
+                                    isSearchable
+                                    isClearable
+                                    menuPortalTarget={document.body}
+                                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                  />
+                                </div>
+                              </td>
+
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.today_diesel_used ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'today_diesel_used', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.total_diesel_taken ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'total_diesel_taken', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '95px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.today_holes ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'today_holes', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '85px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+                              <td>
+                                <CFormInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  onKeyDown={blockNegativeKey}
+                                  value={row.total_holes ?? ''}
+                                  onChange={(e) => handleTataChange(index, 'total_holes', e.target.value)}
+                                  placeholder="0"
+                                  style={{ minWidth: '90px', height: '36px', fontSize: '13px' }}
+                                />
+                              </td>
+
+                              <td>
+                                {tabData.tata?.length > 1 && (
+                                  <CButton
+                                    color="danger"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeTataRow(index)}
+                                    title="Remove Row"
+                                  >
+                                    <CIcon icon={cilX} />
+                                  </CButton>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="table-light fw-bold" style={{ borderTop: '2px solid #cbd5e1' }}>
+                          <tr>
+                            <td colSpan={8} className="text-end pe-3 text-uppercase text-secondary">
+                              Totals:
+                            </td>
+                            <td className="bg-primary-subtle text-primary">
+                              {tataTotals.totalHours} hrs
+                            </td>
+                            <td></td>
+                            <td className="bg-success-subtle text-success">
+                              {tataTotals.totalMtr} m
+                            </td>
+                            <td></td>
+                            <td colSpan={2}></td>
+                            <td className="bg-danger-subtle text-danger">
+                              {tataTotals.totalDieselUsed} L
+                            </td>
+                            <td className="bg-info-subtle text-info">
+                              {tataTotals.totalDieselTaken} L
+                            </td>
+                            <td style={{ color: '#7c3aed' }}>
+                              {tataTotals.totalHoles}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <div className="mt-3 d-flex justify-content-end">
+                      <CButton
+                        color="dark"
+                        variant="outline"
+                        size="sm"
+                        className="d-flex align-items-center fw-semibold px-3"
+                        onClick={addTataRow}
+                        style={{ borderRadius: '6px' }}
+                      >
+                        <CIcon icon={cilSettings} className="me-1" /> + Add Another TATA Work Row
+                      </CButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Submit Section */}
               <div className="d-flex justify-content-center gap-3">
                 <CButton
-                  color={activeTab === 'rotary' ? 'primary' : 'danger'}
+                  style={activeTab === 'tata' ? { backgroundColor: '#0d9488', borderColor: '#0d9488', color: '#ffffff' } : {}}
+                  color={activeTab === 'rotary' ? 'primary' : activeTab === 'tata' ? 'success' : 'danger'}
                   size="lg"
                   className="px-5 d-flex align-items-center shadow-sm"
                   onClick={handleSubmit}
@@ -3302,7 +4427,7 @@ const MachineUsageForm = () => {
                   <CIcon icon={cilFile} className="me-2" />
                   {isSubmitting
                     ? (editId ? 'Updating...' : 'Submitting...')
-                    : `${editId ? 'Update' : 'Submit'} ${activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : 'Rotary'} Work Log`}
+                    : `${editId ? 'Update' : 'Submit'} ${activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : activeTab === 'rotary' ? 'Rotary' : 'TATA'} Work Log`}
                 </CButton>
               </div>
             </CForm>

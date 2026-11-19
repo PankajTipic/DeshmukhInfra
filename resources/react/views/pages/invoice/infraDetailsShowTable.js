@@ -1022,6 +1022,7 @@ import {
   CTableHeaderCell,
   CTableRow,
   CFormInput,
+  CFormLabel,
   CButton,
   CRow,
   CCol,
@@ -1038,6 +1039,7 @@ import {
   CTabContent,
   CTabPane,
 } from '@coreui/react'
+import Select from 'react-select'
 import { getUserType, getUserData } from '../../../util/session'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../common/toast/ToastContext'
@@ -1054,6 +1056,7 @@ import {
 
 function InfraDetailsShowTable() {
   const [rows, setRows] = useState([])
+  const [rawRecords, setRawRecords] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [maxPoint, setMaxPoint] = useState('')
@@ -1075,6 +1078,58 @@ function InfraDetailsShowTable() {
 
   const navigate = useNavigate()
   const { showToast } = useToast()
+
+  const customSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      minHeight: '38px',
+      height: '38px',
+      borderColor: state.isFocused ? '#86b7fe' : '#dbdfe9',
+      boxShadow: state.isFocused ? '0 0 0 0.25rem rgba(13, 110, 253, 0.25)' : null,
+      '&:hover': {
+        borderColor: state.isFocused ? '#86b7fe' : '#b3b9c6',
+      },
+      borderRadius: '0.375rem',
+      fontSize: '14px',
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      height: '38px',
+      padding: '0 8px',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '38px',
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menu: (base) => ({ ...base, zIndex: 9999, fontSize: '14px' }),
+  }
+
+  const projectOptions = useMemo(() => {
+    return (projects || []).map((proj) => ({
+      value: proj.project_name,
+      label: `${proj?.project_name || ''}${proj?.customer_name ? ` - ${proj.customer_name}` : ''}`,
+    }))
+  }, [projects])
+
+  const workTypeSelectOptions = useMemo(() => {
+    return (workTypeOptions || []).map((wt) => ({
+      value: wt,
+      label: wt,
+    }))
+  }, [workTypeOptions])
+
+  const surveyTypeSelectOptions = useMemo(() => {
+    return (surveyTypeOptions || []).map((st) => ({
+      value: st,
+      label: st,
+    }))
+  }, [surveyTypeOptions])
 
   // Fetch project list
   const fetchProjects = async () => {
@@ -1169,6 +1224,7 @@ function InfraDetailsShowTable() {
       setLoading(true)
       const response = await getAPICall(apiUrl)
       const records = response.data || []
+      setRawRecords(records)
 
       // Populate unique types from records as well
       const recordWorkTypes = []
@@ -1281,6 +1337,60 @@ function InfraDetailsShowTable() {
           return
         }
 
+        const tataDetails = rec.tata_details || rec.tataDetails || []
+        if (rec.tab_type === 'tata' || tataDetails.length > 0) {
+          const count = tataDetails.length > 0 ? tataDetails.length : 1
+          for (let i = 0; i < count; i++) {
+            const tata = tataDetails[i] || {}
+            flattened.push({
+              srNo: idx + 1,
+              date: tata.date || rec.date,
+              site: tata.site_location || rec.project?.project_name || '',
+              supervisor: rec.supervisor || rec.project?.supervisor?.name || '—',
+              operator: tata.operator_name || tata.operator?.name || rec.operator?.name || '',
+
+              machineName: tata.machine_no || tata.machine?.machine_name || (activeMachMap && activeMachMap[String(tata.machine_id)]) || '—',
+              machineStart: tata.open_reading != null && tata.open_reading !== '' ? tata.open_reading : '',
+              machineEnd: tata.closing_reading != null && tata.closing_reading !== '' ? tata.closing_reading : '',
+              machineHr: tata.today_hours != null && tata.today_hours !== '' ? tata.today_hours : '',
+              machineDieselFilled: '',
+              machineDieselUsed: tata.today_diesel_used ?? '',
+              machineDieselBalance: '',
+              machineDieselAvg: '',
+
+              compressorMachineName: '—',
+              compressorStart: '',
+              compressorEnd: '',
+              compressorHr: '',
+              compressorDieselFilled: '',
+              compressorDieselUsed: '',
+              compressorDieselBalance: '',
+              compressorDieselAvg: '',
+
+              workType: 'TATA Work',
+              drillingType: tata.hole_type || '',
+              workPoint: tata.today_mtr != null ? `${tata.today_mtr} m` : '',
+              rate: '',
+              workTotal: 0,
+              workHrs: tata.today_hours || '',
+              workDiesel: tata.today_diesel_used || '',
+
+              surveyType: '',
+              surveyPoint: '',
+              surveyRate: '',
+              surveyTotal: 0,
+              surveyHrs: '',
+              surveyDiesel: '',
+
+              grandTotal: 0,
+              id: rec.id,
+              rowSpan: count,
+              isFirstRow: i === 0,
+            })
+          }
+          return
+        }
+
         const workLen = workDetails.length
         const surveyLen = surveyDetails.length
         const machineLen = effectiveMachine.length
@@ -1321,6 +1431,7 @@ function InfraDetailsShowTable() {
 
             workType: work.work_type ? `${work.work_type}${work.drilling_type ? ` (${work.drilling_type})` : ''}` : '',
             drillingType: work.drilling_type || '',
+            uom: work.uom || '',
             workPoint: work.work_point || '',
             workRate: work.rate || '',
             workTotal: Number(work.total) || 0,
@@ -1374,7 +1485,17 @@ function InfraDetailsShowTable() {
 
   // Button handlers — the actual Excel/PDF generation lives in worklogExportUtils.js
   const handleDownloadExcel = () => {
-    downloadWorkLogExcel({ rows, tableTotals, startDate, endDate, projectName, workType, surveyType })
+    downloadWorkLogExcel({
+      rows,
+      records: rawRecords,
+      tableTotals,
+      startDate,
+      endDate,
+      projectName,
+      workType,
+      surveyType,
+      machineryMap,
+    })
   }
 
   const handleDownloadPDF = () => {
@@ -1491,46 +1612,43 @@ function InfraDetailsShowTable() {
                   />
                 </CCol>
                 <CCol md={3}>
-                  <CFormSelect
-                    label="Project Name"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                  >
-                    <option value="">-- Select Project --</option>
-                    {projects.map((proj) => (
-                      <option key={proj.id} value={proj.project_name}>
-                        {proj?.project_name} - {proj?.customer_name}
-                      </option>
-                    ))}
-                  </CFormSelect>
+                  <CFormLabel className="form-label mb-1">Project Name</CFormLabel>
+                  <Select
+                    placeholder="-- Select Project --"
+                    isSearchable
+                    isClearable
+                    options={projectOptions}
+                    value={projectOptions.find((p) => p.value === projectName) || null}
+                    onChange={(opt) => setProjectName(opt ? opt.value : '')}
+                    styles={customSelectStyles}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  />
                 </CCol>
                 <CCol md={3}>
-                  <CFormSelect
-                    label="Work Type"
-                    value={workType}
-                    onChange={(e) => setWorkType(e.target.value)}
-                  >
-                    <option value="">-- Select Work Type --</option>
-                    {workTypeOptions.map((wt, idx) => (
-                      <option key={idx} value={wt}>
-                        {wt}
-                      </option>
-                    ))}
-                  </CFormSelect>
+                  <CFormLabel className="form-label mb-1">Work Type</CFormLabel>
+                  <Select
+                    placeholder="-- Select Work Type --"
+                    isSearchable
+                    isClearable
+                    options={workTypeSelectOptions}
+                    value={workTypeSelectOptions.find((w) => w.value === workType) || null}
+                    onChange={(opt) => setWorkType(opt ? opt.value : '')}
+                    styles={customSelectStyles}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  />
                 </CCol>
                 <CCol md={3}>
-                  <CFormSelect
-                    label="Survey Type"
-                    value={surveyType}
-                    onChange={(e) => setSurveyType(e.target.value)}
-                  >
-                    <option value="">-- Select Survey Type --</option>
-                    {surveyTypeOptions.map((st, idx) => (
-                      <option key={idx} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </CFormSelect>
+                  <CFormLabel className="form-label mb-1">Survey Type</CFormLabel>
+                  <Select
+                    placeholder="-- Select Survey Type --"
+                    isSearchable
+                    isClearable
+                    options={surveyTypeSelectOptions}
+                    value={surveyTypeSelectOptions.find((s) => s.value === surveyType) || null}
+                    onChange={(opt) => setSurveyType(opt ? opt.value : '')}
+                    styles={customSelectStyles}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  />
                 </CCol>
                 <CCol md={3}>
                   <div className="d-flex gap-2">
@@ -1660,6 +1778,10 @@ function InfraDetailsShowTable() {
                                     if (row.workType === 'Rotary Work') {
                                       navigate(`/worklog?id=${row.drillingRecordId}&tab=rotary`, {
                                         state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'rotary' },
+                                      });
+                                    } else if (row.workType === 'TATA Work') {
+                                      navigate(`/worklog?id=${row.drillingRecordId}&tab=tata`, {
+                                        state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'tata' },
                                       });
                                     } else {
                                       navigate(`/updateDrillingForm/${row.drillingRecordId}`, {

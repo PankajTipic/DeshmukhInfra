@@ -11,6 +11,7 @@ import {
   CTableRow,
   CTableFoot,
   CFormInput,
+  CFormLabel,
   CButton,
   CRow,
   CCol,
@@ -26,6 +27,7 @@ import {
   CBadge,
   CSpinner,
 } from '@coreui/react';
+import Select from 'react-select';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -43,6 +45,8 @@ import {
   downloadCastingPDF,
   downloadRotaryExcel,
   downloadRotaryPDF,
+  downloadTataExcel,
+  downloadTataPDF,
 } from './worklogExportUtils';
 
 const formatBreakDisplay = (val) => {
@@ -96,6 +100,57 @@ const SeparateWorkLogReport = () => {
 
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const customSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      minHeight: '38px',
+      height: '38px',
+      borderColor: state.isFocused ? '#86b7fe' : '#dbdfe9',
+      boxShadow: state.isFocused ? '0 0 0 0.25rem rgba(13, 110, 253, 0.25)' : null,
+      '&:hover': {
+        borderColor: state.isFocused ? '#86b7fe' : '#b3b9c6',
+      },
+      borderRadius: '0.375rem',
+      fontSize: '14px',
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      height: '38px',
+      padding: '0 8px',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '38px',
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menu: (base) => ({ ...base, zIndex: 9999, fontSize: '14px' }),
+  };
+
+  const projectOptions = useMemo(() => {
+    return (projects || []).map((proj) => ({
+      value: proj.project_name,
+      label: `${proj?.project_name || ''}${proj?.customer_name ? ` - ${proj.customer_name}` : ''}`,
+    }));
+  }, [projects]);
+
+  const workTypeSelectOptions = useMemo(() => {
+    return (workTypeOptions || []).map((wt) => ({
+      value: wt,
+      label: wt,
+    }));
+  }, [workTypeOptions]);
+
+  const drillingTypeOptions = [
+    { value: 'Hard', label: 'Hard' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'Soft', label: 'Soft' },
+  ];
 
   // Fetch Projects & Dropdown Options
   useEffect(() => {
@@ -279,6 +334,39 @@ const SeparateWorkLogReport = () => {
         return;
       }
 
+      if (activeTab === 'tata') {
+        const tataDetails = rec.tata_details || rec.tataDetails || [];
+        const detailsToRender = tataDetails.length > 0 ? tataDetails : [{}];
+
+        detailsToRender.forEach((t, tIdx) => {
+          list.push({
+            drillingRecordId: rec.id,
+            tataDetailId: t.id,
+            srNo: recIdx + 1,
+            date: t.date || rec.date,
+            shift: t.shift || '—',
+            siteLocation: t.site_location || rec.project?.project_name || rec.site_name || '—',
+            holeType: t.hole_type || '—',
+            machineNo: t.machine_no || t.machine?.machine_name || machineryMap[String(t.machine_id)] || '—',
+            openReading: t.open_reading != null && t.open_reading !== '' ? t.open_reading : '—',
+            closingReading: t.closing_reading != null && t.closing_reading !== '' ? t.closing_reading : '—',
+            todayHours: t.today_hours != null && t.today_hours !== '' ? parseFloat(t.today_hours) : 0,
+            holeSize: t.hole_size || '—',
+            todayMtr: t.today_mtr != null && t.today_mtr !== '' ? parseFloat(t.today_mtr) : 0,
+            totalMtr: t.total_mtr != null && t.total_mtr !== '' ? t.total_mtr : '—',
+            operator: t.operator_name || t.operator?.name || rec.operator?.name || '—',
+            helper: t.helper_name || t.helper?.name || '—',
+            todayDieselUsed: t.today_diesel_used != null && t.today_diesel_used !== '' ? parseFloat(t.today_diesel_used) : 0,
+            totalDieselTaken: t.total_diesel_taken != null && t.total_diesel_taken !== '' ? t.total_diesel_taken : '—',
+            todayHoles: t.today_holes != null && t.today_holes !== '' ? parseFloat(t.today_holes) : 0,
+            totalHoles: t.total_holes != null && t.total_holes !== '' ? t.total_holes : '—',
+            isFirstRow: tIdx === 0,
+            rowSpan: detailsToRender.length,
+          });
+        });
+        return;
+      }
+
       const workDetails = rec.work_point_detail || [];
       const surveyDetails = rec.survey_detail || [];
       const machineReadings = rec.machine_reading || rec.machineReading || [];
@@ -366,6 +454,7 @@ const SeparateWorkLogReport = () => {
           // Work Details
           workType: work.work_type || '—',
           drillingType: work.drilling_type || '',
+          uom: work.uom || '',
           workPoint: work.work_point != null ? work.work_point : '—',
           workRate: work.rate != null ? work.rate : '—',
           workTotal: parseFloat(work.total) || 0,
@@ -396,6 +485,36 @@ const SeparateWorkLogReport = () => {
 
   // Aggregate Totals
   const totals = useMemo(() => {
+    if (activeTab === 'tata') {
+      let tataHours = 0;
+      let tataMtr = 0;
+      let tataHoles = 0;
+      let tataDiesel = 0;
+      let tataDieselTaken = 0;
+
+      rawRecords.forEach(rec => {
+        const details = rec.tata_details || rec.tataDetails || [];
+        details.forEach(t => {
+          tataHours += parseFloat(t.today_hours) || 0;
+          tataMtr += parseFloat(t.today_mtr) || 0;
+          tataHoles += parseFloat(t.today_holes) || 0;
+          tataDiesel += parseFloat(t.today_diesel_used) || 0;
+          tataDieselTaken += parseFloat(t.total_diesel_taken) || 0;
+        });
+      });
+
+      return {
+        recordCount: rawRecords.length,
+        grandTotal: 0,
+        totalWorkPoints: parseFloat(tataMtr.toFixed(2)),
+        totalMachineHours: parseFloat(tataHours.toFixed(2)),
+        totalDieselUsed: parseFloat(tataDiesel.toFixed(2)),
+        totalDieselTaken: parseFloat(tataDieselTaken.toFixed(2)),
+        totalHoles: tataHoles,
+        totalRawMaterialCount: 0,
+      };
+    }
+
     if (activeTab === 'rotary') {
       let rotHours = 0;
       let rotMiter = 0;
@@ -465,6 +584,31 @@ const SeparateWorkLogReport = () => {
 
   // Table Column Totals for Excel & PDF
   const tableTotals = useMemo(() => {
+    if (activeTab === 'tata') {
+      let todayHours = 0;
+      let todayMtr = 0;
+      let todayHoles = 0;
+      let todayDieselUsed = 0;
+      let totalDieselTaken = 0;
+
+      flattenedRows.forEach(r => {
+        todayHours += parseFloat(r.todayHours) || 0;
+        todayMtr += parseFloat(r.todayMtr) || 0;
+        todayHoles += parseFloat(r.todayHoles) || 0;
+        todayDieselUsed += parseFloat(r.todayDieselUsed) || 0;
+        totalDieselTaken += parseFloat(r.totalDieselTaken) || 0;
+      });
+
+      return {
+        recordCount: rawRecords.length,
+        todayHours: parseFloat(todayHours.toFixed(2)),
+        todayMtr: parseFloat(todayMtr.toFixed(2)),
+        todayHoles: parseFloat(todayHoles.toFixed(2)),
+        todayDieselUsed: parseFloat(todayDieselUsed.toFixed(2)),
+        totalDieselTaken: parseFloat(totalDieselTaken.toFixed(2)),
+      };
+    }
+
     if (activeTab === 'rotary') {
       let totalHours = 0;
       let softSoil = 0;
@@ -555,23 +699,28 @@ const SeparateWorkLogReport = () => {
     if (activeTab === 'drilling') {
       downloadDrillingExcel({
         rows: flattenedRows,
+        records: rawRecords,
         tableTotals,
         startDate,
         endDate,
         projectName,
         workType,
         drillingType,
+        surveyType,
+        machineryMap,
         fileName: `Drilling_WorkLog_Report_${dateStr}.xlsx`,
       });
     } else if (activeTab === 'casting') {
       downloadCastingExcel({
         rows: flattenedRows,
+        records: rawRecords,
         tableTotals,
         startDate,
         endDate,
         projectName,
         workType,
         castingTeam: castingTeamFilter,
+        machineryMap,
         fileName: `Casting_WorkLog_Report_${dateStr}.xlsx`,
       });
     } else if (activeTab === 'rotary') {
@@ -582,6 +731,15 @@ const SeparateWorkLogReport = () => {
         endDate,
         projectName,
         fileName: `Rotary_WorkLog_Report_${dateStr}.xlsx`,
+      });
+    } else if (activeTab === 'tata') {
+      downloadTataExcel({
+        rows: flattenedRows,
+        tableTotals,
+        startDate,
+        endDate,
+        projectName,
+        fileName: `TATA_WorkLog_Report_${dateStr}.xlsx`,
       });
     }
   };
@@ -628,6 +786,17 @@ const SeparateWorkLogReport = () => {
         companyInfo,
         host,
         fileName: `Rotary_WorkLog_Report_${dateStr}.pdf`,
+      });
+    } else if (activeTab === 'tata') {
+      downloadTataPDF({
+        rows: flattenedRows,
+        tableTotals,
+        startDate,
+        endDate,
+        projectName,
+        companyInfo,
+        host,
+        fileName: `TATA_WorkLog_Report_${dateStr}.pdf`,
       });
     }
   };
@@ -726,21 +895,97 @@ const SeparateWorkLogReport = () => {
             </CBadge>
           </CNavLink>
         </CNavItem>
+        <CNavItem className="flex-fill text-center">
+          <CNavLink
+            active={activeTab === 'tata'}
+            onClick={() => setActiveTab('tata')}
+            style={{
+              cursor: 'pointer',
+              fontWeight: 700,
+              padding: '10px 20px',
+              borderRadius: '8px',
+              backgroundColor: activeTab === 'tata' ? '#0d9488' : undefined,
+              color: activeTab === 'tata' ? '#ffffff' : undefined,
+            }}
+            className={`d-flex align-items-center justify-content-center gap-2 ${
+              activeTab === 'tata' ? 'text-white shadow-sm' : 'text-muted'
+            }`}
+          >
+            <span>📊 4. TATA Work Report</span>
+            <CBadge
+              style={{
+                backgroundColor: activeTab === 'tata' ? '#ffffff' : '#0d9488',
+                color: activeTab === 'tata' ? '#0f766e' : '#ffffff',
+              }}
+              shape="rounded-pill"
+            >
+              {activeTab === 'tata' ? totals.recordCount : ''}
+            </CBadge>
+          </CNavLink>
+        </CNavItem>
       </CNav>
 
       {/* KPI Summary Cards for Active Tab */}
       <CRow className="g-3 mb-4">
-        <CCol md={activeTab === 'rotary' ? 2 : activeTab === 'drilling' ? 3 : 2}>
+        <CCol md={activeTab === 'rotary' || activeTab === 'tata' ? 2 : activeTab === 'drilling' ? 3 : 2}>
           <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #1F3864' }}>
             <CCardBody className="p-2">
               <div className="text-muted small fw-semibold text-uppercase">Total Records</div>
               <div className="fs-4 fw-bold text-dark">{totals.recordCount}</div>
-              <div className="text-secondary small">{activeTab === 'drilling' ? 'Drilling Logs' : activeTab === 'casting' ? 'Casting Logs' : 'Rotary Logs'}</div>
+              <div className="text-secondary small">{activeTab === 'drilling' ? 'Drilling Logs' : activeTab === 'casting' ? 'Casting Logs' : activeTab === 'rotary' ? 'Rotary Logs' : 'TATA Work Logs'}</div>
             </CCardBody>
           </CCard>
         </CCol>
 
-        {activeTab === 'rotary' ? (
+        {activeTab === 'tata' ? (
+          <>
+            <CCol md={2}>
+              <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #3B82F6' }}>
+                <CCardBody className="p-2">
+                  <div className="text-muted small fw-semibold text-uppercase">Total Hours</div>
+                  <div className="fs-4 fw-bold text-primary">{totals.totalMachineHours}h</div>
+                  <div className="text-secondary small">Drilling Run Time</div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+            <CCol md={2}>
+              <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #10B981' }}>
+                <CCardBody className="p-2">
+                  <div className="text-muted small fw-semibold text-uppercase">Total Meters</div>
+                  <div className="fs-4 fw-bold text-success">{totals.totalWorkPoints} m</div>
+                  <div className="text-secondary small">Meters Drilled</div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+            <CCol md={2}>
+              <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #8B5CF6' }}>
+                <CCardBody className="p-2">
+                  <div className="text-muted small fw-semibold text-uppercase">Total Holes</div>
+                  <div className="fs-4 fw-bold" style={{ color: '#8B5CF6' }}>{totals.totalHoles || 0}</div>
+                  <div className="text-secondary small">Holes Completed</div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+            <CCol md={2}>
+              <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #EF4444' }}>
+                <CCardBody className="p-2">
+                  <div className="text-muted small fw-semibold text-uppercase">Diesel Used</div>
+                  <div className="fs-4 fw-bold text-danger">{totals.totalDieselUsed} L</div>
+                  <div className="text-secondary small">Diesel Consumed</div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+            <CCol md={2}>
+              <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #06B6D4' }}>
+                <CCardBody className="p-2">
+                  <div className="text-muted small fw-semibold text-uppercase">Diesel Taken</div>
+                  <div className="fs-4 fw-bold text-info">{totals.totalDieselTaken || 0} L</div>
+                  <div className="text-secondary small">Total Taken (Cum.)</div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </>
+        ) : activeTab === 'rotary' ? (
           <>
             <CCol md={2}>
               <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #3B82F6' }}>
@@ -849,7 +1094,7 @@ const SeparateWorkLogReport = () => {
       <CCard className="mb-4 shadow-sm border-0">
         <CCardHeader className="bg-light d-flex justify-content-between align-items-center py-2">
           <span className="fw-bold small text-uppercase text-secondary">
-            Filter {activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : 'Rotary'} Logs
+            Filter {activeTab === 'drilling' ? 'Drilling' : activeTab === 'casting' ? 'Casting' : activeTab === 'rotary' ? 'Rotary' : 'TATA'} Logs
           </span>
           <div className="d-flex gap-2">
             <CButton color="success" size="sm" onClick={handleExportExcel} className="d-flex align-items-center text-white">
@@ -880,47 +1125,46 @@ const SeparateWorkLogReport = () => {
               />
             </CCol>
             <CCol md={2}>
-              <CFormSelect
-                label="Project Name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-              >
-                <option value="">-- All Projects --</option>
-                {projects.map((proj) => (
-                  <option key={proj.id} value={proj.project_name}>
-                    {proj.project_name}
-                  </option>
-                ))}
-              </CFormSelect>
+              <CFormLabel className="form-label mb-1">Project Name</CFormLabel>
+              <Select
+                placeholder="-- All Projects --"
+                isSearchable
+                isClearable
+                options={projectOptions}
+                value={projectOptions.find((p) => p.value === projectName) || null}
+                onChange={(opt) => setProjectName(opt ? opt.value : '')}
+                styles={customSelectStyles}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+              />
             </CCol>
             <CCol md={2}>
-              <CFormSelect
-                label="Work Type"
-                value={workType}
-                onChange={(e) => setWorkType(e.target.value)}
-              >
-                <option value="">-- All Work Types --</option>
-                {workTypeOptions.map((wt, idx) => (
-                  <option key={idx} value={wt}>
-                    {wt}
-                  </option>
-                ))}
-              </CFormSelect>
+              <CFormLabel className="form-label mb-1">Work Type</CFormLabel>
+              <Select
+                placeholder="-- All Work Types --"
+                isSearchable
+                isClearable
+                options={workTypeSelectOptions}
+                value={workTypeSelectOptions.find((w) => w.value === workType) || null}
+                onChange={(opt) => setWorkType(opt ? opt.value : '')}
+                styles={customSelectStyles}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+              />
             </CCol>
 
             {/* Drilling-specific filter: Drilling Type (Hard, Medium, Soft) */}
             {activeTab === 'drilling' && (
               <CCol md={2}>
-                <CFormSelect
-                  label="Drilling Type"
-                  value={drillingType}
-                  onChange={(e) => setDrillingType(e.target.value)}
-                >
-                  <option value="">-- All Drilling Types --</option>
-                  <option value="Hard">Hard</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Soft">Soft</option>
-                </CFormSelect>
+                <CFormLabel className="form-label mb-1">Drilling Type</CFormLabel>
+                <Select
+                  placeholder="-- All Drilling Types --"
+                  isSearchable
+                  isClearable
+                  options={drillingTypeOptions}
+                  value={drillingTypeOptions.find((d) => d.value === drillingType) || null}
+                  onChange={(opt) => setDrillingType(opt ? opt.value : '')}
+                  styles={customSelectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                />
               </CCol>
             )}
 
@@ -951,20 +1195,36 @@ const SeparateWorkLogReport = () => {
 
       {/* Main Table Card */}
       <CCard className="shadow-sm border-0 mb-4">
-        <CCardHeader className={`${activeTab === 'drilling' ? 'bg-warning-subtle text-warning-emphasis' : activeTab === 'casting' ? 'bg-info-subtle text-info-emphasis' : 'bg-primary-subtle text-primary-emphasis'} py-3 d-flex justify-content-between align-items-center`}>
+        <CCardHeader
+          className={`${
+            activeTab === 'drilling'
+              ? 'bg-warning-subtle text-warning-emphasis'
+              : activeTab === 'casting'
+              ? 'bg-info-subtle text-info-emphasis'
+              : activeTab === 'rotary'
+              ? 'bg-primary-subtle text-primary-emphasis'
+              : 'text-dark'
+          } py-3 d-flex justify-content-between align-items-center`}
+          style={activeTab === 'tata' ? { backgroundColor: '#ccfbf1', color: '#0f766e', borderBottom: '2px solid #5eead4' } : {}}
+        >
           <div className="d-flex align-items-center gap-2">
-            <span className="fs-5 fw-bold">
-              {activeTab === 'drilling' ? '⛏️ Detailed Drilling Records' : activeTab === 'casting' ? '🏗️ Detailed Casting Records' : '⚙️ Detailed Rotary Records'}
+            <span className="fs-5 fw-bold" style={activeTab === 'tata' ? { color: '#0f766e' } : {}}>
+              {activeTab === 'drilling' ? '⛏️ Detailed Drilling Records' : activeTab === 'casting' ? '🏗️ Detailed Casting Records' : activeTab === 'rotary' ? '⚙️ Detailed Rotary Records' : '📊 Detailed TATA Work Records'}
             </span>
-            <CBadge color={activeTab === 'drilling' ? 'warning' : activeTab === 'casting' ? 'info' : 'primary'}>
+            <CBadge
+              style={activeTab === 'tata' ? { backgroundColor: '#0d9488', color: '#ffffff' } : {}}
+              color={activeTab === 'drilling' ? 'warning' : activeTab === 'casting' ? 'info' : 'primary'}
+            >
               {flattenedRows.length} sub-rows
             </CBadge>
           </div>
-          <div className="fw-bold fs-5 text-dark">
+          <div className="fw-bold fs-5">
             {activeTab === 'rotary' ? (
-              <span>Total Hours: {tableTotals.totalHours || 0} h | Total Depth: {tableTotals.todayMiter || 0} m</span>
+              <span className="text-dark">Total Hours: {tableTotals.totalHours || 0} h | Total Depth: {tableTotals.todayMiter || 0} m</span>
+            ) : activeTab === 'tata' ? (
+              <span style={{ color: '#0f766e' }}>Total Hours: {tableTotals.todayHours || 0} hrs | Total Depth: {tableTotals.todayMtr || 0} m | Total Holes: {tableTotals.todayHoles || 0}</span>
             ) : (
-              <span>Total Amount: ₹ {totals.grandTotal.toLocaleString()}</span>
+              <span className="text-dark">Total Amount: ₹ {totals.grandTotal.toLocaleString()}</span>
             )}
           </div>
         </CCardHeader>
@@ -1104,6 +1364,122 @@ const SeparateWorkLogReport = () => {
                     <CTableDataCell colSpan={3}></CTableDataCell>
                     <CTableDataCell className="bg-warning-subtle text-warning">
                       {tableTotals.bulletUse || 0}
+                    </CTableDataCell>
+                    <CTableDataCell colSpan={2}></CTableDataCell>
+                  </CTableRow>
+                </CTableFoot>
+              </CTable>
+            </div>
+          ) : activeTab === 'tata' ? (
+            <div className="table-responsive" style={{ maxHeight: '70vh' }}>
+              <CTable bordered hover small align="middle" className="mb-0 text-center text-nowrap" style={{ fontSize: '13px' }}>
+                <CTableHead className="table-light sticky-top shadow-sm" style={{ zIndex: 10 }}>
+                  <CTableRow style={{ backgroundColor: '#0f766e', color: '#fff' }}>
+                    <CTableHeaderCell style={{ width: 40, backgroundColor: '#0f766e', color: '#fff' }}>S.No.</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Date</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Shift</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Site / Location</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Hole Type</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Machine No.</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#115e59', color: '#fff' }}>Open Reading (m)</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#115e59', color: '#fff' }}>Closing Reading (m)</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#115e59', color: '#fff' }}>Today Hours (hrs)</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Hole size</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Today Mtr (m)</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Total Mtr (Cum.)</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Operator Name</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Helper Name</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#115e59', color: '#fff' }}>Today Diesel Used (ltr)</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#115e59', color: '#fff' }}>Total Diesel Taken (Cum.)</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Today Holes</CTableHeaderCell>
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Total Holes (Cum.)</CTableHeaderCell>
+
+                    <CTableHeaderCell style={{ backgroundColor: '#0f766e', color: '#fff' }}>Action</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+
+                <CTableBody>
+                  {flattenedRows.map((row, idx) => (
+                    <CTableRow key={idx}>
+                      <CTableDataCell className="fw-semibold">{row.srNo}</CTableDataCell>
+                      <CTableDataCell>{row.date ? new Date(row.date).toLocaleDateString('en-GB') : '—'}</CTableDataCell>
+                      <CTableDataCell>{row.shift}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-start">{row.siteLocation || row.site}</CTableDataCell>
+                      <CTableDataCell>{row.holeType}</CTableDataCell>
+                      <CTableDataCell>{row.machineNo}</CTableDataCell>
+
+                      <CTableDataCell>{row.openReading}</CTableDataCell>
+                      <CTableDataCell>{row.closingReading}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-primary bg-primary-subtle">{row.todayHours}</CTableDataCell>
+
+                      <CTableDataCell>{row.holeSize}</CTableDataCell>
+                      <CTableDataCell className="fw-bold text-success bg-success-subtle">{row.todayMtr}</CTableDataCell>
+                      <CTableDataCell>{row.totalMtr}</CTableDataCell>
+
+                      <CTableDataCell className="text-start">{row.operator}</CTableDataCell>
+                      <CTableDataCell className="text-start">{row.helper}</CTableDataCell>
+
+                      <CTableDataCell className="fw-bold text-danger">{row.todayDieselUsed}</CTableDataCell>
+                      <CTableDataCell>{row.totalDieselTaken}</CTableDataCell>
+
+                      <CTableDataCell className="fw-bold" style={{ color: '#7c3aed' }}>{row.todayHoles}</CTableDataCell>
+                      <CTableDataCell>{row.totalHoles}</CTableDataCell>
+
+                      {row.isFirstRow && (
+                        <CTableDataCell rowSpan={row.rowSpan} className="bg-white">
+                          <div className="d-flex justify-content-center gap-1">
+                            <CButton
+                              color="primary"
+                              variant="ghost"
+                              size="sm"
+                              title="Edit Log"
+                              onClick={() => navigate(`/worklog?id=${row.drillingRecordId}&tab=tata`, { state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'tata' } })}
+                            >
+                              <CIcon icon={cilPencil} />
+                            </CButton>
+                            <CButton
+                              color="danger"
+                              variant="ghost"
+                              size="sm"
+                              title="Delete Log"
+                              onClick={() => confirmDelete(row.drillingRecordId)}
+                            >
+                              <CIcon icon={cilTrash} />
+                            </CButton>
+                          </div>
+                        </CTableDataCell>
+                      )}
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+
+                <CTableFoot className="table-light fw-bold" style={{ borderTop: '2px solid #cbd5e1' }}>
+                  <CTableRow>
+                    <CTableDataCell colSpan={8} className="text-end text-uppercase text-secondary pe-3">
+                      Total:
+                    </CTableDataCell>
+                    <CTableDataCell className="bg-primary-subtle text-primary">
+                      {tableTotals.todayHours || 0} hrs
+                    </CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell className="bg-success-subtle text-success">
+                      {tableTotals.todayMtr || 0} m
+                    </CTableDataCell>
+                    <CTableDataCell></CTableDataCell>
+                    <CTableDataCell colSpan={2}></CTableDataCell>
+                    <CTableDataCell className="bg-danger-subtle text-danger">
+                      {tableTotals.todayDieselUsed || 0} L
+                    </CTableDataCell>
+                    <CTableDataCell className="bg-info-subtle text-info">
+                      {tableTotals.totalDieselTaken || 0} L
+                    </CTableDataCell>
+                    <CTableDataCell style={{ color: '#7c3aed' }}>
+                      {tableTotals.todayHoles || 0}
                     </CTableDataCell>
                     <CTableDataCell colSpan={2}></CTableDataCell>
                   </CTableRow>

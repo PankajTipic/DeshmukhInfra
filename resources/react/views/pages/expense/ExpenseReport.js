@@ -1365,6 +1365,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { exportToPDF, downloadAllExpenseImages } from './exportToPDF';
 import { exportToExcel } from './exportToExcel';
+import { receiver_bank } from '../../../util/Feilds';
 
 // ─────────────────────────────────────────────────────────────
 // HELPER: resolve any photo_url to a usable <img src> / href
@@ -1417,6 +1418,7 @@ const ExpenseReport = () => {
   const [filteredPartyNames, setFilteredPartyNames] = useState([]);
   const [partySearchTerm, setPartySearchTerm] = useState('');
   const [showPartyDropdown, setShowPartyDropdown] = useState(false);
+  const [accountNumbers, setAccountNumbers] = useState([]);
 
   const [state, setState] = useState({
     start_date: '',
@@ -1424,6 +1426,8 @@ const ExpenseReport = () => {
     project_id: '',
     expense_type_id: '',
     party_name: '',
+    payment_by: '',
+    acc_number: '',
   });
 
   // Refs
@@ -1465,6 +1469,17 @@ const ExpenseReport = () => {
       setExpenseType(result);
     } catch (error) {
       showToast('danger', 'Error fetching expense types: ' + error);
+    }
+  };
+
+  const fetchAccountNumbers = async () => {
+    try {
+      const response = await getAPICall('/api/expense-account-numbers');
+      if (Array.isArray(response)) {
+        setAccountNumbers(response);
+      }
+    } catch (error) {
+      console.error('Error fetching account numbers:', error);
     }
   };
 
@@ -1522,6 +1537,8 @@ const ExpenseReport = () => {
       if (state.project_id)    params.append('customerId', state.project_id);
       if (state.expense_type_id) params.append('expenseTypeId', state.expense_type_id);
       if (state.party_name?.trim()) params.append('partyName', state.party_name.trim());
+      if (state.payment_by?.trim()) params.append('paymentBy', state.payment_by.trim());
+      if (state.acc_number?.trim()) params.append('accNumber', state.acc_number.trim());
       if (nextCursor && !reset) params.append('cursor', nextCursor);
 
       const response = await getAPICall(`/api/expense?${params.toString()}`);
@@ -1557,6 +1574,8 @@ const ExpenseReport = () => {
       const hasProjectFilter = Boolean(state.project_id && String(state.project_id).trim() !== '');
       const hasExpenseTypeFilter = Boolean(state.expense_type_id && String(state.expense_type_id).trim() !== '');
       const hasPartyFilter = Boolean((state.party_name && String(state.party_name).trim() !== '') || (partySearchTerm && partySearchTerm.trim() !== ''));
+      const hasPaymentByFilter = Boolean(state.payment_by && String(state.payment_by).trim() !== '');
+      const hasAccNumberFilter = Boolean(state.acc_number && String(state.acc_number).trim() !== '');
 
       // If user provided only one date
       if ((hasStartDate && !hasEndDate) || (!hasStartDate && hasEndDate)) {
@@ -1564,10 +1583,10 @@ const ExpenseReport = () => {
         return;
       }
 
-      if (!hasDateFilter && !hasProjectFilter && !hasExpenseTypeFilter && !hasPartyFilter) {
+      if (!hasDateFilter && !hasProjectFilter && !hasExpenseTypeFilter && !hasPartyFilter && !hasPaymentByFilter && !hasAccNumberFilter) {
         showToast(
           'warning',
-          'Please select at least one filter (Project, Date range, Expense Type, or Party Name) before submitting.'
+          'Please select at least one filter (Project, Date range, Expense Type, Party Name, Company Account, or Account Number) before submitting.'
         );
         return; // stop here — do not call API
       }
@@ -1755,6 +1774,32 @@ const ExpenseReport = () => {
 
   const handleDownloadAllImages = () => downloadAllExpenseImages(sortedFilteredExpenses, showToast);
 
+  const combinedAccountNumbers = useMemo(() => {
+    const set = new Set(accountNumbers.map(a => String(a).trim()).filter(Boolean));
+    expenses.forEach((e) => {
+      if (e.acc_number && String(e.acc_number).trim()) {
+        set.add(String(e.acc_number).trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [accountNumbers, expenses]);
+
+  const handleResetFilters = () => {
+    setState({
+      start_date: '',
+      end_date: '',
+      project_id: '',
+      expense_type_id: '',
+      party_name: '',
+      payment_by: '',
+      acc_number: '',
+    });
+    setPartySearchTerm('');
+    setGstFilter('');
+    setSearchTerm('');
+    setSearchInput('');
+  };
+
   // ── Derived data ───────────────────────────────────────────
   const sortedFilteredExpenses = useMemo(() => {
     let filtered = expenses.map((expense, index) => ({ ...expense, sr_no: index + 1 }));
@@ -1769,8 +1814,18 @@ const ExpenseReport = () => {
         e.desc?.toLowerCase().includes(s) ||
         e.payment_by?.toLowerCase().includes(s) ||
         e.payment_type?.toLowerCase().includes(s) ||
-        e.project?.project_name?.toLowerCase().includes(s)
+        e.project?.project_name?.toLowerCase().includes(s) ||
+        e.acc_number?.toLowerCase().includes(s) ||
+        e.bank_name?.toLowerCase().includes(s)
       );
+    }
+
+    if (state.payment_by) {
+      filtered = filtered.filter(e => (e.payment_by || '').trim().toLowerCase() === state.payment_by.trim().toLowerCase());
+    }
+
+    if (state.acc_number) {
+      filtered = filtered.filter(e => (e.acc_number || '').trim().toLowerCase() === state.acc_number.trim().toLowerCase());
     }
 
     if (gstFilter === 'gst')     filtered = filtered.filter(e => e.isGst === 1 || e.isGst === true);
@@ -1790,7 +1845,7 @@ const ExpenseReport = () => {
       if (aVal > bVal) return sortConfig.direction === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [expenses, searchTerm, sortConfig, expenseType, gstFilter]);
+  }, [expenses, searchTerm, sortConfig, expenseType, gstFilter, state.payment_by, state.acc_number]);
 
   const filteredTotalExpense = useMemo(() =>
     sortedFilteredExpenses.reduce((s, e) => s + parseFloat(e.total_price || 0), 0), [sortedFilteredExpenses]);
@@ -1812,6 +1867,7 @@ const ExpenseReport = () => {
     fetchProjects();
     fetchExpenseTypes();
     fetchPartyNames();
+    fetchAccountNumbers();
   }, []);
 
   useEffect(() => {
@@ -1945,11 +2001,11 @@ const ExpenseReport = () => {
             </CCardHeader>
             <CCardBody>
               <CForm noValidate validated={validated} onSubmit={handleSubmit}>
-                <div className="row">
-                  <div className="col-sm-3">
+                <div className="row g-2">
+                  <div className="col-md-3 col-sm-6">
                     <div className="mb-1">
                       <CFormLabel className="fw-bold">Project</CFormLabel>
-                      {/* <Select
+                      <Select
                         placeholder="Select or search project..."
                         options={projects.map(p => ({
                           value: p.id,
@@ -1968,55 +2024,33 @@ const ExpenseReport = () => {
                         onChange={opt => setState(prev => ({ ...prev, project_id: opt ? opt.value : '' }))}
                         isClearable
                         isSearchable
-                        styles={{ control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }) }}
-                      /> */}
-
-                      <Select
-  placeholder="Select or search project..."
-  options={projects.map(p => ({
-    value: p.id,
-    label: `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`,
-  }))}
-  value={projects.find(p => p.id === Number(state.project_id))
-    ? {
-        value: Number(state.project_id),
-        label: (() => {
-          const p = projects.find(p => p.id === Number(state.project_id));
-          return `${p.project_name}${p.customer_name ? ` - ${p.customer_name}` : ''}`;
-        })(),
-      }
-    : null
-  }
-  onChange={opt => setState(prev => ({ ...prev, project_id: opt ? opt.value : '' }))}
-  isClearable
-  isSearchable
-  menuPortalTarget={document.body}        // ← renders dropdown in body, above everything
-  menuPosition="fixed"                   // ← required alongside menuPortalTarget
-  styles={{
-    control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }),
-    menuPortal: base => ({ ...base, zIndex: 9999 }),   // ← above sticky header z-index:10
-  }}
-/>
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        styles={{
+                          control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }),
+                          menuPortal: base => ({ ...base, zIndex: 9999 }),
+                        }}
+                      />
                     </div>
                   </div>
 
-                  <div className="col-sm-2">
+                  <div className="col-md-2 col-sm-6">
                     <div className="mb-1">
-                      <CFormLabel htmlFor="start_date">Start Date</CFormLabel>
+                      <CFormLabel htmlFor="start_date" className="fw-bold">Start Date</CFormLabel>
                       <CFormInput type="date" id="start_date" name="start_date" value={state.start_date} onChange={handleChange} />
                     </div>
                   </div>
 
-                  <div className="col-sm-2">
+                  <div className="col-md-2 col-sm-6">
                     <div className="mb-1">
-                      <CFormLabel htmlFor="end_date">End Date</CFormLabel>
+                      <CFormLabel htmlFor="end_date" className="fw-bold">End Date</CFormLabel>
                       <CFormInput type="date" id="end_date" name="end_date" value={state.end_date} onChange={handleChange} />
                     </div>
                   </div>
 
-                  <div className="col-sm-3">
+                  <div className="col-md-2 col-sm-6">
                     <div className="mb-1">
-                      <CFormLabel htmlFor="expense_type_id">Expense Type</CFormLabel>
+                      <CFormLabel htmlFor="expense_type_id" className="fw-bold">Expense Type</CFormLabel>
                       <CFormSelect id="expense_type_id" name="expense_type_id" value={state.expense_type_id} onChange={handleChange}>
                         <option value="">All Expense Types</option>
                         {expenseTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -2024,33 +2058,78 @@ const ExpenseReport = () => {
                     </div>
                   </div>
 
-                  <div className="col-sm-3" ref={partyDropdownRef}>
-                    <CFormLabel>Party Name</CFormLabel>
-                    <div className="position-relative">
-                      <CFormInput
-                        type="text"
-                        placeholder="Search party name..."
-                        value={partySearchTerm}
-                        onChange={handlePartySearch}
-                        onFocus={() => setShowPartyDropdown(true)}
-                      />
-                      {showPartyDropdown && filteredPartyNames.length > 0 && (
-                        <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded"
-                             style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
-                          {filteredPartyNames.map((name, i) => (
-                            <div key={i} className="px-3 py-2" style={{ cursor: 'pointer' }} onClick={() => selectPartyName(name)}>
-                              {name}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="col-md-3 col-sm-6" ref={partyDropdownRef}>
+                    <div className="mb-1">
+                      <CFormLabel className="fw-bold">Party Name</CFormLabel>
+                      <div className="position-relative">
+                        <CFormInput
+                          type="text"
+                          placeholder="Search party name..."
+                          value={partySearchTerm}
+                          onChange={handlePartySearch}
+                          onFocus={() => setShowPartyDropdown(true)}
+                        />
+                        {showPartyDropdown && filteredPartyNames.length > 0 && (
+                          <div className="position-absolute w-100 bg-white border shadow-sm mt-1 rounded"
+                               style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1050 }}>
+                            {filteredPartyNames.map((name, i) => (
+                              <div key={i} className="px-3 py-2" style={{ cursor: 'pointer' }} onClick={() => selectPartyName(name)}>
+                                {name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="col-sm-2">
-                    <div className="mb-1 mt-4">
-                      <CButton color="success" type="submit" disabled={isLoading} className="w-100">
+                  <div className="col-md-4 col-sm-6">
+                    <div className="mb-1">
+                      <CFormLabel className="fw-bold">Company Account</CFormLabel>
+                      <Select
+                        placeholder="Select Company Account..."
+                        options={receiver_bank.map(bank => ({ value: bank.value, label: bank.label }))}
+                        value={receiver_bank.find(b => b.value === state.payment_by) ? { value: state.payment_by, label: state.payment_by } : (state.payment_by ? { value: state.payment_by, label: state.payment_by } : null)}
+                        onChange={opt => setState(prev => ({ ...prev, payment_by: opt ? opt.value : '' }))}
+                        isClearable
+                        isSearchable
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        styles={{
+                          control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }),
+                          menuPortal: base => ({ ...base, zIndex: 9999 }),
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-4 col-sm-6">
+                    <div className="mb-1">
+                      <CFormLabel className="fw-bold">Customer Account Number</CFormLabel>
+                      <Select
+                        placeholder="Search or select Account Number..."
+                        options={combinedAccountNumbers.map(acc => ({ value: acc, label: acc }))}
+                        value={state.acc_number ? { value: state.acc_number, label: state.acc_number } : null}
+                        onChange={opt => setState(prev => ({ ...prev, acc_number: opt ? opt.value : '' }))}
+                        isClearable
+                        isSearchable
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        styles={{
+                          control: base => ({ ...base, minHeight: '38px', borderColor: '#d1d5db' }),
+                          menuPortal: base => ({ ...base, zIndex: 9999 }),
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-4 col-sm-12">
+                    <div className="d-flex gap-2 mt-4">
+                      <CButton color="success" type="submit" disabled={isLoading} className="flex-fill">
                         {isLoading ? 'Loading...' : 'Submit'}
+                      </CButton>
+                      <CButton color="secondary" type="button" onClick={handleResetFilters} className="flex-fill">
+                        Reset
                       </CButton>
                     </div>
                   </div>

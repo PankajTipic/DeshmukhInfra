@@ -733,6 +733,15 @@ export const exportToExcel = (
     if (selectedExpenseType) {
       filterData.push(['Expense Type', selectedExpenseType.name]);
     }
+    if (state.party_name) {
+      filterData.push(['Party Name', state.party_name]);
+    }
+    if (state.payment_by) {
+      filterData.push(['Company Account', state.payment_by]);
+    }
+    if (state.acc_number) {
+      filterData.push(['Customer Account Number', state.acc_number]);
+    }
 
     XLSX.utils.sheet_add_aoa(worksheet, filterData, { origin: XLSX.utils.encode_cell({r: filterStartRow, c: 0}) });
 

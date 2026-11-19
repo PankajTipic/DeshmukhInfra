@@ -482,6 +482,7 @@ Route::get('/searchRawMaterials', [RawMaterialController::class, 'searchByName']
     Route::resource('expense',ExpenseController::class);
     Route::put('/expense/{id}', [ExpenseController::class, 'update']);
     Route::get('/party-names', [ExpenseController::class, 'getUniquePartyNames']);
+    Route::get('/expense-account-numbers', [ExpenseController::class, 'getUniqueAccountNumbers']);
     Route::resource('order',OrderController::class);
    Route::put('/order/{id}/cancel', [OrderController::class, 'cancelledOrder']);
 

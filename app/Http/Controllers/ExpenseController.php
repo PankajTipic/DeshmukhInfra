@@ -1477,6 +1477,8 @@ class ExpenseController extends Controller
         $customerId  = $request->query('customerId');
         $expenseTypeId = $request->query('expenseTypeId');
         $partyName   = $request->query('partyName');
+        $paymentBy   = $request->query('paymentBy') ?? $request->query('payment_by');
+        $accNumber   = $request->query('accNumber') ?? $request->query('acc_number');
         $perPage     = $request->query('perPage', 50);
         $cursor      = $request->query('cursor');
 
@@ -1495,12 +1497,14 @@ class ExpenseController extends Controller
             if ($expenseTypeId) $query->where('expense_id', $expenseTypeId);
             if ($customerId)    $query->where('project_id', $customerId);
             if ($partyName)     $query->where('party_name', 'like', '%' . $partyName . '%');
+            if ($paymentBy)     $query->where('payment_by', $paymentBy);
+            if ($accNumber)     $query->where('acc_number', 'like', '%' . $accNumber . '%');
 
             if ($startDate && $endDate) {
                 $query->whereBetween('expense_date', [$startDate, $endDate]);
             }
 
-            if (!$expenseTypeId && !$customerId && !$partyName && !($startDate && $endDate)) {
+            if (!$expenseTypeId && !$customerId && !$partyName && !$paymentBy && !$accNumber && !($startDate && $endDate)) {
                 return response()->json(['error' => 'Please provide at least one filter'], 422);
             }
 
@@ -1508,6 +1512,8 @@ class ExpenseController extends Controller
             if ($expenseTypeId) $summaryQuery->where('expense_id', $expenseTypeId);
             if ($customerId)    $summaryQuery->where('project_id', $customerId);
             if ($partyName)     $summaryQuery->where('party_name', 'like', '%' . $partyName . '%');
+            if ($paymentBy)     $summaryQuery->where('payment_by', $paymentBy);
+            if ($accNumber)     $summaryQuery->where('acc_number', 'like', '%' . $accNumber . '%');
             if ($startDate && $endDate) {
                 $summaryQuery->whereBetween('expense_date', [$startDate, $endDate]);
             }
@@ -2018,5 +2024,23 @@ class ExpenseController extends Controller
             ->pluck('party_name');
 
         return response()->json($partyNames);
+    }
+
+    public function getUniqueAccountNumbers()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $accountNumbers = Expense::where('company_id', $user->company_id)
+            ->whereNotNull('acc_number')
+            ->where('acc_number', '!=', '')
+            ->select('acc_number')
+            ->distinct()
+            ->orderBy('acc_number', 'asc')
+            ->pluck('acc_number');
+
+        return response()->json($accountNumbers);
     }
 }

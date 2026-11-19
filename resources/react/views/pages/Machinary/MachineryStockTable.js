@@ -38,14 +38,14 @@ function stockStatus(item) {
 
 
 /* ==================== RESPONSIVE MODAL ==================== */
-function Modal({ title, onClose, children, wide = false }) {
+function Modal({ title, onClose, children, wide = false, extraWide = false }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
     }}>
       <div style={{
-        background: '#fff', borderRadius: 14, width: '100%', maxWidth: wide ? 780 : 520,
+        background: '#fff', borderRadius: 14, width: '100%', maxWidth: extraWide ? 1080 : wide ? 780 : 520,
         maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 70px rgba(0,0,0,0.25)'
       }}>
         <div style={{
@@ -108,7 +108,48 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
   const [showTransfer, setShowTransfer] = useState(null);
   const [showHistory, setShowHistory] = useState(null);
 
-  const [addForm, setAddForm] = useState({ projectId: '', machineId: '', itemName: '', unit: 'NOS', initialQty: '', price: '', minQty: '', category: 'Consumable' });
+  const createEmptyStockRow = () => ({
+    id: Date.now() + Math.random(),
+    itemName: '',
+    category: 'Consumable',
+    unit: 'NOS',
+    initialQty: '',
+    price: '',
+    minQty: '',
+    remarks: '',
+  });
+
+  const [addBatchForm, setAddBatchForm] = useState({
+    projectId: '',
+    machineId: '',
+    items: [createEmptyStockRow()],
+  });
+
+  const addItemRow = () => {
+    setAddBatchForm(prev => ({
+      ...prev,
+      items: [...prev.items, createEmptyStockRow()],
+    }));
+  };
+
+  const removeItemRow = (index) => {
+    if (addBatchForm.items.length <= 1) {
+      return showToast('warning', 'At least one stock item row is required.');
+    }
+    setAddBatchForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setAddBatchForm(prev => {
+      const nextItems = [...prev.items];
+      nextItems[index] = { ...nextItems[index], [field]: value };
+      return { ...prev, items: nextItems };
+    });
+  };
+
   const [editForm, setEditForm] = useState({ projectId: '', machineId: '', itemName: '', unit: 'NOS', initialQty: '', price: '', minQty: '', category: 'Consumable' });
   const [usageForm, setUsageForm] = useState({ qty: '', note: '' });
   const [tfForm, setTfForm] = useState({ toProjectId: '', toMachineId: '', qty: '', note: '' });
@@ -124,35 +165,63 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
   const cats = [...new Set(stockMaster.map(s => s.category))];
 
   const submitAdd = async () => {
-    if (!addForm.projectId) {
+    if (!addBatchForm.projectId) {
       return showToast('warning', 'Please select a Project.');
     }
-    if (!addForm.machineId) {
+    if (!addBatchForm.machineId) {
       return showToast('warning', 'Please select a Machine.');
     }
-    if (!addForm.itemName || !addForm.itemName.trim()) {
-      return showToast('warning', 'Please enter Item Name.');
+    if (!addBatchForm.items || addBatchForm.items.length === 0) {
+      return showToast('warning', 'Please add at least one stock item.');
     }
-    if (addForm.initialQty === '' || addForm.initialQty === null || Number(addForm.initialQty) < 0) {
-      return showToast('warning', 'Please enter a valid Initial Quantity.');
+
+    for (let i = 0; i < addBatchForm.items.length; i++) {
+      const it = addBatchForm.items[i];
+      const rowNum = i + 1;
+      if (!it.itemName || !it.itemName.trim()) {
+        return showToast('warning', `Please enter Item Name in row #${rowNum}.`);
+      }
+      if (it.initialQty === '' || it.initialQty === null || Number(it.initialQty) <= 0) {
+        return showToast('warning', `Please enter a valid Initial Quantity (> 0) in row #${rowNum} ("${it.itemName || 'Item'}").`);
+      }
+      if (it.price !== '' && it.price !== null && Number(it.price) < 0) {
+        return showToast('warning', `Price cannot be negative in row #${rowNum}.`);
+      }
     }
+
     try {
-      await postAPICall('/api/machinery/stock', {
-        project_id: Number(addForm.projectId),
-        machine_id: Number(addForm.machineId),
-        item_name: addForm.itemName.trim(),
-        category: addForm.category,
-        unit: addForm.unit,
-        price: Number(addForm.price || 0),
-        initial_qty: Number(addForm.initialQty),
-        min_qty: Number(addForm.minQty || 0)
-      });
-      showToast('success', 'Stock item added successfully!');
+      const payload = {
+        project_id: Number(addBatchForm.projectId),
+        machine_id: Number(addBatchForm.machineId),
+        stock_items: addBatchForm.items.map(it => {
+          const qty = Number(it.initialQty) || 0;
+          const price = Number(it.price) || 0;
+          return {
+            stock_name: it.itemName.trim(),
+            category: it.category || 'Consumable',
+            unit: it.unit || 'NOS',
+            price: price,
+            issued_qty: qty,
+            used_qty: 0,
+            min_qty: (it.minQty !== '' && it.minQty !== null && Number(it.minQty) >= 0)
+              ? Number(it.minQty)
+              : (qty * 0.2),
+            remarks: it.remarks || 'Stock added',
+          };
+        }),
+      };
+
+      await postAPICall('/api/machinery/stock', payload);
+      showToast('success', `${addBatchForm.items.length} stock item(s) added successfully!`);
       setShowAdd(false);
-      setAddForm({ projectId: '', machineId: '', itemName: '', unit: 'NOS', initialQty: '', price: '', minQty: '', category: 'Consumable' });
+      setAddBatchForm({
+        projectId: '',
+        machineId: '',
+        items: [createEmptyStockRow()],
+      });
       onRefresh();
     } catch (err) {
-      const errMsg = err?.message || 'Failed to add stock item';
+      const errMsg = err?.message || 'Failed to add stock items';
       const cleanMsg = (errMsg.includes('SQLSTATE') || errMsg.includes('Integrity constraint') || errMsg.includes('machine_id'))
         ? 'Please select a valid Project and Machine.'
         : errMsg;
@@ -286,6 +355,151 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
     return m?.name || m?.machine_name || id;
   };
 
+  // Grouped machines & projects that currently have stock items
+  const machinesWithStock = useMemo(() => {
+    const map = {};
+    stockMaster.forEach(s => {
+      if (!s.machineId) return;
+      const mId = String(s.machineId);
+      if (!map[mId]) {
+        map[mId] = {
+          machineId: s.machineId,
+          projectId: s.projectId,
+          machineName: mach(s.machineId),
+          projectName: proj(s.projectId),
+          items: []
+        };
+      }
+      map[mId].items.push(s);
+    });
+    return Object.values(map);
+  }, [stockMaster, machines, projects]);
+
+  const projectsWithStock = useMemo(() => {
+    const map = {};
+    stockMaster.forEach(s => {
+      if (!s.projectId) return;
+      const pId = String(s.projectId);
+      if (!map[pId]) {
+        map[pId] = {
+          projectId: s.projectId,
+          projectName: proj(s.projectId),
+          items: []
+        };
+      }
+      map[pId].items.push(s);
+    });
+    return Object.values(map);
+  }, [stockMaster, projects]);
+
+  // Persisted copied stock in memory & localStorage
+  const [copiedStock, setCopiedStock] = useState(() => {
+    try {
+      const saved = localStorage.getItem('machinery_copied_stock');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const saveCopiedStock = (items, sourceLabel = '') => {
+    const formatted = items.map(s => ({
+      id: Date.now() + Math.random(),
+      itemName: s.itemName || s.stock_name || '',
+      category: s.category || 'Consumable',
+      unit: s.unit || 'NOS',
+      initialQty: s.initialQty != null ? s.initialQty : (s.currentQty != null ? s.currentQty : 1),
+      price: s.price != null ? s.price : 0,
+      minQty: s.minQty != null ? s.minQty : '',
+      remarks: s.remarks || '',
+    }));
+    const data = {
+      sourceLabel,
+      timestamp: new Date().toLocaleTimeString(),
+      items: formatted
+    };
+    setCopiedStock(data);
+    try {
+      localStorage.setItem('machinery_copied_stock', JSON.stringify(data));
+    } catch (e) {}
+    return formatted;
+  };
+
+  const handleCopyFromSource = (sourceKey) => {
+    if (!sourceKey) return;
+    let itemsToCopy = [];
+    let label = '';
+
+    if (sourceKey.startsWith('mach_')) {
+      const mId = Number(sourceKey.replace('mach_', ''));
+      itemsToCopy = stockMaster.filter(s => s.machineId === mId);
+      label = `Machine ${mach(mId)}`;
+    } else if (sourceKey.startsWith('proj_')) {
+      const pId = Number(sourceKey.replace('proj_', ''));
+      itemsToCopy = stockMaster.filter(s => s.projectId === pId);
+      label = `Project ${proj(pId)}`;
+    }
+
+    if (itemsToCopy.length === 0) {
+      return showToast('warning', `No stock items found for ${label}.`);
+    }
+
+    const formatted = saveCopiedStock(itemsToCopy, label);
+    setAddBatchForm(prev => ({
+      ...prev,
+      items: formatted.length > 0 ? formatted : [createEmptyStockRow()]
+    }));
+    showToast('success', `Copied ${itemsToCopy.length} items from ${label}!`);
+  };
+
+  const handleCopyMachineAndOpen = (machineId, projectId = '') => {
+    const itemsToCopy = stockMaster.filter(s => s.machineId === machineId);
+    const mName = mach(machineId);
+    if (itemsToCopy.length === 0) {
+      return showToast('warning', `Machine "${mName}" has no stock items to copy.`);
+    }
+
+    const formatted = saveCopiedStock(itemsToCopy, `Machine ${mName}`);
+    setAddBatchForm({
+      projectId: projectId || '',
+      machineId: '',
+      items: formatted
+    });
+    setShowAdd(true);
+    showToast('success', `Copied ${itemsToCopy.length} items from ${mName}! Select target Project & Machine.`);
+  };
+
+  const handlePasteCopiedStock = () => {
+    if (!copiedStock || !copiedStock.items || copiedStock.items.length === 0) {
+      return showToast('warning', 'No copied stock items found in clipboard.');
+    }
+    const freshItems = copiedStock.items.map(it => ({
+      ...it,
+      id: Date.now() + Math.random()
+    }));
+    setAddBatchForm(prev => ({
+      ...prev,
+      items: freshItems
+    }));
+    showToast('success', `Pasted ${freshItems.length} items from ${copiedStock.sourceLabel || 'previous copy'}!`);
+  };
+
+  const duplicateItemRow = (index) => {
+    const itemToDup = addBatchForm.items[index];
+    if (!itemToDup) return;
+    const duplicated = {
+      ...itemToDup,
+      id: Date.now() + Math.random(),
+      itemName: `${itemToDup.itemName} (Copy)`
+    };
+    setAddBatchForm(prev => {
+      const nextItems = [...prev.items];
+      nextItems.splice(index + 1, 0, duplicated);
+      return { ...prev, items: nextItems };
+    });
+    showToast('info', 'Row duplicated');
+  };
+
 
 
 
@@ -323,7 +537,41 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
             {cats.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <button
-            onClick={() => setShowAdd(true)}
+            onClick={() => {
+              if (copiedStock && copiedStock.items && copiedStock.items.length > 0) {
+                setAddBatchForm({
+                  projectId: filterProject || '',
+                  machineId: '',
+                  items: copiedStock.items.map(it => ({ ...it, id: Date.now() + Math.random() }))
+                });
+                showToast('info', `Opened with ${copiedStock.items.length} copied items from ${copiedStock.sourceLabel || 'previous copy'}`);
+              } else {
+                setAddBatchForm({
+                  projectId: filterProject || '',
+                  machineId: '',
+                  items: [createEmptyStockRow()]
+                });
+              }
+              setShowAdd(true);
+            }}
+            style={{
+              padding: '10px 18px', background: '#0284C7', color: '#fff',
+              border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer',
+              whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6
+            }}
+            title={copiedStock ? `Clone ${copiedStock.items?.length || 0} copied items` : 'Copy/Clone stock from another machine'}
+          >
+            <span>📋</span> Copy / Clone Stock
+          </button>
+          <button
+            onClick={() => {
+              setAddBatchForm({
+                projectId: filterProject || '',
+                machineId: '',
+                items: [createEmptyStockRow()]
+              });
+              setShowAdd(true);
+            }}
             style={{
               padding: '10px 20px', background: '#0F172A', color: '#fff',
               border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer',
@@ -401,6 +649,14 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
                         <Btn small onClick={() => { setShowUsage(s); setUsageForm({ qty: '', note: '' }); }}>Use</Btn>
                         <Btn small gray onClick={() => { setShowTransfer(s); setTfForm({ toProjectId: '', qty: '', note: '' }); }}>Transfer</Btn>
                         <Btn small gray onClick={() => openHistory(s)}>History</Btn>
+                        <Btn
+                          small
+                          onClick={() => handleCopyMachineAndOpen(s.machineId, s.projectId)}
+                          title={`Copy all stock items of machine ${mach(s.machineId)} to a new machine`}
+                          style={{ background: '#0284C7', color: '#fff' }}
+                        >
+                          Copy
+                        </Btn>
                         <Btn small onClick={() => {
                           setShowEdit(s);
                           setEditForm({
@@ -461,99 +717,376 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
         )}
 
         {showAdd && (
-          <Modal title="Add New Stock Item" onClose={() => setShowAdd(false)}>
-            <FRow label="Project *">
-              <select style={sel} value={addForm.projectId} onChange={e => setAddForm({ ...addForm, projectId: e.target.value })}>
-                <option value="">Select Project</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name || p.project_name}</option>)}
-              </select>
-            </FRow>
-            <FRow label="Machine *">
-              <select style={sel} value={addForm.machineId} onChange={e => setAddForm({ ...addForm, machineId: e.target.value })}>
-                <option value="">Select Machine</option>
-                {machines.map(m => <option key={m.id} value={m.id}>{m.name || m.machine_name}</option>)}
-              </select>
-            </FRow>
-            <FRow label="Item Name *">
-              <input type="text" placeholder="e.g. Engine Oil, Drilling Bit" style={inp} value={addForm.itemName} onChange={e => setAddForm({ ...addForm, itemName: e.target.value })} />
-            </FRow>
-            <FRow label="Category *">
-              <select style={sel} value={addForm.category} onChange={e => setAddForm({ ...addForm, category: e.target.value })}>
-                <option value="Consumable">Consumable</option>
-                <option value="Spare Part">SparePart</option>
-                <option value="Tool">Tool</option>
-                <option value="Lubricant">Lubricant</option>
-              </select>
-            </FRow>
-            <FRow label="Unit *">
-              <select style={sel} value={addForm.unit} onChange={e => setAddForm({ ...addForm, unit: e.target.value })}>
-                <option value="NOS">NOS</option>
-                <option value="SET">SET</option>
-                <option value="LTR">LTR</option>
-                <option value="KG">KG</option>
-                <option value="MTR">MTR</option>
-              </select>
-            </FRow>
-            <FRow label="Initial Qty *">
-              <input type="number" min="0" onKeyDown={(e) => {
-                if (
-                  e.key === '-' ||
-                  e.key === 'e' ||
-                  e.key === 'E'
-                ) {
-                  e.preventDefault();
-                }
-              }}
-                placeholder="e.g. 10" style={inp} value={addForm.initialQty} onChange={e => setAddForm({ ...addForm, initialQty: e.target.value })} />
-            </FRow>
-            <FRow label="Price per Unit (₹)">
-              <input type="number" min="0" step="any" onKeyDown={(e) => {
-                if (
-                  e.key === '-' ||
-                  e.key === 'e' ||
-                  e.key === 'E'
-                ) {
-                  e.preventDefault();
-                }
-              }}
-                placeholder="e.g. 100" style={inp} value={addForm.price} onChange={e => setAddForm({ ...addForm, price: e.target.value })} />
-            </FRow>
-            {(Number(addForm.initialQty) > 0 || Number(addForm.price) > 0) && (
-              <div style={{
-                background: '#F0FDF4',
-                border: '1.5px solid #BBF7D0',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 14,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
+          <Modal extraWide title="Add Machinery Stock (Multiple Items)" onClose={() => setShowAdd(false)}>
+            {/* Top Section: Project & Machine Selectors */}
+            <div style={{
+              background: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: 10,
+              padding: '16px 18px',
+              marginBottom: 16
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                1. Select Target Project & Machinery
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                 <div>
-                  <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Price (Qty × Price)</span>
-                  <div style={{ fontSize: 13, color: '#15803D', fontWeight: 600 }}>
-                    {addForm.initialQty || 0} {addForm.unit || 'unit'} × ₹{addForm.price || 0}
-                  </div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>
+                    Project *
+                  </label>
+                  <select
+                    style={{ ...sel, background: '#fff' }}
+                    value={addBatchForm.projectId}
+                    onChange={e => setAddBatchForm(prev => ({ ...prev, projectId: e.target.value }))}
+                  >
+                    <option value="">-- Select Project --</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name || p.project_name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#166534' }}>
-                  ₹{((Number(addForm.initialQty) || 0) * (Number(addForm.price) || 0)).toLocaleString('en-IN')}
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', display: 'block', marginBottom: 6 }}>
+                    Machinery *
+                  </label>
+                  <select
+                    style={{ ...sel, background: '#fff' }}
+                    value={addBatchForm.machineId}
+                    onChange={e => setAddBatchForm(prev => ({ ...prev, machineId: e.target.value }))}
+                  >
+                    <option value="">-- Select Machine --</option>
+                    {machines.map(m => (
+                      <option key={m.id} value={m.id}>{m.name || m.machine_name} {m.reg_number ? `(${m.reg_number})` : ''}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            )}
-            <FRow label="Min Qty (Low Alert Level)">
-              <input type="number" onKeyDown={(e) => {
-                if (
-                  e.key === '-' ||
-                  e.key === 'e' ||
-                  e.key === 'E'
-                ) {
-                  e.preventDefault();
-                }
-              }} min="0" placeholder="e.g. 2" style={inp} value={addForm.minQty} onChange={e => setAddForm({ ...addForm, minQty: e.target.value })} />
-            </FRow>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+            </div>
+
+            {/* Quick Copy / Clone from Existing Machine or Project */}
+            <div style={{
+              background: '#F0F9FF',
+              border: '1.5px solid #BAE6FD',
+              borderRadius: 10,
+              padding: '12px 16px',
+              marginBottom: 20,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0369A1', textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>
+                  📋 Copy From Existing Source:
+                </span>
+                <select
+                  style={{ ...sel, background: '#fff', padding: '6px 12px', fontSize: 13, minWidth: 260, flex: 1, maxWidth: 420 }}
+                  onChange={e => {
+                    if (e.target.value) {
+                      handleCopyFromSource(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">-- Select Machine or Project to Copy Items --</option>
+                  {machinesWithStock.length > 0 && (
+                    <optgroup label="── Copy From Machinery ──">
+                      {machinesWithStock.map(m => (
+                        <option key={`m_${m.machineId}`} value={`mach_${m.machineId}`}>
+                          🚜 {m.machineName} ({m.items.length} items) — {m.projectName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {projectsWithStock.length > 0 && (
+                    <optgroup label="── Copy From Project ──">
+                      {projectsWithStock.map(p => (
+                        <option key={`p_${p.projectId}`} value={`proj_${p.projectId}`}>
+                          🏗️ {p.projectName} ({p.items.length} items)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {copiedStock && copiedStock.items && copiedStock.items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handlePasteCopiedStock}
+                  style={{
+                    padding: '7px 14px',
+                    background: '#0284C7',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 4px rgba(2,132,199,0.25)'
+                  }}
+                  title={`Paste ${copiedStock.items.length} items copied from ${copiedStock.sourceLabel || 'previous copy'}`}
+                >
+                  <span>📋</span> Paste Copied Items ({copiedStock.items.length})
+                </button>
+              )}
+            </div>
+
+            {/* Middle Section: Items Table */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    2. Stock Items List ({addBatchForm.items.length})
+                  </span>
+                  <div style={{ fontSize: 12, color: '#64748B' }}>
+                    Add one or more stock items, consumables, spare parts, or lubricants for this machine.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  style={{
+                    padding: '8px 14px',
+                    background: '#2563EB',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 2px 4px rgba(37,99,235,0.2)'
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>+</span> Add Item
+                </button>
+              </div>
+
+              <div style={{ overflowX: 'auto', border: '1.5px solid #E2E8F0', borderRadius: 8, background: '#fff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 920 }}>
+                  <thead>
+                    <tr style={{ background: '#F1F5F9', borderBottom: '1.5px solid #E2E8F0', color: '#475569', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 10px', width: 40, textAlign: 'center' }}>#</th>
+                      <th style={{ padding: '10px 10px', minWidth: 200 }}>Item Name *</th>
+                      <th style={{ padding: '10px 10px', width: 140 }}>Category *</th>
+                      <th style={{ padding: '10px 10px', width: 90 }}>Unit *</th>
+                      <th style={{ padding: '10px 10px', width: 110 }}>Initial Qty *</th>
+                      <th style={{ padding: '10px 10px', width: 110 }}>Price/Unit (₹)</th>
+                      <th style={{ padding: '10px 10px', width: 110, textAlign: 'right' }}>Total (₹)</th>
+                      <th style={{ padding: '10px 10px', width: 100 }}>Min Alert</th>
+                      <th style={{ padding: '10px 10px', width: 75, textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {addBatchForm.items.map((row, idx) => {
+                      const qty = Number(row.initialQty) || 0;
+                      const pr = Number(row.price) || 0;
+                      const lineTotal = qty * pr;
+
+                      return (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#94A3B8' }}>
+                            {idx + 1}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <input
+                              type="text"
+                              placeholder="e.g. Engine Oil, Hammer"
+                              style={{ ...inp, padding: '7px 10px', fontSize: 13 }}
+                              value={row.itemName}
+                              onChange={e => handleItemChange(idx, 'itemName', e.target.value)}
+                            />
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <select
+                              style={{ ...sel, padding: '7px 10px', fontSize: 13 }}
+                              value={row.category}
+                              onChange={e => handleItemChange(idx, 'category', e.target.value)}
+                            >
+                              <option value="Consumable">Consumable</option>
+                              <option value="Spare Part">Spare Part</option>
+                              <option value="Tool">Tool</option>
+                              <option value="Lubricant">Lubricant</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <select
+                              style={{ ...sel, padding: '7px 10px', fontSize: 13 }}
+                              value={row.unit}
+                              onChange={e => handleItemChange(idx, 'unit', e.target.value)}
+                            >
+                              <option value="NOS">NOS</option>
+                              <option value="SET">SET</option>
+                              <option value="LTR">LTR</option>
+                              <option value="KG">KG</option>
+                              <option value="MTR">MTR</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              onKeyDown={e => {
+                                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                              }}
+                              placeholder="Qty"
+                              style={{ ...inp, padding: '7px 10px', fontSize: 13, textAlign: 'center' }}
+                              value={row.initialQty}
+                              onChange={e => handleItemChange(idx, 'initialQty', e.target.value)}
+                            />
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              onKeyDown={e => {
+                                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                              }}
+                              placeholder="₹ 0.00"
+                              style={{ ...inp, padding: '7px 10px', fontSize: 13, textAlign: 'right' }}
+                              value={row.price}
+                              onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                            />
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#166534' }}>
+                            ₹{lineTotal.toLocaleString('en-IN')}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              onKeyDown={e => {
+                                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                              }}
+                              placeholder="Auto 20%"
+                              style={{ ...inp, padding: '7px 10px', fontSize: 13, textAlign: 'center' }}
+                              value={row.minQty}
+                              onChange={e => handleItemChange(idx, 'minQty', e.target.value)}
+                            />
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => duplicateItemRow(idx)}
+                              title="Duplicate / Copy this row"
+                              style={{
+                                background: '#EFF6FF',
+                                color: '#2563EB',
+                                border: 'none',
+                                borderRadius: 6,
+                                width: 28,
+                                height: 28,
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginRight: 4
+                              }}
+                            >
+                              📄
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeItemRow(idx)}
+                              disabled={addBatchForm.items.length <= 1}
+                              title={addBatchForm.items.length <= 1 ? "At least one row required" : "Delete Row"}
+                              style={{
+                                background: addBatchForm.items.length <= 1 ? '#F1F5F9' : '#FEE2E2',
+                                color: addBatchForm.items.length <= 1 ? '#94A3B8' : '#DC2626',
+                                border: 'none',
+                                borderRadius: 6,
+                                width: 28,
+                                height: 28,
+                                cursor: addBatchForm.items.length <= 1 ? 'not-allowed' : 'pointer',
+                                fontSize: 13,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add item row button below table */}
+              <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-start' }}>
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#EFF6FF',
+                    color: '#2563EB',
+                    border: '1.5px dashed #93C5FD',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>+</span> Add Row
+                </button>
+              </div>
+            </div>
+
+            {/* Valuation & Summary Bar */}
+            <div style={{
+              background: '#F0FDF4',
+              border: '1.5px solid #BBF7D0',
+              borderRadius: 8,
+              padding: '12px 18px',
+              marginBottom: 20,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Total Items
+                </span>
+                <div style={{ fontSize: 14, color: '#15803D', fontWeight: 700 }}>
+                  {addBatchForm.items.length} {addBatchForm.items.length === 1 ? 'Stock Item' : 'Stock Items'}
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Grand Total Stock Valuation
+                </span>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#166534' }}>
+                  ₹{addBatchForm.items.reduce((sum, it) => sum + ((Number(it.initialQty) || 0) * (Number(it.price) || 0)), 0).toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <Btn gray onClick={() => setShowAdd(false)}>Cancel</Btn>
-              <Btn onClick={submitAdd}>Save Item</Btn>
+              <Btn onClick={submitAdd}>Save All Items</Btn>
             </div>
           </Modal>
         )}

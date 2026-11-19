@@ -132,4 +132,14 @@ public function rotary_details()
 {
     return $this->hasMany(RotaryDetail::class, 'drilling_record_id');
 }
+
+public function tataDetails()
+{
+    return $this->hasMany(TataDetail::class, 'drilling_record_id');
+}
+
+public function tata_details()
+{
+    return $this->hasMany(TataDetail::class, 'drilling_record_id');
+}
 }

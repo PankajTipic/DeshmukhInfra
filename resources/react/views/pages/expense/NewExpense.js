@@ -1336,9 +1336,7 @@ const confirmSubmitAllExpenses = async () => {
 
 
                 {/* New Fields - Conditionally Rendered */}
-                {(state.payment_type === "imps"  ||
- state.payment_type === "rtgs" ||
- state.payment_type === "NEFT") && (
+                {(['imps', 'rtgs', 'neft'].includes((state.payment_type || '').toLowerCase())) && (
                   <div className="row">
                     {/* Bank Name */}
                     <div className="col-sm-3">
