@@ -254,6 +254,7 @@ export const downloadWorkLogExcel = ({
   let staticSurveyTotalSum = 0
   let staticSurveyHrsSum = 0
   let staticSurveyDieselSum = 0
+  let materialUsedQtySum = 0
   let grandTotalSum = 0
 
   let dataRows = []
@@ -309,11 +310,12 @@ export const downloadWorkLogExcel = ({
       const isRotary = rec.tab_type === 'rotary' || rotDetails.length > 0
       const tataDetails = rec.tata_details || rec.tataDetails || []
       const isTata = rec.tab_type === 'tata' || tataDetails.length > 0
+      const rawMaterials = rec.uses_raw_material || rec.raw_materials || []
 
       // Rows for this record: driven by machine and compressor readings, since work & survey are in columns
       const totalRecRows = isRotary
         ? Math.max(rotDetails.length, 1)
-        : (isTata ? Math.max(tataDetails.length, 1) : Math.max(effectiveMachine.length, effectiveCompressor.length, 1))
+        : (isTata ? Math.max(tataDetails.length, 1) : Math.max(effectiveMachine.length, effectiveCompressor.length, rawMaterials.length, 1))
 
       for (let i = 0; i < totalRecRows; i++) {
         const rowObj = {}
@@ -450,6 +452,11 @@ export const downloadWorkLogExcel = ({
 
           compressorDieselFilledSum += (parseFloat(compressorRpm.diesel_filled) || 0)
           compressorDieselUsedSum += (parseFloat(compressorRpm.diesel_used) || 0)
+
+          const mat = rawMaterials[i] || {}
+          rowObj.materialName = mat.material?.name || mat.raw_material?.name || mat.material_name || ''
+          rowObj.materialUsedQty = mat.used_qty ?? mat.used_quantity ?? ''
+          materialUsedQtySum += (parseFloat(mat.used_qty ?? mat.used_quantity) || 0)
 
           let recordWorkTotal = 0
 
@@ -677,6 +684,9 @@ export const downloadWorkLogExcel = ({
 
       const rowTot = recWorkTot + recSurveyTot
       rowObj.rowTotal = rowTot || ''
+      rowObj.materialName = baseRow.materialName || ''
+      rowObj.materialUsedQty = baseRow.materialUsedQty || ''
+      materialUsedQtySum += (parseFloat(baseRow.materialUsedQty) || 0)
       grandTotalSum += rowTot
 
       dataRows.push(rowObj)
@@ -763,6 +773,12 @@ export const downloadWorkLogExcel = ({
       C('Survey', 'Diesel', 10, 'num', (r) => num(r.surveyDiesel), () => num(staticSurveyDieselSum || T.surveyDiesel))
     )
   }
+
+  // Raw Material columns
+  cols.push(
+    C('Raw Material', 'Material Name', 14, 'text', (r) => txt(r.materialName)),
+    C('Raw Material', 'Used Qty', 10, 'num', (r) => num(r.materialUsedQty), () => num(materialUsedQtySum)),
+  )
 
   // Grand Total column
   cols.push(
@@ -978,6 +994,10 @@ export const downloadWorkLogPDF = ({
     C('Survey', 'Total', (r) => fmt(r.surveyTotal), () => fmt(T.surveyTotal)),
     C('Survey', 'Hours', (r) => fmt(r.surveyHrs), () => fmt(T.surveyHrs)),
     C('Survey', 'Diesel', (r) => fmt(r.surveyDiesel), () => fmt(T.surveyDiesel)),
+
+    // Raw Material
+    C('Raw Material', 'Material', (r) => txt(r.materialName), undefined, 'left'),
+    C('Raw Material', 'Used Qty', (r) => fmt(r.materialUsedQty)),
 
     // Grand total
     C('Total', 'Grand Total', (r) => fmt(r.rowTotal), () => fmt(T.grandTotal)),
@@ -1278,6 +1298,7 @@ export const downloadDrillingExcel = ({
   let staticSurveyTotalSum = 0
   let staticSurveyHrsSum = 0
   let staticSurveyDieselSum = 0
+  let materialUsedQtySum = 0
   let grandTotalSum = 0
 
   let dataRows = []
@@ -1334,11 +1355,13 @@ export const downloadDrillingExcel = ({
         }] : []
       )
 
-      const totalRecRows = Math.max(effectiveMachine.length, effectiveCompressor.length, 1)
+      const rawMaterials = rec.uses_raw_material || rec.raw_materials || []
+      const totalRecRows = Math.max(effectiveMachine.length, effectiveCompressor.length, rawMaterials.length, 1)
 
       for (let i = 0; i < totalRecRows; i++) {
         const machine = effectiveMachine[i] || {}
         const compressorRpm = effectiveCompressor[i] || {}
+        const mat = rawMaterials[i] || {}
         const rowObj = {}
 
         rowObj.srNo = i === 0 ? globalSrNo : ''
@@ -1370,6 +1393,10 @@ export const downloadDrillingExcel = ({
 
         compressorDieselFilledSum += (parseFloat(compressorRpm.diesel_filled) || 0)
         compressorDieselUsedSum += (parseFloat(compressorRpm.diesel_used) || 0)
+
+        rowObj.materialName = mat.material?.name || mat.raw_material?.name || mat.material_name || ''
+        rowObj.materialUsedQty = mat.used_qty ?? mat.used_quantity ?? ''
+        materialUsedQtySum += (parseFloat(mat.used_qty ?? mat.used_quantity) || 0)
 
         let recordWorkTotal = 0
 
@@ -1591,6 +1618,9 @@ export const downloadDrillingExcel = ({
 
       const rowTot = recWorkTot + recSurveyTot
       rowObj.rowTotal = rowTot || ''
+      rowObj.materialName = baseRow.materialName || ''
+      rowObj.materialUsedQty = baseRow.materialUsedQty || ''
+      materialUsedQtySum += (parseFloat(baseRow.materialUsedQty) || 0)
       grandTotalSum += rowTot
 
       dataRows.push(rowObj)
@@ -1675,6 +1705,12 @@ export const downloadDrillingExcel = ({
       C('Survey', 'Diesel', 10, 'num', (r) => num(r.surveyDiesel), () => num(staticSurveyDieselSum || T.surveyDiesel))
     )
   }
+
+  // Raw Material columns
+  cols.push(
+    C('Raw Material', 'Material Name', 14, 'text', (r) => txt(r.materialName)),
+    C('Raw Material', 'Used Qty', 10, 'num', (r) => num(r.materialUsedQty), () => num(materialUsedQtySum)),
+  )
 
   cols.push(
     C('Grand', 'Grand Total', 14, 'num', (r) => num(r.rowTotal), () => num(grandTotalSum || T.grandTotal))
@@ -1878,6 +1914,10 @@ export const downloadDrillingPDF = ({
     C('Survey', 'Total', (r) => fmt(r.surveyTotal), () => fmt(T.surveyTotal)),
     C('Survey', 'Hours', (r) => fmt(r.surveyHrs), () => fmt(T.surveyHrs)),
     C('Survey', 'Diesel', (r) => fmt(r.surveyDiesel), () => fmt(T.surveyDiesel)),
+
+    // Raw Material
+    C('Raw Material', 'Material', (r) => txt(r.materialName), undefined, 'left'),
+    C('Raw Material', 'Used Qty', (r) => fmt(r.materialUsedQty)),
 
     C('Total', 'Grand Total', (r) => fmt(r.rowTotal), () => fmt(T.grandTotal)),
   ]
@@ -2219,6 +2259,10 @@ export const downloadCastingExcel = ({
         compressorDieselFilledSum += (parseFloat(compressorRpm.diesel_filled) || 0)
         compressorDieselUsedSum += (parseFloat(compressorRpm.diesel_used) || 0)
 
+        rowObj.materialName = mat.material?.name || mat.raw_material?.name || mat.material_name || ''
+        rowObj.materialUsedQty = mat.used_qty ?? mat.used_quantity ?? ''
+        materialUsedQtySum += (parseFloat(mat.used_qty ?? mat.used_quantity) || 0)
+
         let recordWorkTotal = 0
 
         dynamicWorkTypes.forEach((wt) => {
@@ -2263,9 +2307,9 @@ export const downloadCastingExcel = ({
           }
         })
 
-        rowObj.materialName = mat.raw_material?.name || mat.material_name || ''
-        rowObj.materialUsedQty = mat.used_quantity ?? ''
-        materialUsedQtySum += (parseFloat(mat.used_quantity) || 0)
+        rowObj.materialName = mat.material?.name || mat.raw_material?.name || mat.material_name || ''
+        rowObj.materialUsedQty = mat.used_qty ?? mat.used_quantity ?? ''
+        materialUsedQtySum += (parseFloat(mat.used_qty ?? mat.used_quantity) || 0)
 
         const rowTot = i === 0 ? recordWorkTotal : 0
         rowObj.rowTotal = rowTot || ''

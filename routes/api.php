@@ -461,6 +461,10 @@ Route::group(['middleware'=>['auth:sanctum']], function(){
     Route::post('/uploadCSVRawMaterial', [RawMaterialController::class, 'uploadCsvRawMaterial']);
 Route::post('/uploadBulk', [RawMaterialController::class, 'bulkUpdate']);
     Route::get('/raw-materials/{id}/logs', [RawMaterialController::class, 'getMaterialLogs']);
+    Route::get('/raw-materials/{project_id}', function (\Illuminate\Http\Request $request, $project_id) {
+        $request->merge(['project_id' => $project_id]);
+        return app(\App\Http\Controllers\RawMaterialController::class)->getMaterialByProject($request);
+    });
     Route::post('/raw-materials/add-quantity', [RawMaterialController::class, 'addQuantity']);
 Route::post('/raw-materials/used-quantity', [RawMaterialController::class, 'usedQuantity']);
     Route::put('/company/{id}/toggle-blocks', [CompanyInfoController::class, 'toggleBlockStatus']);

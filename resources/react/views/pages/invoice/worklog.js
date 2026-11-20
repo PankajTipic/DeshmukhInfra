@@ -5,7 +5,7 @@ import {
   CInputGroup, CInputGroupText, CBadge,
   CNav, CNavItem, CNavLink
 } from '@coreui/react';
-import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilSearch, cilPeople, cilInfo } from '@coreui/icons';
+import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilSearch, cilPeople, cilInfo, cilTrash, cilPlus } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { getAPICall, post, put } from '../../../util/api';
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
@@ -361,23 +361,56 @@ const MachineUsageForm = () => {
         const data = res?.data || res;
         if (!data) return;
 
+        let projectObj = data.project;
+        if (!projectObj && data.project_id) {
+          try {
+            const pRes = await getAPICall(`/api/projects/${data.project_id}`);
+            const pData = pRes?.data || pRes;
+            if (pData) projectObj = pData;
+          } catch (e) {}
+        }
+
+        const supId = data.supervisor_id ||
+          data.supervisor?.id ||
+          data.site_engineer_id ||
+          projectObj?.supervisor_id ||
+          projectObj?.supervisor?.id ||
+          '';
+
+        const supName = data.supervisor?.name ||
+          data.supervisor_name ||
+          data.site_engineer ||
+          projectObj?.supervisor?.name ||
+          projectObj?.supervisor_name ||
+          '';
+
+        if (supId && supName) {
+          setSupervisors(prev => {
+            if (prev.some(s => String(s.value) === String(supId))) return prev;
+            return [...prev, { value: supId, label: supName }];
+          });
+        }
+
         setProjectInfo({
-          project_id: data.project_id || '',
-          project_name: data.project?.project_name || data.site_name || '',
-          supervisor_id: data.supervisor_id || data.project?.supervisor_id || '',
+          project_id: data.project_id || (projectObj?.id || ''),
+          project_name: projectObj?.project_name || data.project?.project_name || data.site_name || '',
+          supervisor_id: supId ? String(supId) : '',
           date: data.date || '',
         });
 
-        if (data.project) {
-          setSelectedProjectDetails(data.project);
-          setSearchQuery(data.project.project_name || '');
+        if (projectObj) {
+          setSelectedProjectDetails(projectObj);
+          setSearchQuery(projectObj.project_name || '');
         }
 
         const rotDetails = data.rotary_details || data.rotaryDetails || [];
         const isRot = data.tab_type === 'rotary' || rotDetails.length > 0;
         const tataDetails = data.tata_details || data.tataDetails || [];
         const isTata = data.tab_type === 'tata' || tataDetails.length > 0;
-        const finalTab = isTata ? 'tata' : (isRot ? 'rotary' : (data.tab_type === 'casting' ? 'casting' : (targetTab || 'drilling')));
+        const isCasting = data.tab_type === 'casting' || targetTab === 'casting' ||
+          (data.work_points && data.work_points.some(w => (w.work_type || '').toLowerCase().includes('casting'))) ||
+          (data.work_point_detail && data.work_point_detail.some(w => (w.work_type || '').toLowerCase().includes('casting')));
+        const finalTab = isTata ? 'tata' : (isRot ? 'rotary' : (isCasting ? 'casting' : (targetTab || 'drilling')));
         setActiveTab(finalTab);
 
         if (isTata && tataDetails.length > 0) {
@@ -464,7 +497,86 @@ const MachineUsageForm = () => {
             ...prev,
             rotary: [createInitialRotaryRow(data.date || '', data.supervisor_id || '', '')],
           }));
+  } else if (finalTab === 'casting' || finalTab === 'drilling') {
+          const mapWorkDetails = (data.work_points || data.work_point_detail || []).map(w => ({
+            operator_id: w.operator_id != null ? Number(w.operator_id) : '',
+            workType: w.work_type || '',
+            drilling_type: w.drilling_type || '',
+            uom: w.uom || '',
+            workPoints: w.work_point != null ? w.work_point : '',
+            rate: w.rate != null ? w.rate : '',
+            total: w.total != null ? Number(w.total) : (Number(w.work_point || 0) * Number(w.rate || 0)),
+            diesel: w.diesel ?? '',
+            hrs: w.hrs ?? '',
+          }));
+
+          const mapSurveys = (data.surveys || data.survey_detail || []).map(s => ({
+            operator_id: s.operator_id != null ? Number(s.operator_id) : '',
+            survey_type: s.survey_type || '',
+            uom: s.uom || '',
+            survey_point: s.survey_point != null ? s.survey_point : '',
+            rate: s.rate != null ? s.rate : '',
+            total: s.total != null ? Number(s.total) : (Number(s.survey_point || 0) * Number(s.rate || 0)),
+            diesel: s.diesel ?? '',
+            hrs: s.hrs ?? '',
+          }));
+
+          const mapMaterials = (data.uses_raw_material || data.raw_material_usage || data.raw_materials || []).map(r => ({
+            material_id: r.material_id || null,
+            material_type: r.material?.name || r.material_type || r.material_name || '',
+            available_qty: parseFloat(r.available_qty) || 0,
+            received_qty: r.received_qty != null ? r.received_qty : '',
+            qty_used: r.used_qty != null ? r.used_qty : (r.qty_used != null ? r.qty_used : ''),
+            balance_qty: parseFloat(r.balance_qty) || 0,
+            unit: r.material?.unit || r.unit || 'Ton',
+          }));
+
+          const mapMachineReading = (data.machine_reading || data.machine_readings || []).map(m => ({
+            oprator_id: m.oprator_id != null ? Number(m.oprator_id) : '',
+            machine_id: m.machine_id != null ? Number(m.machine_id) : '',
+            machine_start: m.machine_start ?? '',
+            machine_end: m.machine_end ?? '',
+            actual_machine_hr: m.actual_machine_hr != null ? Number(m.actual_machine_hr) : 0,
+            diesel_filled: m.diesel_filled ?? '',
+            diesel_used: m.diesel_used ?? '',
+            diesel_balance: m.diesel_balance ?? 0,
+            diesel_avg: m.diesel_avg ?? 0,
+          }));
+
+          const mapCompressorReading = (data.compressor_rpm || []).map(c => ({
+            oprator_id: c.oprator_id != null ? Number(c.oprator_id) : '',
+            machine_id: c.machine_id != null ? Number(c.machine_id) : '',
+            comp_rpm_start: c.comp_rpm_start ?? '',
+            comp_rpm_end: c.comp_rpm_end ?? '',
+            com_actul_hr: c.com_actul_hr != null ? Number(c.com_actul_hr) : 0,
+            diesel_filled: c.diesel_filled ?? '',
+            diesel_used: c.diesel_used ?? '',
+            diesel_balance: c.diesel_balance ?? 0,
+            diesel_avg: c.diesel_avg ?? 0,
+          }));
+
+          const sectionData = {
+            start_time: data.start_time || '',
+            end_time: data.end_time || '',
+            break_time: data.break_time || '',
+            net_hours: data.net_hours != null ? Number(data.net_hours) : 0,
+            casting_team_name: data.casting_team_name || '',
+            casting_team_no: data.casting_team_no || '',
+            helper_id: data.helper_id != null ? Number(data.helper_id) : '',
+            machineReading: mapMachineReading.length > 0 ? mapMachineReading : createInitialSectionState().machineReading,
+            compressorReading: mapCompressorReading.length > 0 ? mapCompressorReading : createInitialSectionState().compressorReading,
+            workDetails: mapWorkDetails.length > 0 ? mapWorkDetails : createInitialSectionState().workDetails,
+            surveys: mapSurveys.length > 0 ? mapSurveys : createInitialSectionState().surveys,
+            rawMaterials: mapMaterials.length > 0 ? mapMaterials : createInitialSectionState().rawMaterials,
+            totalBill: data.totalBill != null ? Number(data.totalBill) : 0,
         }
+
+          setTabData(prev => ({
+            ...prev,
+            [finalTab]: sectionData,
+          }));
+        }
+
       } catch (err) {
         console.error("Error fetching record for editing:", err);
       }
@@ -597,7 +709,6 @@ const MachineUsageForm = () => {
       };
     });
   };
-
   /**
    * CENTRAL RECALCULATION:
    * Calculates diesel filled, used, balance and avg across ALL readings
@@ -1997,7 +2108,7 @@ const MachineUsageForm = () => {
         setSuccessMessage(`${title} work log ${editId ? 'updated' : 'submitted'} successfully!`);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
-        navigate((activeTab === 'rotary' || activeTab === 'tata') ? '/separateWorkLogReport' : '/infraDetailsShowTable');
+        navigate('/infraDetailsShowTable');
       }
     } catch (error) {
       console.error("Error saving data", error);
@@ -2139,7 +2250,7 @@ const MachineUsageForm = () => {
                           supervisors.find(s => String(s.value) === String(projectInfo.supervisor_id)) ||
                           (projectInfo.supervisor_id ? {
                             value: projectInfo.supervisor_id,
-                            label: selectedProjectDetails?.supervisor_name || selectedProjectDetails?.supervisor?.name || 'Selected Supervisor'
+                            label: selectedProjectDetails?.supervisor?.name || selectedProjectDetails?.supervisor_name || 'Selected Supervisor'
                           } : null)
                         }
                         onChange={(selected) => setProjectInfo(prev => ({
@@ -3005,344 +3116,596 @@ const MachineUsageForm = () => {
               </CCard>
               )}
 
-              {/* Work Details */}
-              <CCard className="mb-4 border-0" color="warning" textColor="dark">
-                <CCardBody className="bg-warning-subtle rounded rounded-lg">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="text-warning mb-0 d-flex align-items-center fw-bold">
-                      <CIcon icon={cilCalculator} className="me-2" /> 4. Work Details ({activeTab === 'drilling' ? 'Drilling' : 'Casting'})
-                    </h5>
-                    <CButton color="warning" variant="outline" onClick={addWorkDetail}>
-                      Add Work
-                    </CButton>
+                            {/* Work Details Section */}
+              <div
+                className="mb-4 rounded-3 p-3 p-md-4 shadow-sm"
+                style={{
+                  backgroundColor: '#fffdf5',
+                  border: '1.5px solid #fde68a',
+                  borderLeft: '5px solid #f59e0b',
+                }}
+              >
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div className="d-flex align-items-center">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded me-2 shadow-sm"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        backgroundColor: '#fef3c7',
+                        color: '#d97706',
+                        borderRadius: '8px',
+                      }}
+                    >
+                      <CIcon icon={cilCalculator} size="sm" />
+                    </div>
+                    <div>
+                      <h5 className="mb-0 fw-bold" style={{ color: '#b45309', fontSize: '18px' }}>
+                        4. Work Details ({activeTab === 'drilling' ? 'Drilling' : 'Casting'})
+                      </h5>
+                      <span className="text-secondary small">
+                        Define work points, rate per point, work hours, and diesel consumption
+                      </span>
+                    </div>
                   </div>
+                  <CButton
+                    style={{
+                      backgroundColor: '#f59e0b',
+                      borderColor: '#f59e0b',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                    }}
+                    className="d-flex align-items-center shadow-sm px-3 py-2"
+                    onClick={addWorkDetail}
+                  >
+                    <CIcon icon={cilPlus} className="me-1" /> + Add Work Row
+                  </CButton>
+                </div>
 
-                  {currentTab.workDetails.map((work, index) => (
-                    <CRow key={index} className="align-items-center mb-2">
-                      <CCol md={2}>
-                        <CFormLabel>Oprator</CFormLabel>
-                        <Select
-                          options={operators}
-                          isSearchable
-                          placeholder="Select Oprator..."
-                          value={operators.find((op) => op.value === work.operator_id) || null}
-                          onChange={(selected) =>
-                            handleWorkDetailChange(index, "operator_id", selected ? selected.value : "")
-                          }
-                        />
-                      </CCol>
+                {/* List of Work Detail Items */}
+                <div className="d-flex flex-column gap-3">
+                  {currentTab.workDetails.map((work, index) => {
+                    const lineTotal = Number(work.total || 0);
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-3 p-3 bg-white"
+                        style={{
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        {/* Header of Item Row */}
+                        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                          <div className="d-flex align-items-center gap-2">
+                            <span
+                              className="badge fw-semibold"
+                              style={{
+                                backgroundColor: '#fef3c7',
+                                color: '#92400e',
+                                fontSize: '12px',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              #{index + 1} Work Detail
+                            </span>
+                            {work.workType && (
+                              <span className="text-secondary small fw-semibold">
+                                {work.workType} {work.drilling_type ? `• ${work.drilling_type}` : ''} {work.uom ? `(${work.uom})` : ''}
+                              </span>
+                            )}
+                          </div>
+                          <div className="d-flex align-items-center gap-3">
+                            <span className="fw-bold text-success" style={{ fontSize: '15px' }}>
+                              Total: ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            {currentTab.workDetails.length > 1 && (
+                              <CButton
+                                color="danger"
+                                variant="ghost"
+                                size="sm"
+                                className="p-1 text-danger"
+                                onClick={() => removeWorkDetail(index)}
+                                title="Remove this row"
+                                style={{ borderRadius: '6px' }}
+                              >
+                                <CIcon icon={cilTrash} size="sm" />
+                              </CButton>
+                            )}
+                          </div>
+                        </div>
 
-                      <CCol lg={2}>
-                        <CFormLabel>Work Type</CFormLabel>
-                        <CFormSelect
-                          value={work.workType}
-                          onChange={(e) =>
-                            handleWorkDetailChange(index, "workType", e.target.value)
-                          }
-                        >
-                          <option value="">Select Work Type</option>
-                          {workTypes.map((type) => (
-                            <option key={type.id} value={type.name}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </CFormSelect>
-                      </CCol>
+                        {/* Row 1: Identification & Selects */}
+                        <CRow className="g-3 mb-2">
+                          <CCol xs={12} sm={6} md={activeTab === 'drilling' ? 3 : 4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Operator <span className="text-danger">*</span>
+                            </CFormLabel>
+                            <Select
+                              options={operators}
+                              isSearchable
+                              placeholder="Select Operator..."
+                              value={operators.find((op) => op.value === work.operator_id) || null}
+                              onChange={(selected) =>
+                                handleWorkDetailChange(index, "operator_id", selected ? selected.value : "")
+                              }
+                              styles={{
+                                control: (base) => ({
+                                  ...base,
+                                  minHeight: '40px',
+                                  height: '40px',
+                                  borderRadius: '8px',
+                                  borderColor: '#cbd5e1',
+                                  fontSize: '13px',
+                                }),
+                              }}
+                            />
+                          </CCol>
 
-                      <CCol lg={2}>
-                        <CFormLabel>Drilling Type (Optional)</CFormLabel>
-                        <CFormSelect
-                          value={work.drilling_type || ""}
-                          onChange={(e) =>
-                            handleWorkDetailChange(index, "drilling_type", e.target.value)
-                          }
-                        >
-                          <option value="">Select Drilling Type</option>
-                          <option value="Hard">Hard</option>
-                          <option value="Very Hard">Very Hard</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Soft">Soft</option>
-                        </CFormSelect>
-                      </CCol>
+                          <CCol xs={12} sm={6} md={activeTab === 'drilling' ? 3 : 4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Work Type <span className="text-danger">*</span>
+                            </CFormLabel>
+                            <CFormSelect
+                              value={work.workType}
+                              onChange={(e) => handleWorkDetailChange(index, "workType", e.target.value)}
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            >
+                              <option value="">Select Work Type</option>
+                              {workTypes.map((type) => (
+                                <option key={type.id} value={type.name}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </CFormSelect>
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>UOM</CFormLabel>
-                        <CFormSelect
-                          value={work.uom}
-                          onChange={(e) =>
-                            handleWorkDetailChange(index, "uom", e.target.value)
-                          }
-                        >
-                          <option value="">Select UOM</option>
-                          {uoms.map((type) => (
-                            <option key={type.id} value={type.name}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </CFormSelect>
-                      </CCol>
+                          {activeTab === 'drilling' && (
+                            <CCol xs={12} sm={6} md={3}>
+                              <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                                Drilling Type (Optional)
+                              </CFormLabel>
+                              <CFormSelect
+                                value={work.drilling_type || ""}
+                                onChange={(e) => handleWorkDetailChange(index, "drilling_type", e.target.value)}
+                                style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              >
+                                <option value="">Select Drilling Type</option>
+                                <option value="Hard">Hard</option>
+                                <option value="Very Hard">Very Hard</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Soft">Soft</option>
+                              </CFormSelect>
+                            </CCol>
+                          )}
 
-                      <CCol lg={1}>
-                        <CFormLabel>Points</CFormLabel>
-                        <CFormInput
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={work.workPoints === 0 ? "" : work.workPoints}
-                          placeholder="0"
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, "");
-                            handleWorkDetailChange(
-                              index,
-                              "workPoints",
-                              val === "" ? 0 : Number(val)
-                            );
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={12} sm={6} md={activeTab === 'drilling' ? 3 : 4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              UOM
+                            </CFormLabel>
+                            <CFormSelect
+                              value={work.uom}
+                              onChange={(e) => handleWorkDetailChange(index, "uom", e.target.value)}
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            >
+                              <option value="">Select UOM</option>
+                              {uoms.map((type) => (
+                                <option key={type.id} value={type.name}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </CFormSelect>
+                          </CCol>
+                        </CRow>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Rate</CFormLabel>
-                        <CInputGroup>
-                          <CInputGroupText className="px-1">₹</CInputGroupText>
-                          <CFormInput
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={work.rate === 0 ? "" : work.rate}
-                            placeholder="0"
-                            className="px-1"
-                            onChange={(e) => {
-                              let val = e.target.value.replace(/\D/g, "");
-                              handleWorkDetailChange(
-                                index,
-                                "rate",
-                                val === "" ? 0 : Number(val)
-                              );
-                            }}
-                          />
-                        </CInputGroup>
-                      </CCol>
+                        {/* Row 2: Quantities, Rates & Metrics */}
+                        <CRow className="g-3 align-items-end">
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Points / Qty
+                            </CFormLabel>
+                            <CFormInput
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={work.workPoints === 0 ? "" : work.workPoints}
+                              placeholder="0"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1', textAlign: 'center' }}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, "");
+                                handleWorkDetailChange(
+                                  index,
+                                  "workPoints",
+                                  val === "" ? 0 : Number(val)
+                                );
+                              }}
+                            />
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Total</CFormLabel>
-                        <CFormInput
-                          value={Number(work.total || 0).toFixed(2)}
-                          readOnly
-                          className="bg-light fw-bold px-1"
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Rate (₹)
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CInputGroupText style={{ height: '40px', borderRadius: '8px 0 0 8px', fontSize: '13px', backgroundColor: '#f8fafc' }}>
+                                ₹
+                              </CInputGroupText>
+                              <CFormInput
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={work.rate === 0 ? "" : work.rate}
+                                placeholder="0"
+                                style={{ height: '40px', borderRadius: '0 8px 8px 0', fontSize: '13px', borderColor: '#cbd5e1' }}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, "");
+                                  handleWorkDetailChange(
+                                    index,
+                                    "rate",
+                                    val === "" ? 0 : Number(val)
+                                  );
+                                }}
+                              />
+                            </CInputGroup>
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Diesel</CFormLabel>
-                        <CFormInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={work.diesel}
-                          placeholder="0"
-                          onChange={(e) => {
-                            if (e.target.value >= 0) {
-                              handleWorkDetailChange(index, "diesel", e.target.value);
-                            }
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Subtotal
+                            </CFormLabel>
+                            <CFormInput
+                              value={`₹ ${lineTotal.toFixed(2)}`}
+                              readOnly
+                              className="bg-success-subtle text-success fw-bold text-center"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#86efac' }}
+                            />
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Hrs</CFormLabel>
-                        <CFormInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={work.hrs}
-                          placeholder="0"
-                          onChange={(e) => {
-                            if (e.target.value >= 0) {
-                              handleWorkDetailChange(index, "hrs", e.target.value);
-                            }
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={6} md={3}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Work Hours (Hrs)
+                            </CFormLabel>
+                            <CFormInput
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={work.hrs}
+                              placeholder="0.00"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                if (e.target.value >= 0) {
+                                  handleWorkDetailChange(index, "hrs", e.target.value);
+                                }
+                              }}
+                            />
+                          </CCol>
 
-                      {currentTab.workDetails.length > 1 && (
-                        <CCol xs="auto">
-                          <CButton
-                            color="danger"
-                            variant="ghost"
-                            size="sm"
-                            className="mt-4"
-                            onClick={() => removeWorkDetail(index)}
-                          >
-                            <CIcon icon={cilX} />
-                          </CButton>
-                        </CCol>
-                      )}
-                    </CRow>
-                  ))}
-                </CCardBody>
-              </CCard>
+                          <CCol xs={12} sm={6} md={3}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Diesel Consumed (L)
+                            </CFormLabel>
+                            <CFormInput
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={work.diesel}
+                              placeholder="0.00"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                if (e.target.value >= 0) {
+                                  handleWorkDetailChange(index, "diesel", e.target.value);
+                                }
+                              }}
+                            />
+                          </CCol>
+                        </CRow>
+                      </div>
+                    );
+                  })}
+                </div>
 
-              {/* Survey Details */}
-              <CCard className="mb-4 border-0" color="info" textColor="dark">
-                <CCardBody className="bg-info-subtle rounded rounded-lg">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="text-info mb-0 d-flex align-items-center fw-bold">
-                      <CIcon icon={cilLocationPin} className="me-2" /> 5. Survey Details ({activeTab === 'drilling' ? 'Drilling' : 'Casting'})
-                    </h5>
-                    <CButton color="info" variant="outline" onClick={addSurvey}>
-                      Add Survey
-                    </CButton>
+                {/* Work Details Summary Footer */}
+                <div
+                  className="mt-3 p-2 px-3 rounded-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+                  style={{ backgroundColor: '#fef3c7', border: '1px solid #fde68a' }}
+                >
+                  <span className="small fw-semibold text-dark">
+                    Work Rows: <span className="text-primary">{currentTab.workDetails.length}</span> | Total Points: <span className="text-primary">{currentTab.workDetails.reduce((sum, w) => sum + (Number(w.workPoints) || 0), 0)}</span> | Total Hours: <span className="text-primary">{currentTab.workDetails.reduce((sum, w) => sum + (parseFloat(w.hrs) || 0), 0).toFixed(2)} hrs</span> | Total Diesel: <span className="text-primary">{currentTab.workDetails.reduce((sum, w) => sum + (parseFloat(w.diesel) || 0), 0).toFixed(2)} L</span>
+                  </span>
+                  <span className="fw-bold text-success" style={{ fontSize: '14px' }}>
+                    Work Amount: ₹{currentTab.workDetails.reduce((sum, w) => sum + (Number(w.total) || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Survey Details Section */}
+              <div
+                className="mb-4 rounded-3 p-3 p-md-4 shadow-sm"
+                style={{
+                  backgroundColor: '#f0fdfa',
+                  border: '1.5px solid #99f6e4',
+                  borderLeft: '5px solid #0d9488',
+                }}
+              >
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div className="d-flex align-items-center">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded me-2 shadow-sm"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        backgroundColor: '#ccfbf1',
+                        color: '#0f766e',
+                        borderRadius: '8px',
+                      }}
+                    >
+                      <CIcon icon={cilLocationPin} size="sm" />
+                    </div>
+                    <div>
+                      <h5 className="mb-0 fw-bold" style={{ color: '#0f766e', fontSize: '18px' }}>
+                        5. Survey Details ({activeTab === 'drilling' ? 'Drilling' : 'Casting'})
+                      </h5>
+                      <span className="text-secondary small">
+                        Track land and progress survey activities, points, and survey team hours
+                      </span>
+                    </div>
                   </div>
+                  <CButton
+                    style={{
+                      backgroundColor: '#0d9488',
+                      borderColor: '#0d9488',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                    }}
+                    className="d-flex align-items-center shadow-sm px-3 py-2"
+                    onClick={addSurvey}
+                  >
+                    <CIcon icon={cilPlus} className="me-1" /> + Add Survey Row
+                  </CButton>
+                </div>
 
-                  {currentTab.surveys.map((survey, index) => (
-                    <CRow key={index} className="align-items-center mb-2">
-                      <CCol md={2}>
-                        <CFormLabel>Oprator</CFormLabel>
-                        <Select
-                          options={operators}
-                          isSearchable
-                          placeholder="Select Oprator..."
-                          value={operators.find((op) => op.value === survey.operator_id) || null}
-                          onChange={(selected) =>
-                            handleSurveyChange(index, "operator_id", selected ? selected.value : "")
-                          }
-                        />
-                      </CCol>
+                {/* List of Survey Items */}
+                <div className="d-flex flex-column gap-3">
+                  {currentTab.surveys.map((survey, index) => {
+                    const lineTotal = Number(survey.total || 0);
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-3 p-3 bg-white"
+                        style={{
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        {/* Header of Item Row */}
+                        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                          <div className="d-flex align-items-center gap-2">
+                            <span
+                              className="badge fw-semibold"
+                              style={{
+                                backgroundColor: '#ccfbf1',
+                                color: '#0f766e',
+                                fontSize: '12px',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              #{index + 1} Survey Detail
+                            </span>
+                            {survey.survey_type && (
+                              <span className="text-secondary small fw-semibold">
+                                {survey.survey_type} {survey.uom ? `(${survey.uom})` : ''}
+                              </span>
+                            )}
+                          </div>
+                          <div className="d-flex align-items-center gap-3">
+                            <span className="fw-bold text-success" style={{ fontSize: '15px' }}>
+                              Total: ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            {currentTab.surveys.length > 1 && (
+                              <CButton
+                                color="danger"
+                                variant="ghost"
+                                size="sm"
+                                className="p-1 text-danger"
+                                onClick={() => removeSurvey(index)}
+                                title="Remove this row"
+                                style={{ borderRadius: '6px' }}
+                              >
+                                <CIcon icon={cilTrash} size="sm" />
+                              </CButton>
+                            )}
+                          </div>
+                        </div>
 
-                      <CCol lg={2}>
-                        <CFormLabel>Survey Type</CFormLabel>
-                        <CFormSelect
-                          value={survey.survey_type}
-                          onChange={(e) =>
-                            handleSurveyChange(index, "survey_type", e.target.value)
-                          }
-                        >
-                          <option value="">Select Survey Type</option>
-                          {surveyTypes.map((type) => (
-                            <option key={type.id} value={type.name}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </CFormSelect>
-                      </CCol>
+                        {/* Row 1: Identification */}
+                        <CRow className="g-3 mb-2">
+                          <CCol xs={12} sm={6} md={4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Operator <span className="text-danger">*</span>
+                            </CFormLabel>
+                            <Select
+                              options={operators}
+                              isSearchable
+                              placeholder="Select Operator..."
+                              value={operators.find((op) => op.value === survey.operator_id) || null}
+                              onChange={(selected) =>
+                                handleSurveyChange(index, "operator_id", selected ? selected.value : "")
+                              }
+                              styles={{
+                                control: (base) => ({
+                                  ...base,
+                                  minHeight: '40px',
+                                  height: '40px',
+                                  borderRadius: '8px',
+                                  borderColor: '#cbd5e1',
+                                  fontSize: '13px',
+                                }),
+                              }}
+                            />
+                          </CCol>
 
-                      <CCol lg={2}>
-                        <CFormLabel>UOM</CFormLabel>
-                        <CFormSelect
-                          value={survey.uom}
-                          onChange={(e) =>
-                            handleSurveyChange(index, "uom", e.target.value)
-                          }
-                        >
-                          <option value="">Select UOM</option>
-                          {uoms.map((type) => (
-                            <option key={type.id} value={type.name}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </CFormSelect>
-                      </CCol>
+                          <CCol xs={12} sm={6} md={4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Survey Type <span className="text-danger">*</span>
+                            </CFormLabel>
+                            <CFormSelect
+                              value={survey.survey_type}
+                              onChange={(e) => handleSurveyChange(index, "survey_type", e.target.value)}
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            >
+                              <option value="">Select Survey Type</option>
+                              {surveyTypes.map((type) => (
+                                <option key={type.id} value={type.name}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </CFormSelect>
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Points</CFormLabel>
-                        <CFormInput
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={survey.survey_point === 0 ? "" : survey.survey_point}
-                          placeholder="0"
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, "");
-                            handleSurveyChange(
-                              index,
-                              "survey_point",
-                              val === "" ? 0 : Number(val)
-                            );
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={12} sm={6} md={4}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              UOM
+                            </CFormLabel>
+                            <CFormSelect
+                              value={survey.uom}
+                              onChange={(e) => handleSurveyChange(index, "uom", e.target.value)}
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            >
+                              <option value="">Select UOM</option>
+                              {uoms.map((type) => (
+                                <option key={type.id} value={type.name}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </CFormSelect>
+                          </CCol>
+                        </CRow>
 
-                      <CCol lg={2}>
-                        <CFormLabel>Rate</CFormLabel>
-                        <CInputGroup>
-                          <CInputGroupText>₹</CInputGroupText>
-                          <CFormInput
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={survey.rate === 0 ? "" : survey.rate}
-                            placeholder="0"
-                            onChange={(e) => {
-                              let val = e.target.value.replace(/\D/g, "");
-                              handleSurveyChange(
-                                index,
-                                "rate",
-                                val === "" ? 0 : Number(val)
-                              );
-                            }}
-                          />
-                        </CInputGroup>
-                      </CCol>
+                        {/* Row 2: Metrics */}
+                        <CRow className="g-3 align-items-end">
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Points
+                            </CFormLabel>
+                            <CFormInput
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={survey.survey_point === 0 ? "" : survey.survey_point}
+                              placeholder="0"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1', textAlign: 'center' }}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, "");
+                                handleSurveyChange(
+                                  index,
+                                  "survey_point",
+                                  val === "" ? 0 : Number(val)
+                                );
+                              }}
+                            />
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Total</CFormLabel>
-                        <CFormInput
-                          value={Number(survey.total || 0).toFixed(2)}
-                          readOnly
-                          className="bg-light fw-bold px-1"
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Rate (₹)
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CInputGroupText style={{ height: '40px', borderRadius: '8px 0 0 8px', fontSize: '13px', backgroundColor: '#f8fafc' }}>
+                                ₹
+                              </CInputGroupText>
+                              <CFormInput
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={survey.rate === 0 ? "" : survey.rate}
+                                placeholder="0"
+                                style={{ height: '40px', borderRadius: '0 8px 8px 0', fontSize: '13px', borderColor: '#cbd5e1' }}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, "");
+                                  handleSurveyChange(
+                                    index,
+                                    "rate",
+                                    val === "" ? 0 : Number(val)
+                                  );
+                                }}
+                              />
+                            </CInputGroup>
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Diesel</CFormLabel>
-                        <CFormInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={survey.diesel}
-                          placeholder="0"
-                          onChange={(e) => {
-                            if (e.target.value >= 0) {
-                              handleSurveyChange(index, "diesel", e.target.value);
-                            }
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={4} md={2}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Subtotal
+                            </CFormLabel>
+                            <CFormInput
+                              value={`₹ ${lineTotal.toFixed(2)}`}
+                              readOnly
+                              className="bg-info-subtle text-info fw-bold text-center"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#7dd3fc' }}
+                            />
+                          </CCol>
 
-                      <CCol lg={1}>
-                        <CFormLabel>Hrs</CFormLabel>
-                        <CFormInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={survey.hrs}
-                          placeholder="0"
-                          onChange={(e) => {
-                            if (e.target.value >= 0) {
-                              handleSurveyChange(index, "hrs", e.target.value);
-                            }
-                          }}
-                        />
-                      </CCol>
+                          <CCol xs={6} sm={6} md={3}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Hours (Hrs)
+                            </CFormLabel>
+                            <CFormInput
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={survey.hrs}
+                              placeholder="0.00"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                if (e.target.value >= 0) {
+                                  handleSurveyChange(index, "hrs", e.target.value);
+                                }
+                              }}
+                            />
+                          </CCol>
 
-                      <CCol lg={1}>
-                        {currentTab.surveys.length > 1 && (
-                          <CButton
-                            color="danger"
-                            variant="ghost"
-                            size="sm"
-                            className="mt-4"
-                            onClick={() => removeSurvey(index)}
-                          >
-                            <CIcon icon={cilX} />
-                          </CButton>
-                        )}
-                      </CCol>
-                    </CRow>
-                  ))}
-                </CCardBody>
-              </CCard>
+                          <CCol xs={12} sm={6} md={3}>
+                            <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                              Diesel Consumed (L)
+                            </CFormLabel>
+                            <CFormInput
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={survey.diesel}
+                              placeholder="0.00"
+                              style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                if (e.target.value >= 0) {
+                                  handleSurveyChange(index, "diesel", e.target.value);
+                                }
+                              }}
+                            />
+                          </CCol>
+                        </CRow>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Survey Details Summary Footer */}
+                <div
+                  className="mt-3 p-2 px-3 rounded-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+                  style={{ backgroundColor: '#ccfbf1', border: '1px solid #99f6e4' }}
+                >
+                  <span className="small fw-semibold text-dark">
+                    Survey Rows: <span className="text-teal">{currentTab.surveys.length}</span> | Total Points: <span className="text-teal">{currentTab.surveys.reduce((sum, s) => sum + (Number(s.survey_point) || 0), 0)}</span> | Total Hours: <span className="text-teal">{currentTab.surveys.reduce((sum, s) => sum + (parseFloat(s.hrs) || 0), 0).toFixed(2)} hrs</span> | Total Diesel: <span className="text-teal">{currentTab.surveys.reduce((sum, s) => sum + (parseFloat(s.diesel) || 0), 0).toFixed(2)} L</span>
+                  </span>
+                  <span className="fw-bold text-success" style={{ fontSize: '14px' }}>
+                    Survey Amount: ₹{currentTab.surveys.reduce((sum, s) => sum + (Number(s.total) || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
 
               {/* Material Management Section - matching design screenshot */}
               <div

@@ -445,11 +445,27 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
     }
 
     const formatted = saveCopiedStock(itemsToCopy, label);
-    setAddBatchForm(prev => ({
-      ...prev,
-      items: formatted.length > 0 ? formatted : [createEmptyStockRow()]
-    }));
-    showToast('success', `Copied ${itemsToCopy.length} items from ${label}!`);
+    setAddBatchForm(prev => {
+      const isRowNotEmpty = (r) => Boolean(
+        (r.itemName && String(r.itemName).trim()) ||
+        (r.initialQty !== '' && r.initialQty != null) ||
+        (r.price !== '' && r.price != null) ||
+        (r.minQty !== '' && r.minQty != null) ||
+        (r.remarks && String(r.remarks).trim())
+      );
+      const existingRows = (prev.items || []).filter(isRowNotEmpty);
+      const itemsToAdd = formatted.map(it => ({
+        ...it,
+        id: Date.now() + Math.random()
+      }));
+      return {
+        ...prev,
+        items: existingRows.length > 0
+          ? [...existingRows, ...itemsToAdd]
+          : (itemsToAdd.length > 0 ? itemsToAdd : [createEmptyStockRow()])
+      };
+    });
+    showToast('success', `Added ${itemsToCopy.length} items from ${label}!`);
   };
 
   const handleCopyMachineAndOpen = (machineId, projectId = '') => {
@@ -477,11 +493,21 @@ function StockMasterTab({ state, onRefresh, openDeleteModal }) {
       ...it,
       id: Date.now() + Math.random()
     }));
-    setAddBatchForm(prev => ({
-      ...prev,
-      items: freshItems
-    }));
-    showToast('success', `Pasted ${freshItems.length} items from ${copiedStock.sourceLabel || 'previous copy'}!`);
+    setAddBatchForm(prev => {
+      const isRowNotEmpty = (r) => Boolean(
+        (r.itemName && String(r.itemName).trim()) ||
+        (r.initialQty !== '' && r.initialQty != null) ||
+        (r.price !== '' && r.price != null) ||
+        (r.minQty !== '' && r.minQty != null) ||
+        (r.remarks && String(r.remarks).trim())
+      );
+      const existingRows = (prev.items || []).filter(isRowNotEmpty);
+      return {
+        ...prev,
+        items: existingRows.length > 0 ? [...existingRows, ...freshItems] : freshItems
+      };
+    });
+    showToast('success', `Pasted ${freshItems.length} items below existing rows!`);
   };
 
   const duplicateItemRow = (index) => {

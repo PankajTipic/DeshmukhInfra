@@ -239,7 +239,6 @@ if ($request->has('raw_material_usage') && is_array($request->raw_material_usage
                 'drilling_record_id' => $drillingRecord->id,
                 'material_id'        => $materialId,
                 'used_qty'           => $qtyUsed,
-                'price'              => $pricePerUnit,
                 'misc'               => $amountUsed,
             ]);
 
@@ -1312,6 +1311,91 @@ public function update(Request $request, $id)
         }
     }
 
+    // ✅ Step 7.5: Handle Raw Material Usage update
+    $oldUses = UsesRawMaterial::where('drilling_record_id', $drillingRecord->id)->get();
+    foreach ($oldUses as $oldUse) {
+        $oldQty = floatval($oldUse->used_qty ?? 0);
+        if ($oldUse->material_id && $oldQty > 0) {
+            $rawLog = RawMaterialLog::where('company_id', $companyId)
+                ->where('material_id', $oldUse->material_id)
+                ->when($oldUse->project_id, function ($q) use ($oldUse) {
+                    $q->where('project_id', $oldUse->project_id);
+                })
+                ->latest()
+                ->first();
+            if ($rawLog) {
+                $rawLog->increment('current_stock', $oldQty);
+            }
+        }
+    }
+    UsesRawMaterial::where('drilling_record_id', $drillingRecord->id)->delete();
+
+    if ($request->has('raw_material_usage') && is_array($request->raw_material_usage)) {
+        foreach ($request->raw_material_usage as $usage) {
+            $materialId   = $usage['material_id'] ?? null;
+            $materialName = $usage['material_type'] ?? $usage['material_name'] ?? null;
+            $qtyUsed      = floatval($usage['qty_used'] ?? $usage['used_qty'] ?? 0);
+            $receivedQty  = floatval($usage['received_qty'] ?? 0);
+            $unit         = $usage['unit'] ?? null;
+
+            if (!$materialId && $materialName) {
+                $mat = RawMaterial::firstOrCreate(
+                    ['company_id' => $companyId, 'name' => $materialName],
+                    ['local_name' => $materialName]
+                );
+                $materialId = $mat->id;
+            }
+
+            if ($materialId && ($qtyUsed > 0 || $receivedQty > 0)) {
+                $rawLog = RawMaterialLog::where('company_id', $companyId)
+                    ->where('material_id', $materialId)
+                    ->when($request->project_id, function ($q) use ($request) {
+                        $q->where('project_id', $request->project_id);
+                    })
+                    ->latest()
+                    ->first();
+
+                if (!$rawLog) {
+                    $baseLog = RawMaterialLog::where('company_id', $companyId)
+                        ->where('material_id', $materialId)
+                        ->latest()
+                        ->first();
+
+                    $rawLog = RawMaterialLog::create([
+                        'material_id'   => $materialId,
+                        'company_id'    => $companyId,
+                        'project_id'    => $request->project_id ?? 0,
+                        'current_stock' => $baseLog ? $baseLog->current_stock : 0,
+                        'price'         => $baseLog ? $baseLog->price : 0,
+                        'total'         => $baseLog ? $baseLog->total : 0,
+                        'unit'          => $unit ?: ($baseLog ? $baseLog->unit : 'Ton'),
+                        'capacity'      => 1000
+                    ]);
+                }
+
+                $pricePerUnit = floatval($rawLog->price ?? 0);
+                $amountUsed   = $qtyUsed * $pricePerUnit;
+                $newQty       = max(0, floatval($rawLog->current_stock) + $receivedQty - $qtyUsed);
+                $newTotal     = max(0, floatval($rawLog->total) - $amountUsed);
+
+                $rawLog->update([
+                    'current_stock' => $newQty,
+                    'total'         => $newTotal,
+                    'unit'          => $unit ?: $rawLog->unit,
+                ]);
+
+                UsesRawMaterial::create([
+                    'company_id'         => $companyId,
+                    'project_id'         => $request->project_id ?? null,
+                    'drilling_record_id' => $drillingRecord->id,
+                    'material_id'        => $materialId,
+                    'used_qty'           => $qtyUsed,
+                    'misc'               => $amountUsed,
+                ]);
+            }
+        }
+    }
+
     // ✅ Step 8: Update Work Log Summary
     $logDate    = $request->date ?? $drillingRecord->date ?? now()->toDateString();
     $projectId  = $request->project_id ?? null;
@@ -1334,7 +1418,7 @@ public function update(Request $request, $id)
     // ✅ Step 9: Return
     return response()->json([
         'message' => 'Drilling record and related data updated successfully!',
-        'data'    => $drillingRecord->load('workPoints', 'surveys', 'machineReading','compressorRpm'),
+        'data'    => $drillingRecord->load('workPoints', 'surveys', 'machineReading', 'compressorRpm', 'uses_raw_material.material'),
         'summary' => $summary
     ], 200);
 }

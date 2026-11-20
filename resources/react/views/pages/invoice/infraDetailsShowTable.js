@@ -1328,6 +1328,9 @@ function InfraDetailsShowTable() {
               surveyHrs: '',
               surveyDiesel: '',
 
+              materialName: '',
+              materialUsedQty: '',
+
               grandTotal: 0,
               id: rec.id,
               rowSpan: count,
@@ -1382,6 +1385,9 @@ function InfraDetailsShowTable() {
               surveyHrs: '',
               surveyDiesel: '',
 
+              materialName: '',
+              materialUsedQty: '',
+
               grandTotal: 0,
               id: rec.id,
               rowSpan: count,
@@ -1395,14 +1401,17 @@ function InfraDetailsShowTable() {
         const surveyLen = surveyDetails.length
         const machineLen = effectiveMachine.length
         const compressorRpmLen = effectiveCompressor.length
+        const rawMaterials = rec.uses_raw_material || rec.raw_materials || []
+        const rawMaterialsLen = rawMaterials.length
 
-        const totalRows = Math.max(workLen, surveyLen, machineLen, compressorRpmLen, 1)
+        const totalRows = Math.max(workLen, surveyLen, machineLen, compressorRpmLen, rawMaterialsLen, 1)
 
         for (let i = 0; i < totalRows; i++) {
           const work = workDetails[i] || {}
           const survey = surveyDetails[i] || {}
           const machine = effectiveMachine[i] || {}
           const compressorRpm = effectiveCompressor[i] || {}
+          const mat = rawMaterials[i] || {}
 
           flattened.push({
             srNo: idx + 1,
@@ -1410,6 +1419,7 @@ function InfraDetailsShowTable() {
             site: rec.project?.project_name || '',
             supervisor: rec.supervisor || rec.project?.supervisor?.name || '—',
             operator: machine.operator?.name || rec.operator?.name || '',
+            tabType: rec.tab_type || '',
 
             machineName: machine.machine?.machine_name || machine.machinery?.machine_name || (activeMachMap && activeMachMap[String(machine.machine_id)]) || machine.machine_name || '—',
             machineStart: machine.machine_start != null && machine.machine_start !== '' ? machine.machine_start : '',
@@ -1444,6 +1454,9 @@ function InfraDetailsShowTable() {
             surveyTotal: Number(survey.total) || 0,
             surveyHrs: survey.hrs ?? '',
             surveyDiesel: survey.diesel ?? '',
+
+            materialName: mat.material?.name || mat.raw_material?.name || mat.material_name || '',
+            materialUsedQty: mat.used_qty != null ? `${mat.used_qty} ${mat.material?.unit || ''}`.trim() : (mat.used_quantity ?? ''),
 
             rowTotal: (Number(work.total) || 0) + (Number(survey.total) || 0),
 
@@ -1715,6 +1728,8 @@ function InfraDetailsShowTable() {
                         <CTableHeaderCell>Survey Total</CTableHeaderCell>
                         <CTableHeaderCell className="table-secondary">Survey Hrs</CTableHeaderCell>
                         <CTableHeaderCell className="table-secondary">Survey Diesel</CTableHeaderCell>
+                        <CTableHeaderCell className="table-light">Material Name</CTableHeaderCell>
+                        <CTableHeaderCell className="table-light">Used Qty</CTableHeaderCell>
                         <CTableHeaderCell>Grand Total</CTableHeaderCell>
                         <CTableHeaderCell>Action</CTableHeaderCell>
                       </CTableRow>
@@ -1767,6 +1782,8 @@ function InfraDetailsShowTable() {
                           <CTableDataCell className="fw-bold text-primary">{row.surveyTotal}</CTableDataCell>
                           <CTableDataCell className="text-secondary">{row.surveyHrs}</CTableDataCell>
                           <CTableDataCell className="text-secondary">{row.surveyDiesel}</CTableDataCell>
+                          <CTableDataCell className="fw-semibold">{row.materialName || '—'}</CTableDataCell>
+                          <CTableDataCell className="fw-bold text-primary">{row.materialUsedQty || '—'}</CTableDataCell>
                           <CTableDataCell className="fw-bold text-success">{row.rowTotal}</CTableDataCell>
 
                           {row.isFirstRow && (
@@ -1783,12 +1800,18 @@ function InfraDetailsShowTable() {
                                       navigate(`/worklog?id=${row.drillingRecordId}&tab=tata`, {
                                         state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'tata' },
                                       });
+                                    } else if (
+                                      row.tabType === 'casting' ||
+                                      (row.workType && row.workType.toLowerCase().includes('casting'))
+                                    ) {
+                                      navigate(`/worklog?id=${row.drillingRecordId}&tab=casting`, {
+                                        state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'casting' },
+                                      });
                                     } else {
                                       navigate(`/updateDrillingForm/${row.drillingRecordId}`, {
                                         state: { drillingRecordId: row.drillingRecordId },
                                       });
-                                    }
-                                  }}
+                                    }}}
                                 >
                                   <CIcon icon={cilPencil} />
                                 </CButton>
@@ -1860,6 +1883,9 @@ function InfraDetailsShowTable() {
                         <CTableDataCell className="text-center text-secondary">
                           {tableTotals.surveyDiesel.toFixed(2)}
                         </CTableDataCell>
+                        {/* Raw Material cols */}
+                        <CTableDataCell></CTableDataCell>
+                        <CTableDataCell></CTableDataCell>
                         <CTableDataCell className="text-center text-success">
                           {tableTotals.grandTotal.toFixed(2)}
                         </CTableDataCell>

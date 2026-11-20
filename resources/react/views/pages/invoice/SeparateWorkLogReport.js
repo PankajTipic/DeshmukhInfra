@@ -1065,7 +1065,7 @@ const SeparateWorkLogReport = () => {
               </CCard>
             </CCol>
 
-            {activeTab === 'casting' && (
+            {(activeTab === 'casting' || activeTab === 'drilling') && (
               <CCol md={2}>
                 <CCard className="border-0 shadow-sm text-center py-2 h-100" style={{ borderLeft: '4px solid #8B5CF6' }}>
                   <CCardBody className="p-2">
@@ -1522,8 +1522,8 @@ const SeparateWorkLogReport = () => {
                       {activeTab === 'drilling' ? 'Drilling Work Details' : 'Casting Work Details'}
                     </CTableHeaderCell>
 
-                    {/* Raw Materials (for Casting) */}
-                    {activeTab === 'casting' && (
+                    {/* Raw Materials (Drilling & Casting) */}
+                    {(activeTab === 'casting' || activeTab === 'drilling') && (
                       <CTableHeaderCell colSpan={2} className="table-secondary">
                         Raw Materials Used
                       </CTableHeaderCell>
@@ -1575,7 +1575,7 @@ const SeparateWorkLogReport = () => {
                     )}
 
                     {/* Raw Material Sub-columns */}
-                    {activeTab === 'casting' && (
+                    {(activeTab === 'casting' || activeTab === 'drilling') && (
                       <>
                         <CTableHeaderCell className="table-secondary">Material</CTableHeaderCell>
                         <CTableHeaderCell className="table-secondary">Used Qty</CTableHeaderCell>
@@ -1687,8 +1687,8 @@ const SeparateWorkLogReport = () => {
                         <CTableDataCell>{row.workDiesel}</CTableDataCell>
                       )}
 
-                      {/* Raw Materials (Casting) */}
-                      {activeTab === 'casting' && (
+                      {/* Raw Materials (Drilling & Casting) */}
+                      {(activeTab === 'casting' || activeTab === 'drilling') && (
                         <>
                           <CTableDataCell className="fw-semibold text-start">
                             {row.materialName}
@@ -1726,7 +1726,23 @@ const SeparateWorkLogReport = () => {
                               variant="ghost"
                               size="sm"
                               title="Edit Log"
-                              onClick={() => navigate(`/updateDrillingForm/${row.drillingRecordId}`)}
+                              onClick={() => {
+                                if (activeTab === 'rotary') {
+                                  navigate(`/worklog?id=${row.drillingRecordId}&tab=rotary`, {
+                                    state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'rotary' },
+                                  });
+                                } else if (activeTab === 'tata') {
+                                  navigate(`/worklog?id=${row.drillingRecordId}&tab=tata`, {
+                                    state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'tata' },
+                                  });
+                                } else if (activeTab === 'casting') {
+                                  navigate(`/worklog?id=${row.drillingRecordId}&tab=casting`, {
+                                    state: { id: row.drillingRecordId, editId: row.drillingRecordId, tab: 'casting' },
+                                  });
+                                } else {
+                                  navigate(`/updateDrillingForm/${row.drillingRecordId}`);
+                                }
+                              }}
                             >
                               <CIcon icon={cilPencil} />
                             </CButton>

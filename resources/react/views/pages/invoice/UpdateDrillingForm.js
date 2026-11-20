@@ -759,7 +759,7 @@ import {
   CFormSelect, CButton, CContainer, CInputGroup, CInputGroupText,
   CAlert
 } from '@coreui/react';
-import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile } from '@coreui/icons';
+import { cilSettings, cilCalculator, cilLocationPin, cilX, cilFile, cilTrash, cilPlus } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { getAPICall, put } from '../../../util/api';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -776,6 +776,7 @@ const UpdateDrillingForm = () => {
   const [formData, setFormData] = useState({
     project_id: '',
     project_name: '',
+    supervisor_id: '',
     date: '',
     start_time: '',
     end_time: '',
@@ -785,6 +786,7 @@ const UpdateDrillingForm = () => {
     compressorReading: [{ oprator_id: '', machine_id: '', comp_rpm_start: '', comp_rpm_end: '', com_actul_hr: 0, diesel_filled: '', diesel_used: '', diesel_balance: '', diesel_avg: 0, old_diesel_used: 0, old_diesel_filled: 0 }],
     workDetails: [{ operator_id: '', work_type: '', drilling_type: '', uom: '', work_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
     surveys: [{ operator_id: '', survey_type: '', uom: '', survey_point: 0, rate: 0, total: 0, hrs: '', diesel: '' }],
+    rawMaterials: [{ material_id: null, material_type: '', available_qty: 0, received_qty: '', qty_used: '', balance_qty: 0, unit: '' }],
     isGST: false,
     totalBill: 0,
   });
@@ -792,6 +794,9 @@ const UpdateDrillingForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [projects, setProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [supervisors, setSupervisors] = useState([]);
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
+  const [materialTypes, setMaterialTypes] = useState([]);
   const [operators, setOperators] = useState([]);
   const [machineries, setMachineries] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -799,6 +804,93 @@ const UpdateDrillingForm = () => {
   const [surveyTypes, setSurveyTypes] = useState([]);
   const [uoms, setUoms] = useState([]);
   const [customBreak, setCustomBreak] = useState(false);
+
+  // Fetch materials for selected project
+  useEffect(() => {
+    if (!formData.project_id) {
+      setMaterialTypes([]);
+      return;
+    }
+    const fetchMaterials = async () => {
+      try {
+        const res = await getAPICall(`/api/getMaterialByProject?project_id=${formData.project_id}`);
+        if (res?.materials) {
+          const types = res.materials.map((m) => ({
+            id: m.id,
+            name: m.name,
+            current_stock: m.current_stock,
+            unit: m.unit,
+          }));
+          setMaterialTypes(types);
+
+          setFormData((prev) => {
+            const updatedRM = (prev.rawMaterials || []).map((row) => {
+              if (!row.material_id && !row.material_type) return row;
+              const matched = res.materials.find(
+                (dbMat) => dbMat.id === row.material_id || (row.material_type && dbMat.name?.toLowerCase() === row.material_type?.toLowerCase())
+              );
+              if (matched) {
+                const avail = matched.current_stock != null ? parseFloat(matched.current_stock) : row.available_qty;
+                const rec = parseFloat(row.received_qty) || 0;
+                const used = parseFloat(row.qty_used) || 0;
+                return {
+                  ...row,
+                  material_id: matched.id,
+                  material_type: matched.name,
+                  available_qty: avail,
+                  unit: matched.unit || row.unit || '',
+                  balance_qty: avail + rec - used,
+                };
+              }
+              return row;
+            });
+            return { ...prev, rawMaterials: updatedRM };
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching materials:', err);
+      }
+    };
+    fetchMaterials();
+  }, [formData.project_id]);
+
+  // Fetch Supervisors from usersData and operators (type 0)
+  useEffect(() => {
+    const fetchSupervisors = async () => {
+      try {
+        const [usersRes, opsRes] = await Promise.allSettled([
+          getAPICall('/api/usersData'),
+          getAPICall('/api/operatorsByType?type=0'),
+        ]);
+
+        const list = [];
+        const seenIds = new Set();
+
+        if (usersRes.status === 'fulfilled' && usersRes.value?.users) {
+          usersRes.value.users.forEach((u) => {
+            if (u && u.id && !seenIds.has(String(u.id))) {
+              seenIds.add(String(u.id));
+              list.push({ value: u.id, label: u.name });
+            }
+          });
+        }
+
+        if (opsRes.status === 'fulfilled' && Array.isArray(opsRes.value)) {
+          opsRes.value.forEach((op) => {
+            if (op && op.id && !seenIds.has(String(op.id))) {
+              seenIds.add(String(op.id));
+              list.push({ value: op.id, label: op.name });
+            }
+          });
+        }
+
+        setSupervisors(list);
+      } catch (err) {
+        console.error('Error fetching supervisors:', err);
+      }
+    };
+    fetchSupervisors();
+  }, []);
 
   // Helper: safely extract payload data independent of API shape
   const unwrapApi = (res) => {
@@ -832,6 +924,27 @@ const UpdateDrillingForm = () => {
         if (data.tab_type === 'rotary' || (data.rotary_details && data.rotary_details.length > 0) || (data.rotaryDetails && data.rotaryDetails.length > 0)) {
           navigate(`/worklog?id=${drillingRecordId}&tab=rotary`, {
             state: { id: drillingRecordId, editId: drillingRecordId, tab: 'rotary' },
+            replace: true,
+          });
+          return;
+        }
+        // If this is a TATA record, redirect to WorkLog TATA edit tab
+        if (data.tab_type === 'tata' || (data.tata_details && data.tata_details.length > 0) || (data.tataDetails && data.tataDetails.length > 0)) {
+          navigate(`/worklog?id=${drillingRecordId}&tab=tata`, {
+            state: { id: drillingRecordId, editId: drillingRecordId, tab: 'tata' },
+            replace: true,
+          });
+          return;
+        }
+
+        // If this is a Casting record, redirect to WorkLog Casting edit tab
+        const isCasting = data.tab_type === 'casting' ||
+          (data.work_points && data.work_points.some(w => (w.work_type || '').toLowerCase().includes('casting'))) ||
+          (data.work_point_detail && data.work_point_detail.some(w => (w.work_type || '').toLowerCase().includes('casting')));
+
+        if (isCasting) {
+          navigate(`/worklog?id=${drillingRecordId}&tab=casting`, {
+            state: { id: drillingRecordId, editId: drillingRecordId, tab: 'casting' },
             replace: true,
           });
           return;
@@ -902,10 +1015,56 @@ const UpdateDrillingForm = () => {
           };
         });
 
+        // map raw materials
+        const mapMaterials = (data.uses_raw_material || data.raw_material_usage || data.raw_materials || []).map((r) => ({
+          material_id: r.material_id || null,
+          material_type: r.material?.name || r.material_type || r.material_name || '',
+          available_qty: parseFloat(r.available_qty) || 0,
+          received_qty: r.received_qty != null ? r.received_qty : '',
+          qty_used: r.used_qty != null ? r.used_qty : (r.qty_used != null ? r.qty_used : ''),
+          balance_qty: parseFloat(r.balance_qty) || 0,
+          unit: r.material?.unit || r.unit || 'Ton',
+        }));
+
+        let projectObj = data.project;
+        if (!projectObj && data.project_id) {
+          try {
+            const pRes = await getAPICall(`/api/projects/${data.project_id}`);
+            const pData = pRes?.data || pRes;
+            if (pData) projectObj = pData;
+          } catch (e) {}
+        }
+
+        const supId = data.supervisor_id ||
+          data.supervisor?.id ||
+          data.site_engineer_id ||
+          projectObj?.supervisor_id ||
+          projectObj?.supervisor?.id ||
+          '';
+
+        const supName = data.supervisor?.name ||
+          data.supervisor_name ||
+          data.site_engineer ||
+          projectObj?.supervisor?.name ||
+          projectObj?.supervisor_name ||
+          '';
+
+        if (supId && supName) {
+          setSupervisors((prev) => {
+            if (prev.some((s) => String(s.value) === String(supId))) return prev;
+            return [...prev, { value: supId, label: supName }];
+          });
+        }
+
+        if (projectObj) {
+          setSelectedProjectDetails(projectObj);
+        }
+
         setFormData((prev) => ({
           ...prev,
           project_id: data.project_id != null ? Number(data.project_id) : '',
-          project_name: data.project?.project_name || '',
+          project_name: projectObj?.project_name || data.project?.project_name || '',
+          supervisor_id: supId ? String(supId) : '',
           date: data.date || '',
           start_time: data.start_time ?? '',
           end_time: data.end_time ?? '',
@@ -915,12 +1074,13 @@ const UpdateDrillingForm = () => {
           compressorReading: compressorReading.length ? compressorReading : prev.compressorReading,
           workDetails: workDetails.length ? workDetails : prev.workDetails,
           surveys: surveys.length ? surveys : prev.surveys,
+          rawMaterials: mapMaterials.length ? mapMaterials : prev.rawMaterials,
           isGST: data.isGST ?? false,
           totalBill: data.totalBill != null ? Number(data.totalBill) : prev.totalBill
         }));
 
         // set search display to project name
-        setSearchQuery(data.project?.project_name || '');
+        setSearchQuery(projectObj?.project_name || data.project?.project_name || '');
       } catch (err) {
         console.error('Error fetching drilling data:', err);
         showToast('danger', 'Failed to fetch existing data!');
@@ -1120,7 +1280,14 @@ const UpdateDrillingForm = () => {
   };
 
   const handleProjectChange = (project) => {
-    setFormData((prev) => ({ ...prev, project_id: Number(project.id), project_name: project.project_name || project.name || '' }));
+    const supId = project.supervisor_id || project.supervisor?.id || '';
+    setFormData((prev) => ({
+      ...prev,
+      project_id: Number(project.id),
+      project_name: project.project_name || project.name || '',
+      supervisor_id: supId ? String(supId) : prev.supervisor_id,
+    }));
+    setSelectedProjectDetails(project);
     setSearchQuery(project.project_name || project.name || '');
     setProjects([]);
     setShowDropdown(false);
@@ -1300,6 +1467,76 @@ const UpdateDrillingForm = () => {
     setFormData((prev) => ({ ...prev, surveys: prev.surveys.filter((_, i) => i !== index) }));
   };
 
+  const handleRawMaterialChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedRM = (prev.rawMaterials || []).map((r, i) => {
+        if (i !== index) return r;
+
+        if (field === 'material_id') {
+          if (!value) {
+            return {
+              ...r,
+              material_id: null,
+              material_type: '',
+              available_qty: 0,
+              unit: '',
+              balance_qty: 0,
+            };
+          }
+
+          const selectedId = Number(value);
+          const found = materialTypes.find((m) => m.id === selectedId);
+          const name = found ? found.name : '';
+          const stock = found && found.current_stock != null ? parseFloat(found.current_stock) : 0;
+          const unit = found && found.unit ? found.unit : 'Ton';
+          const rec = parseFloat(r.received_qty) || 0;
+          const used = parseFloat(r.qty_used) || 0;
+
+          return {
+            ...r,
+            material_id: selectedId,
+            material_type: name,
+            available_qty: stock,
+            unit,
+            balance_qty: stock + rec - used,
+          };
+        }
+
+        const avail = parseFloat(r.available_qty) || 0;
+        const rec = field === 'received_qty' ? (parseFloat(value) || 0) : (parseFloat(r.received_qty) || 0);
+        const used = field === 'qty_used' ? (parseFloat(value) || 0) : (parseFloat(r.qty_used) || 0);
+
+        return {
+          ...r,
+          [field]: value,
+          balance_qty: avail + rec - used,
+        };
+      });
+
+      return { ...prev, rawMaterials: updatedRM };
+    });
+  };
+
+  const addRawMaterial = () => {
+    setFormData((prev) => ({
+      ...prev,
+      rawMaterials: [
+        ...(prev.rawMaterials || []),
+        { material_id: null, material_type: '', available_qty: 0, received_qty: '', qty_used: '', balance_qty: 0, unit: '' },
+      ],
+    }));
+  };
+
+  const removeRawMaterial = (index) => {
+    setFormData((prev) => {
+      if ((prev.rawMaterials || []).length <= 1) return prev;
+      return {
+        ...prev,
+        rawMaterials: prev.rawMaterials.filter((_, i) => i !== index),
+      };
+    });
+  };
+
   // Submit
   const handleSubmit = async () => {
     if (!formData.project_id) { showToast('danger', 'Please select a Project.'); return; }
@@ -1375,6 +1612,7 @@ const UpdateDrillingForm = () => {
 
     const payload = {
       project_id: formData.project_id,
+      supervisor_id: formData.supervisor_id || null,
       date: formData.date,
       start_time: formData.start_time || null,
       end_time: formData.end_time || null,
@@ -1424,6 +1662,18 @@ const UpdateDrillingForm = () => {
         hrs: s.hrs !== '' ? parseFloat(s.hrs) : null,
         diesel: s.diesel !== '' ? parseFloat(s.diesel) : null,
       })),
+      raw_material_usage: (formData.rawMaterials || [])
+        .filter((r) => r.material_type && (parseFloat(r.qty_used) > 0 || parseFloat(r.received_qty) > 0 || r.material_id))
+        .map((r) => ({
+          material_id: r.material_id || null,
+          material_type: r.material_type,
+          material_name: r.material_type,
+          available_qty: parseFloat(r.available_qty) || 0,
+          received_qty: parseFloat(r.received_qty) || 0,
+          qty_used: parseFloat(r.qty_used) || 0,
+          balance_qty: parseFloat(r.balance_qty) || 0,
+          unit: r.unit || 'Ton',
+        })),
       isGST: formData.isGST,
       totalBill: totalBillDisplay
     };
@@ -1460,12 +1710,12 @@ const UpdateDrillingForm = () => {
             {/* Project Info */}
             <CCard className="mb-4 border-0" color="info" textColor="dark">
               <CCardBody className="bg-info-subtle rounded rounded-lg">
-                <h5 className="text-info mb-3 d-flex align-items-center">
+                <h5 className="text-info mb-3 d-flex align-items-center fw-bold">
                   <CIcon icon={cilFile} className="me-2" /> 1. Project Information
                 </h5>
                 <CRow className="g-3">
-                  <CCol md={6}>
-                    <CFormLabel>Project Name *</CFormLabel>
+                  <CCol md={4}>
+                    <CFormLabel className="fw-semibold">Project Name *</CFormLabel>
                     <CInputGroup>
                       <CFormInput
                         type="text"
@@ -1482,7 +1732,8 @@ const UpdateDrillingForm = () => {
                           color="danger"
                           variant="outline"
                           onClick={() => {
-                            setFormData((prev) => ({ ...prev, project_name: '' }));
+                            setFormData((prev) => ({ ...prev, project_name: '', project_id: '', supervisor_id: '' }));
+                            setSelectedProjectDetails(null);
                             setSearchQuery('');
                             setShowDropdown(false);
                           }}
@@ -1493,23 +1744,60 @@ const UpdateDrillingForm = () => {
                     </CInputGroup>
 
                     {showDropdown && projects.length > 0 && (
-                      <div className="border rounded bg-white" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                      <div className="border rounded bg-white shadow-sm mt-1" style={{ maxHeight: '150px', overflowY: 'auto', position: 'relative', zIndex: 1000 }}>
                         {projects.map((project) => (
                           <div
                             key={project.id}
-                            className="p-2 hover-bg-light"
+                            className="p-2 hover-bg-light border-bottom"
                             style={{ cursor: 'pointer' }}
                             onClick={() => handleProjectChange(project)}
                           >
-                            {project.project_name || project.name}
+                            <strong>{project.project_name || project.name}</strong>
+                            {project.customer_name ? <span className="text-muted"> - {project.customer_name}</span> : null}
                           </div>
                         ))}
                       </div>
                     )}
                   </CCol>
 
-                  <CCol md={6}>
-                    <CFormLabel>Date *</CFormLabel>
+                  <CCol md={4}>
+                    <CFormLabel className="fw-semibold">Select Supervisor</CFormLabel>
+                    <Select
+                      options={supervisors}
+                      value={
+                        supervisors.find((s) => String(s.value) === String(formData.supervisor_id)) ||
+                        (formData.supervisor_id
+                          ? {
+                              value: formData.supervisor_id,
+                              label:
+                                selectedProjectDetails?.supervisor?.name ||
+                                selectedProjectDetails?.supervisor_name ||
+                                supervisors.find((s) => String(s.value) === String(formData.supervisor_id))?.label ||
+                                'Selected Supervisor',
+                            }
+                          : null)
+                      }
+                      onChange={(selected) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          supervisor_id: selected ? selected.value : '',
+                        }))
+                      }
+                      placeholder="Select Supervisor..."
+                      isClearable
+                      isSearchable
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          minHeight: '38px',
+                          borderRadius: '6px',
+                        }),
+                      }}
+                    />
+                  </CCol>
+
+                  <CCol md={4}>
+                    <CFormLabel className="fw-semibold">Date *</CFormLabel>
                     <CFormInput type="date" value={formData.date} onChange={(e) => handleInputChange('date', e.target.value)} />
                   </CCol>
                 </CRow>
@@ -2027,269 +2315,691 @@ const UpdateDrillingForm = () => {
               </CCardBody>
             </CCard>
 
-            {/* Work Details */}
-            <CCard className="mb-4 border-0" color="warning" textColor="dark">
-              <CCardBody className="bg-warning-subtle rounded rounded-lg">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="text-warning mb-0 d-flex align-items-center">
-                    <CIcon icon={cilCalculator} className="me-2" /> 4. Work Details
-                  </h5>
-                  <CButton color="warning" variant="outline" onClick={addWorkDetail}>Add Work</CButton>
+            {/* Work Details Section */}
+            <div
+              className="mb-4 rounded-3 p-3 p-md-4 shadow-sm"
+              style={{
+                backgroundColor: '#fffdf5',
+                border: '1.5px solid #fde68a',
+                borderLeft: '5px solid #f59e0b',
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div className="d-flex align-items-center">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded me-2 shadow-sm"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#fef3c7',
+                      color: '#d97706',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <CIcon icon={cilCalculator} size="sm" />
+                  </div>
+                  <div>
+                    <h5 className="mb-0 fw-bold" style={{ color: '#b45309', fontSize: '18px' }}>
+                      4. Work Details
+                    </h5>
+                    <span className="text-secondary small">
+                      Define work points, rate per point, work hours, and diesel consumption
+                    </span>
+                  </div>
                 </div>
+                <CButton
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    borderColor: '#f59e0b',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                  }}
+                  className="d-flex align-items-center shadow-sm px-3 py-2"
+                  onClick={addWorkDetail}
+                >
+                  <CIcon icon={cilPlus} className="me-1" /> + Add Work Row
+                </CButton>
+              </div>
 
-                {formData.workDetails.map((work, index) => (
-                  <CRow key={index} className="align-items-center mb-2">
-                    <CCol md={3}>
-                      <CFormLabel>Operator</CFormLabel>
-                      <Select
-                        options={operators}
-                        isSearchable
-                        placeholder="Select Operator..."
-                        value={operators.find((op) => op.value === work.operator_id) || null}
-                        onChange={(selected) => handleWorkDetailChange(index, 'operator_id', selected ? selected.value : '')}
-                      />
-                    </CCol>
+              <div className="d-flex flex-column gap-3">
+                {formData.workDetails.map((work, index) => {
+                  const rowTotal = computeWorkRowTotal(work);
+                  return (
+                    <div
+                      key={index}
+                      className="p-3 rounded-3 position-relative"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #fef3c7',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2">
+                          <span
+                            className="badge rounded-pill"
+                            style={{ backgroundColor: '#fef3c7', color: '#b45309', fontSize: '12px' }}
+                          >
+                            Work #{index + 1}
+                          </span>
+                          {rowTotal > 0 && (
+                            <span className="small fw-semibold text-muted">
+                              Total: <strong className="text-dark">₹{rowTotal.toFixed(2)}</strong>
+                            </span>
+                          )}
+                        </div>
+                        {formData.workDetails.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger d-flex align-items-center py-1 px-2"
+                            style={{ borderRadius: '6px', fontSize: '12px' }}
+                            onClick={() => removeWorkDetail(index)}
+                            title="Remove this work row"
+                          >
+                            <CIcon icon={cilTrash} className="me-1" size="sm" /> Remove
+                          </button>
+                        )}
+                      </div>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Work Type</CFormLabel>
-                      <CFormSelect value={work.work_type} onChange={(e) => handleWorkDetailChange(index, 'work_type', e.target.value)}>
-                        <option value="">Select Work Type</option>
-                        {workTypes.map((type) => (
-                          <option key={type.id} value={type.name}>{type.name}</option>
-                        ))}
-                      </CFormSelect>
-                    </CCol>
+                      {/* Row 1: Configurations */}
+                      <CRow className="g-2 mb-2">
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Operator
+                          </CFormLabel>
+                          <Select
+                            options={operators}
+                            isSearchable
+                            placeholder="Select Operator..."
+                            value={operators.find((op) => op.value === work.operator_id) || null}
+                            onChange={(selected) => handleWorkDetailChange(index, 'operator_id', selected ? selected.value : '')}
+                            styles={{
+                              control: (base) => ({
+                                ...base,
+                                minHeight: '40px',
+                                borderRadius: '8px',
+                                fontSize: '13px',
+                                borderColor: '#cbd5e1',
+                              }),
+                            }}
+                          />
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Drilling Type (Optional)</CFormLabel>
-                      <CFormSelect value={work.drilling_type || ''} onChange={(e) => handleWorkDetailChange(index, 'drilling_type', e.target.value)}>
-                        <option value="">Select Drilling Type</option>
-                        <option value="Hard">Hard</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Soft">Soft</option>
-                      </CFormSelect>
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Work Type
+                          </CFormLabel>
+                          <CFormSelect
+                            value={work.work_type}
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => handleWorkDetailChange(index, 'work_type', e.target.value)}
+                          >
+                            <option value="">Select Work Type</option>
+                            {workTypes.map((type) => (
+                              <option key={type.id} value={type.name}>{type.name}</option>
+                            ))}
+                          </CFormSelect>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>UOM</CFormLabel>
-                      <CFormSelect value={work.uom} onChange={(e) => handleWorkDetailChange(index, 'uom', e.target.value)}>
-                        <option value="">Select UOM</option>
-                        {uoms.map((u) => (
-                          <option key={u.id} value={u.name}>{u.name}</option>
-                        ))}
-                      </CFormSelect>
-                    </CCol>
+                        <CCol xs={12} sm={6} md={2}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Drilling Type (Optional)
+                          </CFormLabel>
+                          <CFormSelect
+                            value={work.drilling_type || ''}
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => handleWorkDetailChange(index, 'drilling_type', e.target.value)}
+                          >
+                            <option value="">Select Drilling Type</option>
+                            <option value="Hard">Hard</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Soft">Soft</option>
+                          </CFormSelect>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Points</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={work.work_point === 0 ? '' : String(work.work_point)}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/\D/g, '');
-                          handleWorkDetailChange(index, 'work_point', val === '' ? 0 : Number(val));
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={2}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            UOM
+                          </CFormLabel>
+                          <CFormSelect
+                            value={work.uom}
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => handleWorkDetailChange(index, 'uom', e.target.value)}
+                          >
+                            <option value="">Select UOM</option>
+                            {uoms.map((u) => (
+                              <option key={u.id} value={u.name}>{u.name}</option>
+                            ))}
+                          </CFormSelect>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Rate</CFormLabel>
-                      <CInputGroup>
-                        <CInputGroupText>₹</CInputGroupText>
-                        <CFormInput
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={work.rate === 0 ? '' : String(work.rate)}
-                          placeholder="0"
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '');
-                            handleWorkDetailChange(index, 'rate', val === '' ? 0 : Number(val));
-                          }}
-                        />
-                      </CInputGroup>
-                    </CCol>
+                        <CCol xs={12} sm={6} md={2}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Points
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={work.work_point === 0 ? '' : String(work.work_point)}
+                            placeholder="0"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/\D/g, '');
+                              handleWorkDetailChange(index, 'work_point', val === '' ? 0 : Number(val));
+                            }}
+                          />
+                        </CCol>
+                      </CRow>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Total</CFormLabel>
-                      <CInputGroup>
-                        <CInputGroupText>₹</CInputGroupText>
-                        <CFormInput value={(computeWorkRowTotal(work)).toFixed(2)} readOnly className="bg-light fw-bold" />
-                      </CInputGroup>
-                    </CCol>
+                      {/* Row 2: Metrics */}
+                      <CRow className="g-2 align-items-end">
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Rate (₹)
+                          </CFormLabel>
+                          <CInputGroup>
+                            <CInputGroupText style={{ backgroundColor: '#f8fafc', borderRadius: '8px 0 0 8px', fontSize: '13px', borderColor: '#cbd5e1' }}>₹</CInputGroupText>
+                            <CFormInput
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={work.rate === 0 ? '' : String(work.rate)}
+                              placeholder="0"
+                              style={{ height: '40px', borderRadius: '0 8px 8px 0', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                handleWorkDetailChange(index, 'rate', val === '' ? 0 : Number(val));
+                              }}
+                            />
+                          </CInputGroup>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Hrs</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9.]*"
-                        value={work.hrs}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/[^0-9.]/g, '');
-                          handleWorkDetailChange(index, 'hrs', val);
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Total Amount
+                          </CFormLabel>
+                          <div
+                            className="d-flex align-items-center px-3 fw-bold text-dark"
+                            style={{
+                              height: '40px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            ₹ {rowTotal.toFixed(2)}
+                          </div>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Diesel (L)</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9.]*"
-                        value={work.diesel}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/[^0-9.]/g, '');
-                          handleWorkDetailChange(index, 'diesel', val);
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Work Hours
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={work.hrs}
+                            placeholder="0.00"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/[^0-9.]/g, '');
+                              handleWorkDetailChange(index, 'hrs', val);
+                            }}
+                          />
+                        </CCol>
 
-                    <CCol lg={1}>
-                      {formData.workDetails.length > 1 && (
-                        <CButton color="danger" variant="ghost" size="sm" onClick={() => removeWorkDetail(index)}>
-                          <CIcon icon={cilX} />
-                        </CButton>
-                      )}
-                    </CCol>
-                  </CRow>
-                ))}
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Diesel Consumed (L)
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={work.diesel}
+                            placeholder="0.00"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/[^0-9.]/g, '');
+                              handleWorkDetailChange(index, 'diesel', val);
+                            }}
+                          />
+                        </CCol>
+                      </CRow>
+                    </div>
+                  );
+                })}
+              </div>
 
-              </CCardBody>
-            </CCard>
+              {/* Work Details Summary Footer */}
+              <div
+                className="mt-3 p-2 px-3 rounded-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+                style={{ backgroundColor: '#fef3c7', border: '1px solid #fde68a' }}
+              >
+                <span className="small fw-semibold text-dark">
+                  Work Rows: <span className="text-warning-emphasis">{formData.workDetails.length}</span> | Total Points: <span className="text-warning-emphasis">{formData.workDetails.reduce((sum, w) => sum + (Number(w.work_point) || 0), 0)}</span> | Total Hours: <span className="text-warning-emphasis">{formData.workDetails.reduce((sum, w) => sum + (parseFloat(w.hrs) || 0), 0).toFixed(2)} hrs</span> | Total Diesel: <span className="text-warning-emphasis">{formData.workDetails.reduce((sum, w) => sum + (parseFloat(w.diesel) || 0), 0).toFixed(2)} L</span>
+                </span>
+                <span className="fw-bold text-success" style={{ fontSize: '14px' }}>
+                  Work Amount: ₹{formData.workDetails.reduce((sum, w) => sum + computeWorkRowTotal(w), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
 
-            {/* Survey Details */}
-            <CCard className="mb-4 border-0" color="info" textColor="dark">
-              <CCardBody className="bg-info-subtle rounded rounded-lg">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="text-info mb-0 d-flex align-items-center">
-                    <CIcon icon={cilLocationPin} className="me-2" /> 5. Survey Details
-                  </h5>
-                  <CButton color="info" variant="outline" onClick={addSurvey}>Add Survey</CButton>
+            {/* Survey Details Section */}
+            <div
+              className="mb-4 rounded-3 p-3 p-md-4 shadow-sm"
+              style={{
+                backgroundColor: '#f0fdfa',
+                border: '1.5px solid #99f6e4',
+                borderLeft: '5px solid #0d9488',
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div className="d-flex align-items-center">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded me-2 shadow-sm"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#ccfbf1',
+                      color: '#0d9488',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <CIcon icon={cilLocationPin} size="sm" />
+                  </div>
+                  <div>
+                    <h5 className="mb-0 fw-bold" style={{ color: '#0f766e', fontSize: '18px' }}>
+                      5. Survey Details
+                    </h5>
+                    <span className="text-secondary small">
+                      Define survey points, rates, survey hours, and diesel consumption
+                    </span>
+                  </div>
                 </div>
+                <CButton
+                  style={{
+                    backgroundColor: '#0d9488',
+                    borderColor: '#0d9488',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                  }}
+                  className="d-flex align-items-center shadow-sm px-3 py-2"
+                  onClick={addSurvey}
+                >
+                  <CIcon icon={cilPlus} className="me-1" /> + Add Survey Row
+                </CButton>
+              </div>
 
-                {formData.surveys.map((survey, index) => (
-                  <CRow key={index} className="align-items-center mb-2">
-                    <CCol md={3}>
-                      <CFormLabel>Operator</CFormLabel>
-                      <Select
-                        options={operators}
-                        isSearchable
-                        placeholder="Select Operator..."
-                        value={operators.find((op) => op.value === survey.operator_id) || null}
-                        onChange={(selected) => handleSurveyChange(index, 'operator_id', selected ? selected.value : '')}
-                      />
-                    </CCol>
+              <div className="d-flex flex-column gap-3">
+                {formData.surveys.map((survey, index) => {
+                  const rowTotal = computeSurveyRowTotal(survey);
+                  return (
+                    <div
+                      key={index}
+                      className="p-3 rounded-3 position-relative"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #ccfbf1',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2">
+                          <span
+                            className="badge rounded-pill"
+                            style={{ backgroundColor: '#ccfbf1', color: '#0f766e', fontSize: '12px' }}
+                          >
+                            Survey #{index + 1}
+                          </span>
+                          {rowTotal > 0 && (
+                            <span className="small fw-semibold text-muted">
+                              Total: <strong className="text-dark">₹{rowTotal.toFixed(2)}</strong>
+                            </span>
+                          )}
+                        </div>
+                        {formData.surveys.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger d-flex align-items-center py-1 px-2"
+                            style={{ borderRadius: '6px', fontSize: '12px' }}
+                            onClick={() => removeSurvey(index)}
+                            title="Remove this survey row"
+                          >
+                            <CIcon icon={cilTrash} className="me-1" size="sm" /> Remove
+                          </button>
+                        )}
+                      </div>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Survey Type</CFormLabel>
-                      <CFormSelect value={survey.survey_type} onChange={(e) => handleSurveyChange(index, 'survey_type', e.target.value)}>
-                        <option value="">Select Survey Type</option>
-                        {surveyTypes.map((type) => (
-                          <option key={type.id} value={type.name}>{type.name}</option>
-                        ))}
-                      </CFormSelect>
-                    </CCol>
+                      {/* Row 1: Configurations */}
+                      <CRow className="g-2 mb-2">
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Operator
+                          </CFormLabel>
+                          <Select
+                            options={operators}
+                            isSearchable
+                            placeholder="Select Operator..."
+                            value={operators.find((op) => op.value === survey.operator_id) || null}
+                            onChange={(selected) => handleSurveyChange(index, 'operator_id', selected ? selected.value : '')}
+                            styles={{
+                              control: (base) => ({
+                                ...base,
+                                minHeight: '40px',
+                                borderRadius: '8px',
+                                fontSize: '13px',
+                                borderColor: '#cbd5e1',
+                              }),
+                            }}
+                          />
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>UOM</CFormLabel>
-                      <CFormSelect value={survey.uom} onChange={(e) => handleSurveyChange(index, 'uom', e.target.value)}>
-                        <option value="">Select UOM</option>
-                        {uoms.map((u) => (
-                          <option key={u.id} value={u.name}>{u.name}</option>
-                        ))}
-                      </CFormSelect>
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Survey Type
+                          </CFormLabel>
+                          <CFormSelect
+                            value={survey.survey_type}
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => handleSurveyChange(index, 'survey_type', e.target.value)}
+                          >
+                            <option value="">Select Survey Type</option>
+                            {surveyTypes.map((type) => (
+                              <option key={type.id} value={type.name}>{type.name}</option>
+                            ))}
+                          </CFormSelect>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Points</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={survey.survey_point === 0 ? '' : String(survey.survey_point)}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/\D/g, '');
-                          handleSurveyChange(index, 'survey_point', val === '' ? 0 : Number(val));
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            UOM
+                          </CFormLabel>
+                          <CFormSelect
+                            value={survey.uom}
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => handleSurveyChange(index, 'uom', e.target.value)}
+                          >
+                            <option value="">Select UOM</option>
+                            {uoms.map((u) => (
+                              <option key={u.id} value={u.name}>{u.name}</option>
+                            ))}
+                          </CFormSelect>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Rate</CFormLabel>
-                      <CInputGroup>
-                        <CInputGroupText>₹</CInputGroupText>
-                        <CFormInput
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={survey.rate === 0 ? '' : String(survey.rate)}
-                          placeholder="0"
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '');
-                            handleSurveyChange(index, 'rate', val === '' ? 0 : Number(val));
-                          }}
-                        />
-                      </CInputGroup>
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Points
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={survey.survey_point === 0 ? '' : String(survey.survey_point)}
+                            placeholder="0"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/\D/g, '');
+                              handleSurveyChange(index, 'survey_point', val === '' ? 0 : Number(val));
+                            }}
+                          />
+                        </CCol>
+                      </CRow>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Total</CFormLabel>
-                      <CInputGroup>
-                        <CInputGroupText>₹</CInputGroupText>
-                        <CFormInput value={(computeSurveyRowTotal(survey)).toFixed(2)} readOnly className="bg-light fw-bold" />
-                      </CInputGroup>
-                    </CCol>
+                      {/* Row 2: Metrics */}
+                      <CRow className="g-2 align-items-end">
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Rate (₹)
+                          </CFormLabel>
+                          <CInputGroup>
+                            <CInputGroupText style={{ backgroundColor: '#f8fafc', borderRadius: '8px 0 0 8px', fontSize: '13px', borderColor: '#cbd5e1' }}>₹</CInputGroupText>
+                            <CFormInput
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={survey.rate === 0 ? '' : String(survey.rate)}
+                              placeholder="0"
+                              style={{ height: '40px', borderRadius: '0 8px 8px 0', fontSize: '13px', borderColor: '#cbd5e1' }}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                handleSurveyChange(index, 'rate', val === '' ? 0 : Number(val));
+                              }}
+                            />
+                          </CInputGroup>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Hrs</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9.]*"
-                        value={survey.hrs}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/[^0-9.]/g, '');
-                          handleSurveyChange(index, 'hrs', val);
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Total Amount
+                          </CFormLabel>
+                          <div
+                            className="d-flex align-items-center px-3 fw-bold text-dark"
+                            style={{
+                              height: '40px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            ₹ {rowTotal.toFixed(2)}
+                          </div>
+                        </CCol>
 
-                    <CCol lg={2}>
-                      <CFormLabel>Diesel (L)</CFormLabel>
-                      <CFormInput
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9.]*"
-                        value={survey.diesel}
-                        placeholder="0"
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/[^0-9.]/g, '');
-                          handleSurveyChange(index, 'diesel', val);
-                        }}
-                      />
-                    </CCol>
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Survey Hours
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={survey.hrs}
+                            placeholder="0.00"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/[^0-9.]/g, '');
+                              handleSurveyChange(index, 'hrs', val);
+                            }}
+                          />
+                        </CCol>
 
-                    <CCol lg={1}>
-                      {formData.surveys.length > 1 && (
-                        <CButton color="danger" variant="ghost" size="sm" onClick={() => removeSurvey(index)}>
-                          <CIcon icon={cilX} />
-                        </CButton>
-                      )}
-                    </CCol>
-                  </CRow>
-                ))}
+                        <CCol xs={12} sm={6} md={3}>
+                          <CFormLabel className="fw-semibold text-secondary mb-1" style={{ fontSize: '13px' }}>
+                            Diesel Consumed (L)
+                          </CFormLabel>
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={survey.diesel}
+                            placeholder="0.00"
+                            style={{ height: '40px', borderRadius: '8px', fontSize: '13px', borderColor: '#cbd5e1' }}
+                            onChange={(e) => {
+                              let val = e.target.value.replace(/[^0-9.]/g, '');
+                              handleSurveyChange(index, 'diesel', val);
+                            }}
+                          />
+                        </CCol>
+                      </CRow>
+                    </div>
+                  );
+                })}
+              </div>
 
-              </CCardBody>
-            </CCard>
+              {/* Survey Details Summary Footer */}
+              <div
+                className="mt-3 p-2 px-3 rounded-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+                style={{ backgroundColor: '#ccfbf1', border: '1px solid #99f6e4' }}
+              >
+                <span className="small fw-semibold text-dark">
+                  Survey Rows: <span className="text-teal">{formData.surveys.length}</span> | Total Points: <span className="text-teal">{formData.surveys.reduce((sum, s) => sum + (Number(s.survey_point) || 0), 0)}</span> | Total Hours: <span className="text-teal">{formData.surveys.reduce((sum, s) => sum + (parseFloat(s.hrs) || 0), 0).toFixed(2)} hrs</span> | Total Diesel: <span className="text-teal">{formData.surveys.reduce((sum, s) => sum + (parseFloat(s.diesel) || 0), 0).toFixed(2)} L</span>
+                </span>
+                <span className="fw-bold text-success" style={{ fontSize: '14px' }}>
+                  Survey Amount: ₹{formData.surveys.reduce((sum, s) => sum + computeSurveyRowTotal(s), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* 6. Material Management Section */}
+            <div
+              className="mb-4 rounded-3 p-3 p-md-4 shadow-sm"
+              style={{
+                backgroundColor: '#fff1f2',
+                border: '1.5px solid #fecdd3',
+                borderLeft: '5px solid #e11d48',
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div className="d-flex align-items-center">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded me-2 shadow-sm"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#ffe4e6',
+                      color: '#e11d48',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    📦
+                  </div>
+                  <div>
+                    <h5 className="mb-0 fw-bold" style={{ color: '#be123c', fontSize: '18px' }}>
+                      6. Material Management (Drilling)
+                    </h5>
+                    <span className="text-secondary small">
+                      Track raw materials received, used, and remaining stock
+                    </span>
+                  </div>
+                </div>
+                <CButton
+                  color="danger"
+                  variant="outline"
+                  size="sm"
+                  className="d-flex align-items-center"
+                  onClick={addRawMaterial}
+                  style={{ borderRadius: '6px' }}
+                >
+                  <CIcon icon={cilPlus} className="me-1" /> + Add Material
+                </CButton>
+              </div>
+
+              <div className="table-responsive bg-white rounded-3 border" style={{ borderColor: '#fbcfe8' }}>
+                <table className="table table-hover align-middle mb-0 text-center" style={{ fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#eff6ff', color: '#1e293b', borderBottom: '2px solid #e2e8f0' }}>
+                      <th className="text-start ps-3 py-3" style={{ minWidth: '160px', fontWeight: '600' }}>Material Type</th>
+                      <th className="py-3" style={{ minWidth: '120px', fontWeight: '600' }}>Available (Qty)</th>
+                      <th className="py-3" style={{ minWidth: '120px', fontWeight: '600' }}>Received (Qty)</th>
+                      <th className="py-3" style={{ minWidth: '120px', fontWeight: '600' }}>Used (Qty)</th>
+                      <th className="py-3" style={{ minWidth: '130px', fontWeight: '600' }}>Balance (Qty)</th>
+                      <th className="py-3" style={{ minWidth: '90px', fontWeight: '600' }}>Unit</th>
+                      <th className="py-3" style={{ width: '40px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.rawMaterials || []).map((material, index) => (
+                      <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td className="ps-3 py-2 text-start">
+                          <CFormSelect
+                            value={material.material_id || material.material_type || ''}
+                            onChange={(e) => handleRawMaterialChange(index, 'material_id', e.target.value)}
+                            style={{ height: '38px', borderRadius: '6px', fontSize: '13px' }}
+                          >
+                            <option value="">Select Material</option>
+                            {materialTypes.map((mat) => (
+                              <option key={mat.id} value={mat.id}>
+                                {mat.name} ({mat.current_stock} {mat.unit || ''})
+                              </option>
+                            ))}
+                            {material.material_type && !materialTypes.some((m) => m.id === material.material_id || m.name === material.material_type) && (
+                              <option value={material.material_id || material.material_type}>
+                                {material.material_type}
+                              </option>
+                            )}
+                          </CFormSelect>
+                        </td>
+                        <td className="py-2">
+                          <CFormInput
+                            type="text"
+                            value={material.available_qty || 0}
+                            disabled
+                            className="bg-light text-center fw-semibold text-muted"
+                            style={{ height: '38px', borderRadius: '6px', fontSize: '13px' }}
+                          />
+                        </td>
+                        <td className="py-2">
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={material.received_qty === '' ? '' : material.received_qty}
+                            placeholder="0.00"
+                            className="text-center"
+                            style={{ height: '38px', borderRadius: '6px', fontSize: '13px' }}
+                            onChange={(e) => handleRawMaterialChange(index, 'received_qty', e.target.value.replace(/[^0-9.]/g, ''))}
+                          />
+                        </td>
+                        <td className="py-2">
+                          <CFormInput
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9.]*"
+                            value={material.qty_used === '' ? '' : material.qty_used}
+                            placeholder="0.00"
+                            className="text-center"
+                            style={{ height: '38px', borderRadius: '6px', fontSize: '13px' }}
+                            onChange={(e) => handleRawMaterialChange(index, 'qty_used', e.target.value.replace(/[^0-9.]/g, ''))}
+                          />
+                        </td>
+                        <td className="py-2">
+                          <div
+                            className="d-flex align-items-center justify-content-center fw-bold"
+                            style={{
+                              height: '38px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              color: (parseFloat(material.balance_qty) || 0) < 0 ? '#dc2626' : '#16a34a',
+                            }}
+                          >
+                            {material.balance_qty ?? ((parseFloat(material.available_qty) || 0) + (parseFloat(material.received_qty) || 0) - (parseFloat(material.qty_used) || 0))}
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          <span className="badge bg-secondary-subtle text-secondary px-2 py-1" style={{ fontSize: '12px' }}>
+                            {material.unit || 'Ton'}
+                          </span>
+                        </td>
+                        <td className="py-2 text-center">
+                          {(formData.rawMaterials || []).length > 1 && (
+                            <CButton
+                              color="danger"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeRawMaterial(index)}
+                              title="Delete Row"
+                            >
+                              <CIcon icon={cilTrash} />
+                            </CButton>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             {/* Submit */}
             <div className="d-flex justify-content-center">
